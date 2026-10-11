@@ -44,10 +44,25 @@ auto pay below risk score 45. Prices: delay cover 149 THB, baggage cover 59 THB 
     pip install pytest
     python -m pytest -q tests
 
+## Real flight data (optional)
+
+The app runs on a simulator by default. To replay a flight that is really delayed, get a free
+key at aviationstack.com and set `AVIATIONSTACK_KEY`. Then open Demo controls in the traveler app.
+
+- Free plan: 100 requests a month, HTTP only. Calls are made from the server, cached for 15 minutes,
+  and capped by `AVIATIONSTACK_BUDGET` (default 80 a month).
+- Delay is computed from scheduled versus actual or estimated time, because the API's own delay field is not always consistent.
+- Real delays of 3 hours or more are rare, so this is a replay: the cover is treated as bought before departure.
+  Screens label the flight "Live data" or "Simulated".
+- A delay that later grows past the second level tops the payout up (1,500 then 3,000 in total). Nothing is paid twice.
+
 ## Deploy to Cloud Run
 
+State lives in one SQLite file, so run a single instance.
+
     gcloud run deploy calmy --source . --region asia-southeast1 --allow-unauthenticated \
-      --set-env-vars GOOGLE_CLOUD_PROJECT=<project>,GOOGLE_CLOUD_LOCATION=asia-southeast1
+      --min-instances 1 --max-instances 1 \
+      --set-env-vars GOOGLE_CLOUD_PROJECT=<project>,GOOGLE_CLOUD_LOCATION=us-central1,AVIATIONSTACK_KEY=<optional>
 
 The service account needs the Vertex AI User role for Gemini. Without it the app still works
 and uses the template explanation.

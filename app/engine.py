@@ -74,32 +74,39 @@ def clean_checks() -> list[str]:
 
 # ---------------------------------------------------------------- explain
 
-def explain(kind: str, amount: int, minutes: int, rules: dict, status: str) -> str:
-    """Plain English reason for a decision.
+def template_explanation(kind: str, amount: int, minutes: int, rules: dict) -> str:
+    """Instant explanation that needs no network. Stored first, upgraded later."""
+    if kind == "delay":
+        return f"Delay {minutes} minutes, rule {int(rules['delay_tier1_minutes'])} minutes, payout {amount:,} THB."
+    return f"Airline report confirms the bag is lost. Covered under clause 4.2, payout {amount:,} THB."
 
-    Uses Gemini on Vertex AI when a project is configured, otherwise a
-    template, so the demo never depends on network access.
+
+def explain(kind: str, amount: int, minutes: int, rules: dict, status: str) -> str:
+    """Plain English reason for a decision, written by Gemini on Vertex AI.
+
+    Called from a background thread, never while the database is locked, and
+    with a short timeout. Any failure returns the template so a decision is
+    never delayed or lost because of the model.
     """
     if kind == "delay":
         facts = (
             f"Flight delay {minutes} minutes. Rule threshold {int(rules['delay_tier1_minutes'])} minutes "
             f"({CLAUSE_DELAY}). Payout {amount} THB. Decision: {status}."
         )
-        fallback = (
-            f"Delay {minutes} minutes, rule {int(rules['delay_tier1_minutes'])} minutes, payout {amount:,} THB."
-        )
     else:
         facts = f"Lost bag confirmed by airline report. {CLAUSE_BAG}. Payout {amount} THB. Decision: {status}."
-        fallback = f"Airline report confirms the bag is lost. Covered under clause 4.2, payout {amount:,} THB."
+    fallback = template_explanation(kind, amount, minutes, rules)
 
     project = os.environ.get("GOOGLE_CLOUD_PROJECT")
     if not project:
         return fallback
     try:  # pragma: no cover - needs cloud credentials
         from google import genai
+        from google.genai import types
 
         client = genai.Client(
-            vertexai=True, project=project, location=os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-southeast1")
+            vertexai=True, project=project, location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+            http_options=types.HttpOptions(timeout=8000),  # milliseconds
         )
         resp = client.models.generate_content(
             model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
@@ -133,7 +140,12 @@ def _new_id(prefix: str) -> str:
 # ---------------------------------------------------------------- trigger
 
 def run_delay(c, flight_code: str, minutes: int) -> list[dict]:
-    """Simulator entry point: set the flight delay and process every policy."""
+    """Simulator or live entry point: set the flight delay and process every policy.
+
+    A policy already decided is never paid twice. If the delay later grows into
+    a higher tier, the decision is raised to the higher amount (paid 1,500 at
+    3 hours, then 3,000 in total at 6 hours).
+    """
     c.execute("UPDATE flights SET delay_minutes=? WHERE code=?", (minutes, flight_code))
     rules = get_rules(c)
     amount = payout_for_delay(rules, minutes)
@@ -145,25 +157,48 @@ def run_delay(c, flight_code: str, minutes: int) -> list[dict]:
         db.log(c, p["id"], "delay_detected", {"flight": flight_code, "minutes": minutes})
         if amount == 0:
             continue
-        if db.one(c, "SELECT 1 FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],)):
+        prior = db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],))
+        if prior:
+            if prior["status"] in ("paid", "held") and amount > prior["amount"]:
+                extra = amount - prior["amount"]
+                c.execute(
+                    "UPDATE decisions SET amount=?, delay_minutes=?, explanation=? WHERE id=?",
+                    (amount, minutes, template_explanation("delay", amount, minutes, rules), prior["id"]),
+                )
+                db.log(c, p["id"], "tier_upgrade", {"decision": prior["id"], "extra": extra, "total": amount})
+                results.append({"policy": p["id"], "decision": prior["id"], "status": "upgraded", "extra": extra})
             continue  # double claim prevention
         score, reasons = risk_score(p)
         status = "paid" if score < rules["risk_threshold"] else "held"
         reasons_out = clean_checks() if status == "paid" else reasons
-        explanation = explain("delay", amount, minutes, rules, status)
         did = _new_id("RQ") if status == "held" else _new_id("DC")
         c.execute(
             "INSERT INTO decisions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 did, p["id"], "delay", status, amount, score,
                 json.dumps(reasons_out), json.dumps(_timeline("Paid", amount, p["payout_account"], status)),
-                CLAUSE_DELAY, explanation, minutes, time.time(),
+                CLAUSE_DELAY, template_explanation("delay", amount, minutes, rules), minutes, time.time(),
                 "system" if status == "paid" else None, None,
             ),
         )
         db.log(c, p["id"], f"decision_{status}", {"decision": did, "score": score, "amount": amount})
         results.append({"policy": p["id"], "decision": did, "status": status, "score": score})
     return results
+
+
+def enrich_explanations(decision_ids: list[str]) -> None:
+    """Upgrade stored template explanations with Gemini. Runs in a background thread."""
+    if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        return
+    for did in decision_ids:
+        with db.conn() as c:
+            d = db.one(c, "SELECT * FROM decisions WHERE id=?", (did,))
+            rules = get_rules(c)
+        if not d:
+            continue
+        text = explain(d["kind"], d["amount"], d["delay_minutes"], rules, d["status"])  # network, no lock held
+        with db.conn() as c:
+            c.execute("UPDATE decisions SET explanation=? WHERE id=?", (text, did))
 
 
 def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) -> dict:
@@ -205,7 +240,7 @@ def submit_bag_claim(c, policy_id: str, report_id: str, bag_tag: str, items: lis
         (
             bid + "-D", policy_id, "baggage", status, amount, score,
             json.dumps(clean_checks()), json.dumps([]), CLAUSE_BAG,
-            explain("baggage", amount, 0, rules, status), 0, time.time(), None, None,
+            template_explanation("baggage", amount, 0, rules), 0, time.time(), None, None,
         ),
     )
     db.log(c, policy_id, "baggage_claim", {"claim": bid, "total": total, "score": score})

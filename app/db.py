@@ -24,7 +24,13 @@ CREATE TABLE IF NOT EXISTS flights (
     code TEXT PRIMARY KEY,
     airline TEXT, origin TEXT, origin_city TEXT, dest TEXT, dest_city TEXT,
     depart_label TEXT, scheduled TEXT, delay_minutes INTEGER DEFAULT 0,
-    travelers INTEGER DEFAULT 0
+    travelers INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'sim',            -- sim | live
+    fetched_at REAL
+);
+CREATE TABLE IF NOT EXISTS api_usage (
+    month TEXT PRIMARY KEY,               -- YYYY-MM, free flight data plans are monthly
+    calls INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS policies (
     id TEXT PRIMARY KEY,
@@ -94,10 +100,11 @@ def seed(c):
     produces one clean payout and one held case."""
     c.executemany("INSERT OR REPLACE INTO rules VALUES (?,?,?)", DEFAULT_RULES)
     c.executemany(
-        "INSERT OR REPLACE INTO flights VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "INSERT OR REPLACE INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,"
+        "scheduled,delay_minutes,travelers,source) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         [
-            ("OA 108", "Orchid Air", "BKK", "Bangkok", "CNX", "Chiang Mai", "Thu 14 Nov, 11:30", "11:30", 0, 84),
-            ("OA 204", "Orchid Air", "BKK", "Bangkok", "HKT", "Phuket", "Thu 14 Nov, 14:10", "14:10", 0, 112),
+            ("OA 108", "Orchid Air", "BKK", "Bangkok", "CNX", "Chiang Mai", "Thu 14 Nov, 11:30", "11:30", 0, 84, "sim"),
+            ("OA 204", "Orchid Air", "BKK", "Bangkok", "HKT", "Phuket", "Thu 14 Nov, 14:10", "14:10", 0, 112, "sim"),
         ],
     )
     c.executemany(
@@ -116,7 +123,7 @@ def seed(c):
 def reset():
     """Wipe everything and reseed. Backs the Reset demo data button."""
     with conn() as c:
-        for t in ("decisions", "baggage", "events", "policies", "flights", "rules"):
+        for t in ("decisions", "baggage", "events", "policies", "flights", "rules"):  # api_usage is kept
             c.execute(f"DELETE FROM {t}")
         seed(c)
 

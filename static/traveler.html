@@ -17,7 +17,7 @@
 </style>
 </head>
 <body class="antialiased">
-<div id="app" class="w-full max-w-[390px] mx-auto h-screen bg-[#F8FAFB] text-[#0F172A] relative flex flex-col">
+<div id="app" class="w-full max-w-[390px] mx-auto h-[100dvh] bg-[#F8FAFB] text-[#0F172A] relative flex flex-col">
   <header class="w-full h-11 pt-3 px-7 flex justify-between items-center bg-[#F8FAFB] shrink-0">
     <span class="text-[12px] font-semibold">9:41</span>
     <div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span><span class="material-symbols-outlined text-[16px]">wifi</span><span class="material-symbols-outlined text-[18px]">battery_full</span></div>
@@ -30,7 +30,7 @@
   <div id="view" class="flex-1 overflow-y-auto px-5 pt-3 pb-4 flex flex-col gap-3 scrollbar-none"></div>
 
   <div class="text-center text-[11px] text-[#64748B] py-1.5 shrink-0">
-    Demo data. Flight data simulated. <button id="demoBtn" class="underline text-primary-container font-semibold">Demo controls</button>
+    <span id="srcNote">Demo data. Flight data simulated.</span> <button id="demoBtn" class="underline text-primary-container font-semibold">Demo controls</button>
   </div>
   <nav class="h-16 border-t border-[#E2E8F0] bg-white flex justify-around items-center shrink-0">
     <button data-tab="cover" class="tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold"><span class="material-symbols-outlined">shield</span>Cover</button>
@@ -38,13 +38,32 @@
     <button data-tab="help" class="tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold"><span class="material-symbols-outlined">support_agent</span>Help</button>
   </nav>
 
+  <div id="toast" class="hidden absolute left-4 right-4 bottom-24 z-[60] bg-[#0F172A] text-white text-[13px] rounded-xl px-4 py-3 shadow-lg"></div>
+
   <!-- Demo controls sheet -->
   <div id="sheet" class="hidden absolute inset-0 bg-black/30 z-50 items-end">
-    <div class="bg-white w-full rounded-t-2xl p-5 flex flex-col gap-3">
-      <div class="flex justify-between items-center"><h3 class="font-bold text-[16px]">Demo controls</h3><button id="sheetClose" class="material-symbols-outlined">close</button></div>
-      <p class="text-[12px] text-[#64748B]">Stand in for live flight data. Nothing here moves real money.</p>
-      <button data-demo="192" class="demoAct h-11 rounded-full bg-primary-container text-white font-semibold text-[14px]">Delay flight OA 108 by 3h 12m</button>
-      <button data-demo="370" class="demoAct h-11 rounded-full border border-primary-container text-primary-container font-semibold text-[14px]">Delay flight OA 108 by 6h 10m</button>
+    <div class="bg-white w-full rounded-t-2xl p-5 flex flex-col gap-3 max-h-[85%] overflow-y-auto scrollbar-none">
+      <div class="flex justify-between items-center"><h3 class="font-bold text-[16px]">Demo controls</h3><button id="sheetClose" class="material-symbols-outlined" aria-label="Close">close</button></div>
+      <p class="text-[12px] text-[#64748B]">Nothing here moves real money.</p>
+      <div>
+        <div class="text-[11px] font-semibold text-[#64748B] tracking-wide mb-1.5">TRAVELER</div>
+        <div class="grid grid-cols-2 gap-2">
+          <a href="?p=CL-44910" class="persona h-11 rounded-xl border text-[13px] font-semibold flex flex-col items-center justify-center" data-p="CL-44910">Somchai K.<span class="text-[10px] font-normal text-[#64748B]">clean profile, paid</span></a>
+          <a href="?p=CL-45102" class="persona h-11 rounded-xl border text-[13px] font-semibold flex flex-col items-center justify-center" data-p="CL-45102">Anan T.<span class="text-[10px] font-normal text-[#64748B]">risky profile, held</span></a>
+        </div>
+      </div>
+      <div class="text-[11px] font-semibold text-[#64748B] tracking-wide -mb-1">SIMULATE A DELAY</div>
+      <div id="demoHint" class="hidden text-[12px] text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-3 py-2"></div>
+      <button data-demo="192" class="demoAct h-11 rounded-full bg-primary-container text-white font-semibold text-[14px] disabled:opacity-40"></button>
+      <button data-demo="370" class="demoAct h-11 rounded-full border border-primary-container text-primary-container font-semibold text-[14px] disabled:opacity-40"></button>
+      <div id="liveBox" class="hidden flex flex-col gap-2 border-t border-[#F1F5F9] pt-3">
+        <div class="text-[11px] font-semibold text-[#64748B] tracking-wide">REAL FLIGHT DATA <span id="liveUsage" class="font-normal"></span></div>
+        <p class="text-[12px] text-[#64748B]">Pick a flight that is really delayed now. Its real delay is replayed against your cover.</p>
+        <button id="liveList" class="h-10 rounded-full border border-primary-container text-primary-container font-semibold text-[13px]">Show flights delayed now</button>
+        <div id="liveRows" class="flex flex-col gap-1.5"></div>
+        <div class="flex gap-2"><input id="liveNo" maxlength="8" placeholder="Flight number, e.g. TG102" class="flex-1 h-10 rounded-full border border-[#E2E8F0] px-4 text-[13px] uppercase"><button id="liveGo" class="h-10 px-4 rounded-full bg-primary-container text-white font-semibold text-[13px]">Replay</button></div>
+      </div>
+      <p id="liveOff" class="hidden text-[12px] text-[#64748B] border-t border-[#F1F5F9] pt-3">Real flight data is switched off on this demo, so the simulator is used.</p>
       <button id="resetBtn" class="h-11 rounded-full border border-[#E2E8F0] text-[#334155] font-semibold text-[14px]">Reset demo data</button>
     </div>
   </div>
@@ -58,11 +77,18 @@ let S = null, tab = 'cover', sel = {delay: true, baggage: true}, showWhy = false
 const $ = s => document.querySelector(s);
 const api = (url, method = 'GET', body) =>
   fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined})
-    .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail || 'Something went wrong')));
+    .then(r => r.ok ? r.json() : r.json().catch(() => ({})).then(e => Promise.reject(msg(e.detail))));
+const msg = d => typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => x.msg || '').join('. ') || 'Check the values and try again.' : 'Something went wrong. Please try again.';
+const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const acct = a => esc(a).replace('ending ', 'ending <b class="mono">') + '</b>';
+let toastT;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 4500); }
+const isLive = () => S && S.flight && S.flight.source === 'live';
 
 async function load() {
   S = await api('/api/traveler/' + PID);
   $('#avatar').textContent = S.policy.traveler.split(' ').map(w => w[0]).join('').slice(0, 2);
+  $('#srcNote').textContent = isLive() ? 'Demo data. Real flight data replayed.' : 'Demo data. Flight data simulated.';
   render();
 }
 
@@ -77,9 +103,12 @@ function render() {
   });
   const v = $('#view');
   const html = tab === 'cover' ? coverView() : tab === 'claims' ? claimsView() : helpView();
-  if (v.dataset.k !== tab + JSON.stringify(sel) + showWhy + bagOpen + (S.delay_decision?.status || '') + (S.baggage?.decision?.status || '') + S.policy.status) {
+  const k = html;  // re-render only when the markup changes, so polling does not reset scroll or taps
+  if (v.dataset.k !== k) {
+    const top = v.scrollTop;
     v.innerHTML = '<div class="fade flex flex-col gap-3">' + html + '</div>';
-    v.dataset.k = tab + JSON.stringify(sel) + showWhy + bagOpen + (S.delay_decision?.status || '') + (S.baggage?.decision?.status || '') + S.policy.status;
+    v.dataset.k = k;
+    v.scrollTop = top;
     bind();
   }
 }
@@ -88,17 +117,17 @@ function flightCard() {
   const f = S.flight;
   return `<section class="bg-white rounded-xl border border-[#E2E8F0] p-3 shadow-sm flex flex-col gap-2">
     <div class="flex justify-between items-center border-b border-[#F1F5F9] pb-2">
-      <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary-container"></span><span class="text-[12px] font-semibold">${f.airline}</span></div>
-      <span class="mono text-[12px] font-semibold text-primary-container bg-secondary-fixed/40 px-1.5 py-0.5 rounded">${f.code}</span>
+      <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary-container"></span><span class="text-[12px] font-semibold">${esc(f.airline)}</span></div>
+      <div class="flex items-center gap-1.5"><span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${f.source === 'live' ? 'bg-[#ECFDF5] text-[#047857]' : 'bg-[#F1F5F9] text-[#64748B]'}">${f.source === 'live' ? 'Live data' : 'Simulated'}</span><span class="mono text-[12px] font-semibold text-primary-container bg-secondary-fixed/40 px-1.5 py-0.5 rounded">${esc(f.code)}</span></div>
     </div>
     <div class="flex items-center justify-between">
-      <div><div class="text-[18px] font-bold">${f.origin}</div><div class="text-[12px] text-secondary">${f.origin_city}</div></div>
+      <div><div class="text-[18px] font-bold">${esc(f.origin)}</div><div class="text-[12px] text-secondary">${esc(f.origin_city)}</div></div>
       <div class="flex flex-col items-center flex-1 px-3"><div class="w-full flex items-center gap-1"><div class="h-px flex-1 bg-outline-variant/60"></div><span class="material-symbols-outlined text-[16px] text-primary-container rotate-90">flight</span><div class="h-px flex-1 bg-outline-variant/60"></div></div><span class="text-[11px] text-secondary mt-0.5">Direct Flight</span></div>
-      <div class="text-right"><div class="text-[18px] font-bold">${f.dest}</div><div class="text-[12px] text-secondary">${f.dest_city}</div></div>
+      <div class="text-right"><div class="text-[18px] font-bold">${esc(f.dest)}</div><div class="text-[12px] text-secondary">${esc(f.dest_city)}</div></div>
     </div>
     <div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-[#F1F5F9] text-[12px]">
-      <div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary-container">calendar_today</span>${f.depart_label}</div>
-      <div class="flex items-center justify-end gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary-container">person</span>${S.policy.traveler}</div>
+      <div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary-container">calendar_today</span>${esc(f.depart_label)}</div>
+      <div class="flex items-center justify-end gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary-container">person</span>${esc(S.policy.traveler)}</div>
     </div></section>`;
 }
 
@@ -107,7 +136,7 @@ function coverView() {
   const r = S.rules, p = S.policy;
   if (p.status === 'active') {
     return `<div><h1 class="text-[20px] leading-[26px] font-bold">You are covered</h1>
-      <p class="text-[12px] text-secondary mt-0.5">Policy <span class="mono font-semibold">${p.id}</span>. We watch your flight and pay you if it is late.</p></div>
+      <p class="text-[12px] text-secondary mt-0.5">Policy <span class="mono font-semibold">${esc(p.id)}</span>. We watch your flight and pay you if it is late.</p></div>
       ${flightCard()}
       <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex flex-col gap-2 text-[13px]">
         <div class="flex justify-between"><span>Delay cover</span><span class="mono text-primary-container font-semibold">${p.delay_cover ? 'Active' : 'Not added'}</span></div>
@@ -123,7 +152,7 @@ function coverView() {
     ${flightCard()}
     ${coverCard('delay', 'Delay cover', r.delay_premium, `3h late pays <b class="mono">${thb(r.delay_tier1_payout)}</b>. 6h late pays <b class="mono">${thb(r.delay_tier2_payout)}</b>.`)}
     ${coverCard('baggage', 'Baggage cover', r.baggage_premium, `Pays <b class="mono">${thb(r.lost_bag_payout)}</b> if your bag is lost.`)}
-    <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span>No forms. Paid straight to ${S.policy.payout_account.replace('PromptPay ending', 'PromptPay ending <b class="mono">') + '</b>'}.</div>
+    <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span>No forms. Paid straight to ${acct(S.policy.payout_account)}.</div>
     <div class="mt-auto pt-2 flex flex-col gap-2">
       <div class="flex justify-between items-center text-[13px] text-secondary"><span>Trip protection plan</span><span>Total <b class="mono text-[#0F172A] text-[16px]">${thb(total)}</b></span></div>
       <button id="addCover" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px] disabled:opacity-40" ${total ? '' : 'disabled'}>Add cover &rarr;</button>
@@ -167,18 +196,20 @@ function steps(tl, held) {
 }
 function paidView(d) {
   const h = Math.floor(d.delay_minutes / 60), m = d.delay_minutes % 60;
+  const r = S.rules, topped = r.delay_tier2_payout > r.delay_tier1_payout && d.amount >= r.delay_tier2_payout;
   return `<div class="flex flex-col items-center text-center gap-1 pt-1">
       <div class="w-16 h-16 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center"><span class="material-symbols-outlined text-[34px] text-[#059669]" style="font-variation-settings:'FILL' 1">check_circle</span></div>
       <h1 class="text-[22px] leading-[28px] font-bold mt-1">Flight delayed ${h}h ${m}m.<br>We paid you.</h1>
       <div class="mono text-[32px] font-bold text-[#059669] leading-10">${thb(d.amount)}</div>
-      <div class="text-[12px] text-secondary">${S.flight.airline} <span class="mono font-semibold text-[#0F172A]">${S.flight.code}</span> &middot; Thu 14 Nov</div></div>
+      <div class="text-[12px] text-secondary">${esc(S.flight.airline)} <span class="mono font-semibold text-[#0F172A]">${esc(S.flight.code)}</span> &middot; ${esc((S.flight.depart_label || '').split(',')[0])}</div>
+      ${topped ? `<div class="text-[11px] font-semibold text-[#047857] bg-[#ECFDF5] px-2.5 py-1 rounded-full mt-1">Topped up as the delay passed ${Math.round(r.delay_tier2_minutes / 60)} hours</div>` : ''}</div>
     ${steps(d.timeline)}
     <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex items-center gap-3">
       <span class="w-10 h-10 rounded-lg bg-[#F1F5F9] flex items-center justify-center"><span class="material-symbols-outlined text-primary-container">account_balance_wallet</span></span>
-      <div class="flex-1 text-[13px]">Sent to ${S.policy.payout_account.replace('ending ', 'ending <b class="mono">') + '</b>'}<div class="text-[11px] text-secondary">Policy <span class="mono">${S.policy.id}</span></div></div>
+      <div class="flex-1 text-[13px]">Sent to ${acct(S.policy.payout_account)}<div class="text-[11px] text-secondary">Policy <span class="mono">${esc(S.policy.id)}</span></div></div>
       <span class="text-[11px] font-semibold text-[#059669] bg-[#ECFDF5] px-2 py-1 rounded-full">Instant</span></section>
     <button id="why" class="text-primary-container text-[13px] font-semibold text-center">Why was I paid this? &rarr;</button>
-    ${showWhy ? `<div class="bg-[#F0FAF8] rounded-xl p-3 text-[12px] leading-[18px]"><b>${d.clause}.</b> ${d.explanation}</div>` : ''}
+    ${showWhy ? `<div class="bg-[#F0FAF8] rounded-xl p-3 text-[12px] leading-[18px]"><b>${esc(d.clause)}.</b> ${esc(d.explanation)}</div>` : ''}
     <button id="done" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px]">Done</button>`;
 }
 function reviewView(d) {
@@ -192,28 +223,28 @@ function reviewView(d) {
         <div><div class="text-[14px] font-semibold ${st === 'now' ? 'text-[#B45309]' : st === 'next' ? 'text-secondary' : ''}">${t}</div><div class="text-[12px] text-secondary">${s}</div></div></div>`).join('')}
     </section>
     <section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-2 text-[13px]">
-      <div class="flex justify-between"><span class="text-secondary">Claim ID</span><span class="mono font-semibold">${S.policy.id}</span></div>
+      <div class="flex justify-between"><span class="text-secondary">Claim ID</span><span class="mono font-semibold">${esc(S.policy.id)}</span></div>
       <div class="flex justify-between"><span class="text-secondary">Amount requested</span><span class="mono font-bold text-[16px]">${thb(d.amount)}</span></div>
-      <div class="flex justify-between"><span class="text-secondary">Policy</span><span>Delay cover, ${S.flight.airline} <span class="mono">${S.flight.code}</span></span></div>
-      <div class="flex justify-between"><span class="text-secondary">Destination</span><span>${S.policy.payout_account}</span></div></section>
+      <div class="flex justify-between"><span class="text-secondary">Policy</span><span>Delay cover, ${esc(S.flight.airline)} <span class="mono">${esc(S.flight.code)}</span></span></div>
+      <div class="flex justify-between"><span class="text-secondary">Destination</span><span>${esc(S.policy.payout_account)}</span></div></section>
     <div class="text-center text-[11px] text-secondary">No action needed from you unless we ask.</div>`;
 }
 function declinedView(d) {
   return `<div class="bg-white rounded-xl border border-[#FECACA] p-4"><h1 class="text-[18px] font-bold text-[#DC2626]">Claim not paid</h1>
-    <p class="text-[13px] text-secondary mt-1">After review we could not pay this claim. ${d.note ? 'Note from our team: ' + d.note : ''} You can contact support from the Help tab.</p></div>`;
+    <p class="text-[13px] text-secondary mt-1">After review we could not pay this claim. ${d.note ? 'Note from our team: ' + esc(d.note) : ''} You can contact support from the Help tab.</p></div>`;
 }
 function bagView(b) {
   const d = b.decision;
   const paid = d.status === 'paid', declined = d.status === 'declined';
   return `<div class="pt-2"><h2 class="text-[20px] font-bold">Lost baggage claim</h2>
-    <p class="text-[12px] text-secondary">Flight ${S.flight.airline} <span class="mono font-semibold text-[#0F172A]">${S.flight.code}</span> &middot; Policy <span class="mono font-semibold text-[#0F172A]">${S.policy.id}</span></p></div>
+    <p class="text-[12px] text-secondary">Flight ${esc(S.flight.airline)} <span class="mono font-semibold text-[#0F172A]">${esc(S.flight.code)}</span> &middot; Policy <span class="mono font-semibold text-[#0F172A]">${esc(S.policy.id)}</span></p></div>
     <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 text-[12px] flex flex-col gap-2">
       <div class="text-[11px] font-semibold text-[#64748B] tracking-wide">VERIFIED EVIDENCE</div>
-      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Airline lost bag report</div><div class="text-secondary">bag tag <span class="mono font-semibold">${b.bag_tag}</span></div></div></div>
+      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Airline lost bag report</div><div class="text-secondary">bag tag <span class="mono font-semibold">${esc(b.bag_tag)}</span></div></div></div>
       <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Item list, <span class="mono">${thb(b.total)}</span></div><div class="text-secondary">${b.items.length} items verified</div></div></div></section>
     <section class="rounded-xl p-3 border ${paid ? 'bg-[#ECFDF5] border-[#A7F3D0]' : declined ? 'bg-[#FEF2F2] border-[#FECACA]' : 'bg-[#FFFBEB] border-[#FDE68A]'}">
       <div class="flex justify-between items-center"><span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70">${paid ? 'Approved' : declined ? 'Not approved' : 'Under review'}</span><span class="mono font-bold text-[20px] ${paid ? 'text-[#059669]' : ''}">${thb(d.amount)}</span></div>
-      <p class="text-[12px] mt-2">${paid ? `Covered under baggage cover, clause 4.2. Paid to ${S.policy.payout_account.replace('ending ', 'ending <b class="mono">') + '</b>'}.` : declined ? 'We could not approve this claim.' : 'A person is checking your claim. We will pay you here once it is approved.'}</p></section>
+      <p class="text-[12px] mt-2">${paid ? `Covered under baggage cover, clause 4.2. Paid to ${acct(S.policy.payout_account)}.` : declined ? 'We could not approve this claim.' : 'A person is checking your claim. We will pay you here once it is approved.'}</p></section>
     <div class="bg-white rounded-xl border border-[#E2E8F0] px-3 py-2.5 text-[13px]">
       <button id="bagToggle" class="w-full flex justify-between items-center text-left">What the airline also owes you <span class="material-symbols-outlined text-[18px]">${bagOpen ? 'expand_less' : 'expand_more'}</span></button>
       ${bagOpen ? '<p class="text-[12px] text-secondary mt-2 leading-[18px]">Under the Montreal Convention the airline is liable first for lost checked bags. Keep your Property Irregularity Report. We top up what the airline does not pay.</p>' : ''}</div>`;
@@ -232,23 +263,82 @@ function helpView() {
 function bind() {
   document.querySelectorAll('[data-sel]').forEach(el => el.onclick = () => { sel[el.dataset.sel] = !sel[el.dataset.sel]; render(); });
   const add = $('#addCover');
-  if (add) add.onclick = async () => { add.disabled = true; await api(`/api/traveler/${PID}/checkout`, 'POST', sel); await load(); };
+  if (add) add.onclick = async () => {
+    add.disabled = true;
+    try { await api(`/api/traveler/${PID}/checkout`, 'POST', sel); } catch (e) { toast(e); }
+    await load();
+  };
   const why = $('#why'); if (why) why.onclick = () => { showWhy = !showWhy; render(); };
   const done = $('#done'); if (done) done.onclick = () => setTab('cover');
   const tg = $('#bagToggle'); if (tg) tg.onclick = () => { bagOpen = !bagOpen; render(); };
   const bs = $('#bagStart');
-  if (bs) bs.onclick = async () => { bs.disabled = true; try { await api(`/api/traveler/${PID}/baggage`, 'POST', {}); } catch (e) { alert(e); } await load(); tab = 'claims'; render(); };
+  if (bs) bs.onclick = async () => {
+    bs.disabled = true;
+    try { await api(`/api/traveler/${PID}/baggage`, 'POST', {}); tab = 'claims'; } catch (e) { toast(e); }
+    await load();
+  };
 }
 
 // Demo controls
-$('#demoBtn').onclick = () => { $('#sheet').classList.replace('hidden', 'flex'); };
-$('#sheetClose').onclick = () => { $('#sheet').classList.replace('flex', 'hidden'); };
+const closeSheet = () => $('#sheet').classList.replace('flex', 'hidden');
+function openSheet() {
+  $('#sheet').classList.replace('hidden', 'flex');
+  const active = S.policy.status === 'active' && S.policy.delay_cover;
+  const hint = $('#demoHint');
+  hint.classList.toggle('hidden', active);
+  hint.textContent = 'Add delay cover on the Cover tab first. A delay only pays if the cover was bought before it.';
+  document.querySelectorAll('.demoAct').forEach(b => {
+    const m = +b.dataset.demo;
+    b.textContent = `Delay flight ${S.flight.code} by ${Math.floor(m / 60)}h ${m % 60}m`;
+    b.disabled = !active;
+  });
+  document.querySelectorAll('.persona').forEach(a => {
+    const on = a.dataset.p === PID;
+    a.className = 'persona h-11 rounded-xl border text-[13px] font-semibold flex flex-col items-center justify-center ' + (on ? 'border-primary-container bg-[#E6F4F1] text-primary-container' : 'border-[#E2E8F0]');
+  });
+  api('/api/live/status').then(u => {
+    $('#liveBox').classList.toggle('hidden', !u.enabled);
+    $('#liveOff').classList.toggle('hidden', u.enabled);
+    $('#liveUsage').textContent = u.enabled ? `(${u.used} of ${u.budget} lookups used this month)` : '';
+  }).catch(() => {});
+}
+$('#demoBtn').onclick = openSheet;
+$('#sheetClose').onclick = closeSheet;
+$('#sheet').onclick = e => { if (e.target.id === 'sheet') closeSheet(); };
 document.querySelectorAll('.demoAct').forEach(b => b.onclick = async () => {
-  $('#sheet').classList.replace('flex', 'hidden');
-  await api('/api/demo/delay', 'POST', {flight: S.flight.code, minutes: +b.dataset.demo});
-  await load(); tab = 'claims'; render();
+  closeSheet();
+  try {
+    const r = await api('/api/demo/delay', 'POST', {flight: S.flight.code, minutes: +b.dataset.demo});
+    if (!r.covered) toast('Nobody is covered on this flight yet. Add cover first.');
+    else if (!r.results.length) toast('Nothing new to pay. This flight already paid out at this level. Try the longer delay, or reset.');
+    else if (r.results.some(x => x.status === 'upgraded')) toast('Delay grew into the next level. The payout was topped up.');
+    await load(); tab = 'claims'; render();
+  } catch (e) { toast(e); }
 });
-$('#resetBtn').onclick = async () => { await api('/api/demo/reset', 'POST'); sel = {delay: true, baggage: true}; tab = 'cover'; showWhy = false; $('#sheet').classList.replace('flex', 'hidden'); await load(); };
+$('#resetBtn').onclick = async () => {
+  try { await api('/api/demo/reset', 'POST'); } catch (e) { toast(e); return; }
+  sel = {delay: true, baggage: true}; tab = 'cover'; showWhy = false; bagOpen = false; closeSheet(); await load();
+};
+
+// Real flight data (only shown when the server has a key)
+async function liveReplay(code) {
+  closeSheet(); toast('Fetching the real flight...');
+  try {
+    const r = await api('/api/demo/live', 'POST', {policy: PID, flight: code});
+    toast(r.paid ? `Real flight ${r.flight.code}: delayed ${r.flight.delay_minutes} min. Cover paid out.` : `Real flight ${r.flight.code}: delayed ${r.flight.delay_minutes} min, under the ${S.rules.delay_tier1_minutes} minute rule, so no payout.`);
+    await load(); tab = 'claims'; render();
+  } catch (e) { toast(e); }
+}
+$('#liveList').onclick = async () => {
+  const box = $('#liveRows'); box.innerHTML = '<div class="text-[12px] text-[#64748B]">Loading...</div>';
+  try {
+    const list = await api('/api/live/delayed?min_minutes=30');
+    box.innerHTML = list.length ? list.map(f => `<button data-fl="${esc(f.code)}" class="liveRow text-left border border-[#E2E8F0] rounded-xl px-3 py-2 text-[12px]"><b class="mono">${esc(f.code)}</b> ${esc(f.origin)} to ${esc(f.dest)} <span class="float-right mono font-semibold text-[#B45309]">${f.delay_minutes} min late</span></button>`).join('')
+      : '<div class="text-[12px] text-[#64748B]">No Bangkok departures are delayed by 30 minutes or more right now. Try a flight number.</div>';
+    box.querySelectorAll('.liveRow').forEach(b => b.onclick = () => liveReplay(b.dataset.fl));
+  } catch (e) { box.innerHTML = `<div class="text-[12px] text-[#B45309]">${esc(e)}</div>`; }
+};
+$('#liveGo').onclick = () => { const v = $('#liveNo').value.trim(); if (v) liveReplay(v); };
 
 // Poll so a payout triggered elsewhere (console, simulator) shows up here.
 setInterval(() => { if (document.hidden) return; load().catch(() => {}); }, 3000);
