@@ -41,7 +41,7 @@ app = FastAPI(
 def _decision(d):
     if not d:
         return None
-    for k in ("reasons", "timeline"):
+    for k in ("reasons", "timeline", "breakdown"):
         d[k] = json.loads(d[k]) if d.get(k) else []
     return d
 
@@ -346,7 +346,14 @@ def overview(market: str = "TH"):
     for f in flights:
         track.maybe_refresh(f)
         f["travelers"] = f["covered"]
+    with db.conn() as c:
+        rules_all = {k: engine.get_rules(c, k) for k in markets.MARKETS}
     auto = sum(1 for d in paid if d["decided_by"] == "system")
+    by_market, outcomes = {}, {"auto": auto, "reviewed": len(paid) - auto, "held": held, "declined": 0}
+    with db.conn() as c:
+        outcomes["declined"] = db.one(c, "SELECT COUNT(*) n FROM decisions WHERE status='declined'")["n"]
+        for r in db.rows(c, "SELECT p.market, p.currency, d.amount FROM decisions d JOIN policies p ON p.id=d.policy_id WHERE d.status='paid'"):
+            by_market[r["market"]] = by_market.get(r["market"], 0) + markets.to_usd(r["amount"], r["currency"])
     return {
         "stats": {
             "active": active,
@@ -358,7 +365,10 @@ def overview(market: str = "TH"):
             "bag_waiting": bag_waiting,
         },
         "flights": flights,
+        "outcomes": outcomes,
+        "by_market": sorted(({"market": k, "usd": round(v, 2)} for k, v in by_market.items()), key=lambda x: -x["usd"]),
         "rules": rules,
+        "rules_all": rules_all,
         "rules_market": markets.public(market),
         "markets": [markets.public(k) for k in markets.MARKETS],
         "decisions": decisions,

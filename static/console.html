@@ -3,299 +3,297 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Calmy Console, Orchid Insure (demo)</title>
+<title>Calmy Console</title>
 <link rel="stylesheet" href="/static/fonts.css">
-<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="/static/ui.css">
 <style>
-  :root{--teal:#0D5C5A;--dteal:#0A4D4A;--seafoam:#E6F4F1;--bg:#F8FAFB;--bd:#E2E8F0;--tx:#0F172A;--tx2:#334155;--mut:#64748B;--amb:#D97706;--em:#059669;--cr:#DC2626}
-  body{background:var(--bg);font-family:'Manrope',sans-serif;color:var(--tx)}
-  .mono{font-family:'JetBrains Mono',monospace}
-  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;vertical-align:middle;line-height:1;width:1em;height:1em;overflow:hidden;white-space:nowrap;flex-shrink:0;font-size:inherit;font-size:20px}
-  .card{background:#fff;border:1px solid var(--bd);border-radius:16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
-  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px}
-  .btn{height:44px;padding:0 22px;border-radius:999px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
-  .btn-p{background:var(--teal);color:#fff}.btn-p:hover{background:var(--dteal)}
-  .btn-o{border:1px solid var(--bd);background:#fff;color:var(--tx2)}
-  .btn-d{border:1px solid var(--cr);color:var(--cr);background:#fff}
-  .nav a{display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:500;color:var(--tx2);cursor:pointer}
-  .nav a.on{background:var(--seafoam);color:var(--teal);font-weight:700}
-  .pad{padding:32px}
-  @media(max-width:1000px){.rg{grid-template-columns:1fr!important}.rg>*{grid-column:auto!important}.rg4{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-  @media(max-width:860px){aside#side{position:static!important;width:100%!important;height:auto!important;flex-direction:row!important;align-items:center;border-right:0!important;border-bottom:1px solid #E2E8F0;padding:8px 12px!important;overflow-x:auto}
-    aside#side>div:last-child{display:none}aside#side>div:first-child{flex-direction:row!important;align-items:center;gap:12px!important}
-    #nav{flex-direction:row!important}#nav a{white-space:nowrap;padding:8px 12px}#nav a .material-symbols-outlined{display:none}
-    .shell{flex-direction:column}main#main{margin-left:0!important}.pad{padding:16px}header#top{padding:0 16px!important}footer#foot{padding:0 16px!important}
-    .tbl{overflow-x:auto}}
-  .fade{animation:fade .25s ease}@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+  .rail{background:var(--navy);color:#fff;padding:18px 12px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .rail .brand{display:flex;align-items:center;gap:10px;padding:2px 8px}
+  .rail .brand small{display:block;font-size:11px;color:var(--navy-mute);margin-top:1px}
+  .grp{display:grid;gap:2px;margin-bottom:18px}.grp h4{margin:0 0 4px;padding:0 10px;font-size:12px;font-weight:500;color:var(--navy-mute)}
+  .nav a{display:flex;align-items:center;gap:11px;height:36px;padding:0 10px;border-radius:6px;color:#C9D4E3;font-size:14px;font-weight:500;position:relative}
+  .nav a:hover{background:var(--navy2);text-decoration:none;color:#fff}
+  .nav a.on{background:var(--navy2);color:#fff}.nav a.on::before{content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--amber)}
+  .nav a .n{margin-left:auto;background:var(--amber);color:var(--navy);font-size:11px;font-weight:700;border-radius:10px;padding:1px 7px}
+  .rail .foot{margin-top:auto;padding:0 8px;font-size:12px;color:var(--navy-mute);display:grid;gap:8px}
+  .rail .foot button{color:#C9D4E3;text-align:left;font-size:13px;font-weight:500;display:flex;gap:8px;align-items:center}.rail .foot button:hover{color:#fff}
+  .main{display:flex;flex-direction:column;min-width:0}
+  .top{height:56px;background:var(--panel);border-bottom:1px solid var(--line);padding:0 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
+  .top .crumb{font-size:13px;color:var(--mute)}.top .env{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:12px;display:grid;place-items:center}
+  .page{padding:28px;max-width:1360px;width:100%;margin:0 auto;flex:1}
+  .pagehead{margin-bottom:22px;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .pagehead h1{font-size:30px}.pagehead p{color:var(--mute);margin-top:6px;max-width:70ch}.pagehead .push{margin-left:auto}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr)}
+  .kpis>div{padding:18px 20px;border-left:1px solid var(--line)}.kpis>div:first-child{border-left:0}
+  .kpis .k{font-size:13px;color:var(--mute);display:flex;justify-content:space-between;align-items:center}
+  .kpis .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:36px;letter-spacing:-.03em;margin-top:8px;line-height:1}
+  .kpis .s{font-size:12px;color:var(--mute);margin-top:8px}
+  .cols{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:20px;margin-top:20px;align-items:start}
+  .stack{display:grid;gap:20px}
+  /* departure board */
+  .board{background:var(--navy);color:#fff;border-radius:var(--r);overflow:hidden}
+  .board .bh{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--navy-line)}
+  .board .bh h2{font-size:16px}.board .bh span{color:var(--navy-mute);font-size:13px;margin-left:auto}
+  .brow{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:6px 16px;padding:14px 18px;border-bottom:1px solid var(--navy-line)}
+  .brow:last-of-type{border-bottom:0}
+  .brow .code{font-family:'Geist Mono',monospace;font-weight:600;color:var(--amber);font-size:18px;letter-spacing:.02em}
+  .brow .route{font-family:'Geist Mono',monospace;font-size:15px;letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .brow .route em{font-style:normal;color:var(--navy-mute);font-family:Geist,sans-serif;font-size:12px;letter-spacing:0}
+  .brow .st{justify-self:end;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+  .brow .st i{width:8px;height:8px;border-radius:50%;display:block}
+  .brow .meta{grid-column:2/4;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--navy-mute)}
+  .brow .meta a,.brow .meta button{color:var(--amber);font-weight:600}
+  .brow .trk{grid-column:1/4}
+  .boardempty{padding:34px 18px;color:var(--navy-mute);text-align:center}
+  .tool{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 18px;border-top:1px solid var(--navy-line);background:var(--navy2);font-size:13px;color:#C9D4E3}
+  .tool .field{background:var(--navy);border-color:var(--navy-line);color:#fff;width:auto;height:34px}
+  .tool .field.min{width:84px;text-align:right}
+  .tool .btn{height:34px;background:var(--amber);border-color:var(--amber);color:var(--navy)}
+  .tool .btn:hover{background:#FFC24D}
+  /* lists */
+  .qlist{display:grid;gap:0}.qitem{display:block;padding:12px 14px;border-bottom:1px solid var(--line2);color:inherit}.qitem:hover{background:#F8FAFD;text-decoration:none}
+  .qitem.on{background:var(--cobalt-t);box-shadow:inset 3px 0 0 var(--cobalt)}
+  .split{display:grid;grid-template-columns:320px minmax(0,1fr);gap:20px;align-items:start}
+  .tl{display:grid}.tl>div{display:grid;grid-template-columns:22px 1fr auto;gap:12px;padding-bottom:18px;position:relative}
+  .tl>div:not(:last-child)::before{content:'';position:absolute;left:10px;top:22px;bottom:2px;width:2px;background:var(--line)}
+  .tl .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--green);color:var(--green);display:grid;place-items:center;background:#fff}
+  .tl .dot.wait{border-color:var(--amber);color:var(--amber-d);background:var(--amber-t)}
+  .tl .dot .ms{font-size:14px}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:8px 14px;font-size:13px}.kv dt{color:var(--mute)}.kv dd{margin:0}
+  .search{position:relative;max-width:300px}.search .ms{position:absolute;left:10px;top:10px;color:var(--faint);font-size:18px}.search input{padding-left:34px}
+  details.mk summary{cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px;list-style:none}
+  details.mk summary::-webkit-details-marker{display:none}
+  details.mk summary::after{content:'expand_more';font-family:'Material Symbols Outlined';margin-left:auto;font-size:20px;color:var(--mute)}
+  details.mk[open] summary::after{content:'expand_less'}
+  details.mk .body{padding:0 18px 18px;display:grid;gap:14px;font-size:13px}
+  .empty{text-align:center;padding:56px 20px;color:var(--mute)}.empty .ms{font-size:36px;color:var(--faint)}.empty h2{font-size:18px;color:var(--ink);margin:8px 0 4px}
+  .menu{display:none}
+  @media(max-width:1100px){.cols,.split{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kpis>div:nth-child(3){border-left:0}.kpis>div:nth-child(n+3){border-top:1px solid var(--line)}}
+  @media(max-width:860px){.app{grid-template-columns:1fr}.rail{position:static;height:auto;flex-direction:row;align-items:center;gap:8px;padding:10px 12px;overflow-x:auto}
+    .rail .grp h4,.rail .foot{display:none}.rail nav{display:flex;gap:2px}.rail .grp{display:flex}.nav a{white-space:nowrap;padding:0 12px}.nav a .ms{display:none}.nav a.on::before{display:none}
+    .top{padding:0 16px}.page{padding:16px}.brow{grid-template-columns:1fr}.brow .meta,.brow .trk{grid-column:1}.brow .st{justify-self:start}}
 </style>
 </head>
-<body class="antialiased min-h-screen">
-<div class="shell flex min-h-screen max-w-[1440px] mx-auto">
-  <aside id="side" class="w-[260px] shrink-0 border-r border-[#E2E8F0] bg-white p-4 flex flex-col justify-between fixed h-screen">
-    <div class="flex flex-col gap-6">
-      <div class="flex items-center gap-3 px-2 pt-2">
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white" style="background:var(--teal)"><span class="material-symbols-outlined">shield</span></div>
-        <div><div class="text-[22px] font-bold leading-none" style="color:var(--dteal)">Calmy</div><div class="text-[11px] text-[#64748B] mt-1">Orchid Insure</div></div>
-      </div>
-      <nav class="nav flex flex-col gap-1.5" id="nav"></nav>
-    </div>
-    <div class="px-2 text-[11px] text-[#64748B]">Insurer console, demo mode</div>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand"><span class="mark"></span><div><span class="wordmark">Calmy</span><small>Orchid Insure</small></div></div>
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+    <div class="foot"><span id="srcNote">Demo data. Payouts are simulated.</span><button id="reset"><span class="ms">refresh</span>Reset demo data</button></div>
   </aside>
-
-  <main id="main" class="flex-1 ml-[260px] flex flex-col min-h-screen">
-    <header id="top" class="h-16 border-b border-[#E2E8F0] bg-white px-8 flex items-center justify-between sticky top-0 z-20">
-      <div class="flex items-center gap-4 text-[13px]"><span id="crumb" class="text-[#64748B]"></span><span class="w-px h-5 bg-[#E2E8F0]"></span><span>Orchid Insure (demo)</span><span class="chip bg-[#E6F4F1] text-[#0D5C5A]">DEMO MODE</span></div>
-      <div class="flex items-center gap-3"><div class="text-right leading-tight"><div class="text-[13px] font-semibold">Nok P.</div><div class="text-[11px] text-[#64748B]">Claims reviewer</div></div>
-        <div class="w-9 h-9 rounded-full text-white flex items-center justify-center text-[12px] font-bold" style="background:var(--teal)">NP</div></div>
-    </header>
-    <div id="view" class="pad flex-1"></div>
-    <footer id="foot" class="h-12 border-t border-[#E2E8F0] bg-white px-8 flex items-center justify-between text-[12px] text-[#64748B]">
-      <span id="srcNote">Demo data. Flight data simulated.</span>
-      <button id="reset" class="font-semibold text-[#334155] hover:text-[#0D5C5A]">Reset demo data</button>
-    </footer>
-  </main>
+  <div class="main">
+    <header class="top"><span class="crumb" id="crumb"></span>
+      <div class="env"><span class="chip blue">Demo</span><div style="text-align:right;line-height:1.2"><div style="font-weight:600;font-size:13px">Nok P.</div><div class="mute" style="font-size:12px">Claims reviewer</div></div><span class="avatar">NP</span></div></header>
+    <main id="view" class="page"></main>
+  </div>
 </div>
-
-<div id="toast" class="hidden"></div>
-
+<script src="/static/ui.js"></script>
 <script>
-const $ = s => document.querySelector(s);
-let CUR = 'THB', RM = 'TH';  // CUR: currency of the item on screen. RM: market whose rules are shown.
-const thb = (n, c) => Number(n).toLocaleString('en-US') + ' ' + (c || CUR);
-const usd = n => '$' + Number(n).toLocaleString('en-US');
-const api = (url, method = 'GET', body) =>
-  fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined})
-    .then(r => r.ok ? r.json() : r.json().catch(() => ({})).then(e => Promise.reject(msg(e.detail))));
-const msg = d => typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => x.msg || '').join('. ') || 'Check the values and try again.' : 'Something went wrong. Please try again.';
-const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-let toastT;
-function toast(t, bad = true) { const el = $('#toast'); el.textContent = t; el.className = 'fixed bottom-16 right-6 z-[60] max-w-[360px] text-white text-[13px] rounded-xl px-4 py-3 shadow-lg ' + (bad ? 'bg-[#B91C1C]' : 'bg-[#0F172A]'); clearTimeout(toastT); toastT = setTimeout(() => el.className = 'hidden', 5000); }
-const hm = m => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
+const GROUPS = [
+  ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
+  ['Book of business', [['policies', 'verified_user', 'Policies']]],
+  ['Governance', [['rules', 'tune', 'Rules'], ['compliance', 'balance', 'Markets and law'], ['audit', 'history', 'Audit log']]],
+];
+const TITLES = {overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log'};
+window.onhashchange = () => { route = location.hash.slice(1) || 'overview'; last = ''; FQ = ''; refresh(); };
+const flightOf = f => `${esc(f.origin)} to ${esc(f.dest)}`;
+const mk = code => (ov.markets.find(m => m.code === code) || {name: code, currency: ''});
 
-let route = location.hash.slice(1) || 'overview', last = '', ov = null;
-const NAV = [['overview', 'dashboard', 'Overview'], ['policies', 'verified_user', 'Policies'], ['decisions', 'gavel', 'Decisions'],
-             ['review', 'rule', 'Review queue'], ['baggage', 'luggage', 'Baggage claims'], ['rules', 'tune', 'Rules'],
-             ['compliance', 'gavel', 'Markets and law'], ['audit', 'description', 'Audit log']];
-window.onhashchange = () => { route = location.hash.slice(1) || 'overview'; last = ''; refresh(); };
-
-function head(title, chipHtml = '', sub = '') {
-  return `<div class="mb-6"><div class="flex items-center gap-3"><h1 class="text-[30px] font-bold tracking-tight" style="color:var(--dteal)">${title}</h1>${chipHtml}</div>${sub ? `<p class="text-[14px] text-[#64748B] mt-1">${sub}</p>` : ''}</div>`;
-}
-function gauge(score) {
-  const c = 2 * Math.PI * 46, off = c * (1 - score / 100), col = score >= 45 ? '#DC2626' : '#059669';
-  return `<svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="46" fill="none" stroke="#FEE2E2" stroke-width="9" ${score < 45 ? 'stroke="#D1FAE5"' : ''}/><circle cx="56" cy="56" r="46" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 56 56)"/><text x="56" y="58" text-anchor="middle" font-size="28" font-weight="700" fill="${col}" font-family="Manrope">${score}</text><text x="56" y="76" text-anchor="middle" font-size="11" fill="#64748B" font-family="Manrope">of 100</text></svg>`;
-}
-function bar(score, th) {
-  const col = score >= th ? '#DC2626' : '#059669';
-  return `<div class="h-2 rounded-full bg-[#E2E8F0] overflow-hidden"><div class="h-2 rounded-full" style="width:${score}%;background:${col}"></div></div>
-   <div class="flex justify-between text-[11px] text-[#64748B] mt-1"><span>0 (min)</span><span>Threshold ${th}</span><span>100 (max)</span></div>`;
-}
+function head(title, sub = '', right = '') { return `<div class="pagehead"><div><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div>${right ? `<div class="push">${right}</div>` : ''}</div>`; }
+function empty(icon, t, s) { return `<div class="panel empty"><span class="ms">${icon}</span><h2>${t}</h2><p>${s}</p></div>`; }
+const searchBox = ph => `<label class="search"><span class="ms">search</span><input id="fq" class="field" placeholder="${ph}" value="${esc(FQ)}" aria-label="${ph}"></label>`;
+const matchQ = (...v) => !FQ || v.join(' ').toLowerCase().includes(FQ.toLowerCase());
 
 async function refresh() {
   ov = await api('/api/console/overview?market=' + RM);
-  const held = ov.stats.held, bags = ov.stats.bag_waiting;
-  $('#srcNote').textContent = ov.flights.some(f => f.source === 'live') ? 'Demo data. Includes a replayed real flight.' : 'Demo data. Flight data simulated.';
-  $('#nav').innerHTML = NAV.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a class="${route.split('/')[0] === k ? 'on' : ''}" href="#${k}"><span class="material-symbols-outlined">${ic}</span><span class="flex-1">${t}</span>${n ? `<span class="chip bg-[#FFFBEB] text-[#D97706]">${n}</span>` : ''}</a>`; }).join('');
+  const held = ov.stats.held, bags = ov.stats.bag_waiting, base = route.split('/')[0];
+  $('#srcNote').textContent = ov.flights.some(f => f.source === 'live') ? 'Includes real flights. Payouts are simulated.' : 'Sample flights. Payouts are simulated.';
+  $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
-  $('#crumb').textContent = {overview: 'Workspace / Overview', policies: 'Workspace / Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log'}[page] || '';
+  $('#crumb').textContent = 'Orchid Insure  /  ' + (TITLES[page] || 'Overview');
   let html;
-  try { html = await ({overview: vOverview, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit}[page] || vOverview)(arg); } catch (e) { html = empty('Could not load this page', esc(e)); }
-  if (html !== last) { $('#view').innerHTML = `<div class="fade">${html}</div>`; last = html; bindAll(); }
+  try { html = await ({overview: vOverview, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit}[page] || vOverview)(arg); }
+  catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
+  if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); }
 }
 
 /* ---------- Overview ---------- */
 function vOverview() {
-  const s = ov.stats, r = ov.rules, mk = ov.rules_market;
-  const stat = (t, ic, v, sub, extra = '') => `<div class="card p-5"><div class="flex justify-between text-[13px] text-[#334155]"><span>${t}</span><span class="material-symbols-outlined text-[#64748B]">${ic}</span></div><div class="flex items-baseline gap-3 mt-2"><span class="text-[32px] font-bold">${v}</span>${extra}</div><div class="text-[12px] text-[#64748B] mt-1">${sub}</div></div>`;
-  const share = s.paid_count ? Math.round(100 * s.auto_paid / s.paid_count) + '%' : '-';
-  const tracked = ov.flights.filter(f => f.travelers > 0 || f.source === 'live');  // hide sample flights nobody has bought
-  const opts = tracked.map(f => `<option value="${esc(f.code)}">${esc(f.code)} ${esc(f.origin)} to ${esc(f.dest)}</option>`).join('');
-  CUR = mk.currency;
-  return head('Overview', '', 'All markets. Money totals are shown in US dollars at indicative demo rates.') + `
-  <div class="rg rg4 grid grid-cols-4 gap-5">
-    ${stat('Active policies', 'verified_user', s.active.toLocaleString(), s.premium_usd ? `Premium written ${usd(s.premium_usd)}` : 'No cover sold yet')}
-    ${stat('Paid out', 'task_alt', usd(s.paid_amount_usd), `${s.paid_count} ${s.paid_count === 1 ? 'payout' : 'payouts'}, simulated`)}
-    ${stat('Held for review', 'schedule', s.held, 'Waiting for a person', s.held ? '<span class="chip bg-[#FFFBEB] text-[#D97706]">ACTION NEEDED</span>' : '')}
-    ${stat('Paid automatically', 'bolt', share, 'Share of payouts with no human step')}
-  </div>
-  <div class="rg grid grid-cols-5 gap-5 mt-5">
-    <div class="card p-6 col-span-3"><div class="flex items-center gap-3 mb-4"><h2 class="text-[18px] font-bold">Flight watch</h2><span class="ml-auto text-[12px] text-[#64748B]">Flights with a policy</span></div>
+  const s = ov.stats, o = ov.outcomes;
+  const share = s.paid_count ? Math.round(100 * s.auto_paid / s.paid_count) + '%' : 'n/a';
+  const tracked = ov.flights.filter(f => f.travelers > 0 || f.source === 'live');
+  const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
+  const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
+  return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars at indicative demo rates.') + `
+  <div class="panel kpis">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
+    ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts') + ', simulated')}
+    ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
+    ${kpi('Paid automatically', 'bolt', share, 'Payouts with no human step')}</div>
+  <div class="cols"><div class="stack">
+    <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${tracked.length} ${tracked.length === 1 ? 'flight' : 'flights'} with cover</span></div>
       ${tracked.length ? tracked.map(f => {
-        const late = f.delay_minutes > 0, m = (ov.markets.find(x => x.code === f.market) || {});
-        return `<div class="border-t border-[#E2E8F0] py-4"><div class="flex flex-wrap items-center gap-2 text-[13px]"><span class="mono font-semibold bg-[#E6F4F1] px-2 py-1 rounded">${esc(f.code)}</span><span class="font-medium">${esc(f.airline)}</span><span class="text-[#64748B]">${esc(f.origin_city)} (${esc(f.origin)}) &rarr; ${esc(f.dest_city)} (${esc(f.dest)})</span>
-          <span class="chip ${f.source === 'live' ? 'bg-[#ECFDF5] text-[#047857]' : 'bg-[#F1F5F9] text-[#64748B]'}">${f.source === 'live' ? 'Real flight' : 'Sample'}</span><span class="chip bg-[#F1F5F9] text-[#334155]">${esc(m.name || f.market)} · ${esc(m.currency || '')}</span>
-          <span class="chip ml-auto ${late ? 'bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]' : 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]'}">${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time'}</span></div>
-          <div class="flex justify-between items-center text-[12px] text-[#64748B] mt-2"><span>${esc(f.depart_label)}</span><span>${f.travelers} covered ${f.travelers === 1 ? 'traveler' : 'travelers'}${f.source === 'live' ? ` &middot; checked ${ago(f.fetched_at)} <button class="chk underline font-semibold text-[#0D5C5A]" data-f="${esc(f.code)}">Check now</button>` : ''}</span></div></div>`;
-      }).join('') : empty('No flights yet', 'Flights appear here once a traveler picks one in the traveler app.')}
-      <div class="border-t border-[#E2E8F0] pt-4"><div class="text-[12px] font-semibold text-[#334155] mb-2">Test tool: simulate a delay on any flight</div>
-        <div class="flex flex-wrap items-center gap-3"><select id="simFlight" class="border border-[#E2E8F0] rounded-lg px-3 py-2 text-[13px]">${opts}</select>
-          <input id="simMin" type="number" min="0" max="2880" value="200" class="mono w-24 border border-[#E2E8F0] rounded-lg px-3 py-2 text-[13px] text-right"><span class="text-[13px] text-[#64748B]">minutes</span>
-          <button id="simGo" class="btn btn-p !h-9 !px-4 !text-[13px]">Run</button></div>
-        <p class="text-[11px] text-[#64748B] mt-2">Real delays of 3 hours are rare. This lets you test payouts, top-ups and the review queue. It only changes a flight that has covered travelers.</p></div></div>
-    <div class="card p-6 col-span-2"><div class="flex justify-between items-start gap-3"><div><h2 class="text-[18px] font-bold">Payout rules</h2><p class="text-[12px] text-[#64748B]">${esc(mk.name)}, paid in ${esc(mk.currency)}</p></div>
-        <select id="rmSel" class="border border-[#E2E8F0] rounded-lg px-2 py-1 text-[12px]">${ov.markets.map(m => `<option value="${m.code}" ${m.code === RM ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></div>
-      <div class="flex flex-col gap-3 mt-4">
-        ${[['hourglass_top', hm(r.delay_tier1_minutes).replace(' 00m', '') + ' delay', 'Tier 1', r.delay_tier1_payout], ['hourglass_top', hm(r.delay_tier2_minutes).replace(' 00m', '') + ' delay', 'Tier 2', r.delay_tier2_payout], ['luggage', 'Lost bag', 'Airline report needed', r.lost_bag_payout]].map(([ic, t, sb, v]) =>
-          `<div class="bg-[#F8FAFB] border border-[#E2E8F0] rounded-xl p-3 flex items-center gap-3"><span class="material-symbols-outlined">${ic}</span><div class="flex-1"><div class="text-[14px] font-medium">${t}</div><div class="text-[11px] text-[#64748B]">${sb}</div></div><span class="mono font-semibold text-[#0D5C5A]">${thb(v)}</span></div>`).join('')}
-      </div><div class="flex justify-end mt-5"><a href="#rules" class="btn btn-p"><span class="material-symbols-outlined">edit</span>Edit rules</a></div></div>
-  </div>`;
+        const m = mk(f.market), late = f.delay_minutes > 0, r = ov.rules_all[f.market] || ov.rules;
+        return `<div class="brow"><div class="code">${esc(f.code)}</div>
+          <div class="route">${esc(f.origin)} <span class="ms" style="color:var(--amber);font-size:16px">flight_takeoff</span> ${esc(f.dest)} <em>${esc(f.origin_city)} to ${esc(f.dest_city)}</em></div>
+          <div class="st"><i style="background:${late ? 'var(--amber)' : '#34D399'}"></i>${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time'}</div>
+          <div class="meta"><span>${esc(f.depart_label)}</span><span>${esc(m.name)}, ${esc(m.currency)}</span><span>${f.travelers} covered ${f.travelers === 1 ? 'traveler' : 'travelers'}</span><span>${f.source === 'live' ? 'Real flight, checked ' + ago(f.fetched_at) + ' <button class="chk" data-f="' + esc(f.code) + '">Check now</button>' : 'Sample flight'}</span></div>
+          <div class="trk">${delayTrack(f.delay_minutes, r, m.currency, true).replace('class="dtrack tall', 'class="dtrack mini')}</div></div>`;
+      }).join('') : '<div class="boardempty">No flights yet. Flights appear here once a traveler picks one in the traveler app.</div>'}
+      <div class="tool"><span>Test a delay on</span><select id="simFlight" class="field" aria-label="Flight">${tracked.map(f => `<option value="${esc(f.code)}">${esc(f.code)} ${flightOf(f)}</option>`).join('')}</select>
+        <input id="simMin" class="field min" type="number" min="0" max="2880" value="200" aria-label="Delay in minutes"><span>minutes</span><button id="simGo" class="btn" ${tracked.length ? '' : 'disabled'}>Run test</button></div></section>
+    <section class="panel"><div class="ph"><h2>Recent decisions</h2><a class="push" href="#decisions">All decisions</a></div>
+      ${recent.length ? `<div class="tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${recent.map(d => `<tr class="click" onclick="location.hash='${d.status === 'held' ? 'review/' + esc(d.id) : 'decisions/' + esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="pb mute">No decisions yet. A delay that reaches a payout rule creates one.</div>'}</section>
+  </div><div class="stack">
+    <section class="panel"><div class="ph"><h2>Claim outcomes</h2></div><div class="pb">${outcomeBar(o)}</div></section>
+    <section class="panel"><div class="ph"><h2>Paid out by market</h2></div><div class="pb">${ov.by_market.length ? barList(ov.by_market.map(m => ({label: mk(m.market).name, value: m.usd, text: usd(m.usd)}))) : '<p class="mute">No payouts yet.</p>'}</div></section>
+  </div></div>`;
 }
-const ago = t => { if (!t) return 'not yet'; const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
+function outcomeChip(d) {
+  return d.status === 'held' ? '<span class="chip held"><i></i>Held for review</span>' : d.status === 'declined' ? '<span class="chip red"><i></i>Declined</span>'
+    : d.status === 'pending' ? '<span class="chip held"><i></i>Waiting</span>' : d.decided_by === 'system' ? '<span class="chip paid"><i></i>Paid automatically</span>' : '<span class="chip blue"><i></i>Approved by a person</span>';
+}
 
 /* ---------- Policies ---------- */
 async function vPolicies() {
-  const rows = await api('/api/console/policies');
-  if (!rows.length) return head('Policies', '', 'Every policy with active cover.') + empty('No policies yet', 'Open the traveler app, pick a flight and add cover.');
-  return head('Policies', '', 'Every policy with active cover. Amounts are in each policy\'s own currency.') + `<div class="card tbl overflow-hidden"><table class="w-full text-[13px]"><thead class="bg-[#F8FAFB] text-[#64748B] text-left"><tr><th class="p-3">Policy</th><th>Traveler</th><th>Flight</th><th>Market</th><th>Cover</th><th>Delay claim</th><th>Bag claim</th></tr></thead><tbody>
+  const rows = (await api('/api/console/policies')).filter(p => matchQ(p.id, p.traveler, p.flight, p.market));
+  return head('Policies', 'Every policy with active cover. Amounts are in each policy\'s own currency.', searchBox('Search policies')) +
+    (rows.length ? `<div class="panel tbl"><table><thead><tr><th>Policy</th><th>Traveler</th><th>Flight</th><th>Market</th><th>Cover</th><th>Delay claim</th><th>Bag claim</th></tr></thead><tbody>
     ${rows.map(p => { const d = p.decision, b = p.bag, c = p.currency;
-      return `<tr class="border-t border-[#E2E8F0] ${d ? 'cursor-pointer hover:bg-[#F8FAFB]' : ''}" ${d ? `onclick="location.hash='decisions/${esc(p.id)}'"` : ''}><td class="p-3 mono font-semibold">${esc(p.id)}</td><td>${esc(p.traveler)}</td><td class="mono">${esc(p.flight)}</td><td>${esc(p.market)} · ${esc(c)}</td><td>${[p.delay_cover && 'Delay', p.baggage_cover && 'Baggage'].filter(Boolean).join(' + ') || '-'}</td>
-        <td class="mono">${d ? esc(d.status) + ' ' + thb(d.amount, c) : '-'}</td><td class="mono">${b ? esc(b.status) + ' ' + thb(b.amount, c) : '-'}</td></tr>`; }).join('')}</tbody></table></div>`;
+      return `<tr class="${d ? 'click' : ''}" ${d ? `onclick="location.hash='decisions/${esc(p.id)}'"` : ''}><td class="mono">${esc(p.id)}</td><td>${esc(p.traveler)}</td><td class="mono">${esc(p.flight)}</td><td>${esc(p.market)}, ${esc(c)}</td><td>${[p.delay_cover && 'Delay', p.baggage_cover && 'Baggage'].filter(Boolean).join(' and ') || 'None'}</td>
+        <td>${d ? outcomeChip({status: d.status, decided_by: d.status === 'paid' ? 'x' : null}).replace('Approved by a person', 'Paid') + ' <span class="mono">' + money(d.amount, c) + '</span>' : '<span class="faint">None</span>'}</td><td>${b ? esc(b.status) + ' <span class="mono">' + money(b.amount, c) + '</span>' : '<span class="faint">None</span>'}</td></tr>`; }).join('')}</tbody></table></div>`
+      : empty('inbox', FQ ? 'No policies match' : 'No policies yet', FQ ? 'Try a different search.' : 'Open the traveler app, pick a flight and add cover.'));
 }
 
 /* ---------- Decisions ---------- */
 async function vDecisions(pid) {
-  const list = ov.decisions.filter(d => d.kind === 'delay' && d.status !== 'held');
   if (!pid) {
-    return head('Decisions', '', 'Every delay decision, with the reason behind it.') + (list.length ?
-      `<div class="card tbl overflow-hidden"><table class="w-full text-[13px]"><thead class="bg-[#F8FAFB] text-[#64748B] text-left"><tr><th class="p-3">Decision</th><th>Policy</th><th>Status</th><th class="text-right pr-3">Amount</th></tr></thead><tbody>${list.map(d => `<tr class="border-t border-[#E2E8F0] cursor-pointer hover:bg-[#F8FAFB]" onclick="location.hash='decisions/${esc(d.policy_id)}'"><td class="p-3 mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td><span class="chip ${d.status === 'declined' ? 'bg-[#FEF2F2] text-[#DC2626]' : 'bg-[#ECFDF5] text-[#059669]'}">${d.status === 'declined' ? 'Declined by reviewer' : d.decided_by === 'system' ? 'Paid automatically' : 'Approved by reviewer'}</span></td><td class="mono pr-3 text-right">${thb(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` :
-      empty('No decisions yet', 'Delay a flight on the Overview page to see one appear here.'));
+    const list = ov.decisions.filter(d => d.kind === 'delay' && d.status !== 'held' && matchQ(d.id, d.policy_id, d.status));
+    return head('Decisions', 'Every delay decision, with the reason behind it.', searchBox('Search decisions')) + (list.length ?
+      `<div class="panel tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${list.map(d => `<tr class="click" onclick="location.hash='decisions/${esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` :
+      empty('gavel', 'No decisions yet', 'Run a delay test on the Overview page, or wait for a real delay.'));
   }
   const {policy: p, flight: f, decision: d, rules, market: mkt} = await api('/api/console/decision/' + pid);
-  const info_note = mkt.statutory ? `<div class="mt-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-3 py-2 text-[12px]"><b>Airline rights in ${esc(mkt.name)}.</b> ${esc(mkt.statutory)} Calmy pays on top of this.</div>` : '';
-  CUR = p.currency;
-  if (!d) return head('Decisions') + empty('No decision for this policy yet', 'No delay has reached the payout rule.');
-  if (d.status === 'held') return head('Decisions') + empty('This claim is waiting for a person', `Open it in the <a class="underline" href="#review/${esc(d.id)}">Review queue</a>.`);
-  const tl = d.timeline, th = rules.risk_threshold, auto = d.decided_by === 'system', declined = d.status === 'declined', high = d.risk_score >= th;
-  const chipH = declined ? '<span class="chip bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">DECLINED BY REVIEWER</span>' : auto ? '<span class="chip bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">PAID AUTOMATICALLY</span>' : '<span class="chip bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">APPROVED BY REVIEWER</span>';
-  const title = declined ? `Declined <span class="mono">${thb(d.amount)}</span>` : auto ? `Paid <span class="mono">${thb(d.amount)}</span> in 8s` : `Paid <span class="mono">${thb(d.amount)}</span> after review`;
-  const sub = {'Delay detected': `Flight delayed: scheduled ${esc(f.scheduled)}, ${hm(d.delay_minutes)} late`, 'Policy matched': 'Cover is active for this flight', 'Risk checked': high ? 'Flagged, sent to a person' : 'Fraud check passed', 'Paid': `${thb(d.amount)} sent to ${esc(p.payout_account)}`, 'Held for review': 'Waiting for a person'};
-  if (!auto) sub['Paid'] = declined ? 'Not paid' : `${thb(d.amount)} sent to ${p.payout_account}`;
-  return `<div class="mb-2 text-[13px] text-[#64748B]"><a href="#decisions" class="hover:underline">Decisions</a> / <span class="mono text-[#0F172A]">Policy ${esc(p.id)}</span></div>` +
-    head(title, chipH, `Traveler ${esc(p.traveler)} &middot; ${esc(f.airline)} <span class="mono font-semibold text-[#0F172A]">${esc(f.code)}</span> &middot; ${esc(f.origin)} to ${esc(f.dest)}`) + `
-  <div class="rg grid grid-cols-5 gap-6"><div class="card p-6 col-span-3"><div class="flex justify-between items-start mb-5"><div><h2 class="text-[18px] font-bold">Decision timeline</h2><p class="text-[12px] text-[#64748B]">What happened, step by step</p></div>${auto ? '<span class="chip mono bg-[#E6F4F1] text-[#0D5C5A]">Total time: 8s</span>' : ''}</div>
-    <div class="flex flex-col">${tl.map((s, i) => `<div class="flex gap-4"><div class="flex flex-col items-center"><span class="w-6 h-6 rounded-full flex items-center justify-center border-2 ${s.label === 'Paid' ? 'border-[#059669] text-[#059669]' : 'border-[#0D5C5A] bg-[#E6F4F1]'}">${s.label === 'Paid' ? '<span class="material-symbols-outlined !text-[14px]">check</span>' : '<span class="w-2 h-2 rounded-full bg-[#0D5C5A]"></span>'}</span>${i < tl.length - 1 ? '<span class="w-px flex-1 bg-[#B7DDD7] my-1"></span>' : ''}</div>
-      <div class="pb-6 flex-1"><div class="flex justify-between"><span class="font-semibold text-[14px]">${s.label}${s.label === 'Paid' ? ' <span class="chip bg-[#ECFDF5] text-[#059669] ml-1">CONFIRMED</span>' : ''}</span><span class="mono text-[11px] bg-[#F1F5F9] px-2 rounded">${s.sec}s</span></div><div class="text-[12px] text-[#64748B] mt-0.5">${sub[s.label] || ''}</div></div></div>`).join('')}</div></div>
-   <div class="col-span-2 flex flex-col gap-6"><div class="card p-6"><div class="flex justify-between"><h2 class="text-[18px] font-bold">Risk score <span class="mono ml-1">${d.risk_score}</span></h2><span class="chip ${high ? 'bg-[#FEF2F2] text-[#DC2626]' : 'bg-[#ECFDF5] text-[#059669]'}">${high ? 'HIGH' : 'LOW'}</span></div><div class="mt-3">${bar(d.risk_score, th)}</div>
-      <div class="mt-4 flex flex-col gap-2 text-[13px]">${d.reasons.map(r => `<div class="flex gap-2 items-center"><span class="material-symbols-outlined !text-[16px] ${high ? 'text-[#DC2626]' : 'text-[#059669]'}">${high ? 'warning' : 'check'}</span>${esc(r)}</div>`).join('')}</div></div>
-    <div class="card p-6"><div class="flex items-center gap-2 font-semibold text-[14px]"><span class="material-symbols-outlined text-[#0D5C5A]">verified</span>${declined ? 'Why we declined' : 'Why we paid'}</div>
-      <div class="mt-3 bg-[#F1F5F9] border border-[#E2E8F0] rounded-lg px-3 py-2 text-[13px]">&ldquo;${esc(d.clause)}&rdquo;</div>
-      <p class="text-[13px] mt-3 text-[#334155]">${esc(d.explanation)}</p>
-      ${info_note}<div class="mt-3 bg-[#E6F4F1] rounded-lg px-3 py-2 text-[13px] text-[#0D5C5A] flex gap-2 items-center"><span class="material-symbols-outlined !text-[16px]">check_circle</span>${auto ? 'Paid with no human review and no forms.' : `Decided by ${esc(d.decided_by)}.${d.note ? ' Note: ' + esc(d.note) : ''}`}</div></div></div></div>`;
+  const cur = p.currency;
+  if (!d) return head('Decisions') + empty('gavel', 'No decision for this policy yet', 'No delay has reached the payout rule.');
+  if (d.status === 'held') return head('Decisions') + empty('schedule', 'This claim is waiting for a person', `Open it in the <a href="#review/${esc(d.id)}">review queue</a>.`);
+  const auto = d.decided_by === 'system', declined = d.status === 'declined', th = rules.risk_threshold;
+  const chip = declined ? '<span class="chip red"><i></i>Declined by a person</span>' : auto ? '<span class="chip paid"><i></i>Paid automatically</span>' : '<span class="chip blue"><i></i>Approved by a person</span>';
+  const sub = {'Delay detected': `Scheduled ${esc(f.scheduled)}, ${hm(d.delay_minutes)} late`, 'Policy matched': 'Cover is active for this flight', 'Risk checked': d.risk_score >= th ? 'Flagged, sent to a person' : 'Fraud checks passed', 'Paid': declined ? 'Not paid' : `${money(d.amount, cur)} sent to ${esc(p.payout_account)}`, 'Held for review': 'Waiting for a person'};
+  const parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
+  return `<p class="mute" style="margin-bottom:8px"><a href="#decisions">Decisions</a> / <span class="mono">${esc(p.id)}</span></p>` +
+    head(declined ? `Declined ${money(d.amount, cur)}` : `Paid ${money(d.amount, cur)}`, `${esc(p.traveler)} on ${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}`, chip) + `
+  <div class="panel" style="margin-bottom:20px"><div class="ph"><h2>Delay against the payout rules</h2><span class="push mute">${esc(mkt.name)}, ${esc(cur)}</span></div><div class="pb">${delayTrack(d.delay_minutes, rules, cur)}</div></div>
+  <div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Decision timeline</h2>${auto ? '<span class="chip push mono">8s</span>' : ''}</div><div class="pb tl">
+      ${d.timeline.map(s => `<div><span class="dot ${s.pending ? 'wait' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span><div><b>${esc(s.label)}</b><div class="mute" style="font-size:13px">${sub[s.label] || ''}</div></div><span class="mono mute" style="font-size:12px">${s.sec}s</span></div>`).join('')}</div></section>
+    <div class="stack"><section class="panel"><div class="ph"><h2>Risk score</h2></div><div class="pb">${scoreBreakdown(parts, th)}</div></section>
+      <section class="panel"><div class="ph"><h2>${declined ? 'Why it was declined' : 'Why it was paid'}</h2></div><div class="pb" style="display:grid;gap:12px">
+        <div class="note info"><b>${esc(d.clause)}</b></div><p>${esc(d.explanation)}</p>
+        ${mkt.statutory ? `<div class="note"><b>Airline obligations in ${esc(mkt.name)}.</b> ${esc(mkt.statutory)} Calmy pays on top of this.</div>` : ''}
+        <div class="note good">${auto ? 'Paid with no human review and no forms.' : `Decided by ${esc(d.decided_by)}.${d.note ? ' Note: ' + esc(d.note) : ''}`}</div></div></section></div></div>`;
 }
 
 /* ---------- Review queue ---------- */
 async function vReview(id) {
   const q = await api('/api/console/review');
-  if (!q.length) return head('Review queue', '', 'Claims that need a person.') + empty('Nothing waiting', 'Held claims appear here. Delay a flight on the Overview page to see one.');
+  if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Held claims appear here. Run a delay test on the Overview page to create one.');
   const d = q.find(x => x.id === id) || q[0];
   const info = await api('/api/console/decision/' + d.policy_id);
-  const p = info.policy, f = info.flight, th = info.rules.risk_threshold; CUR = p.currency;
-  return `<div class="mb-2 text-[13px] text-[#64748B]">Review queue / <span class="mono text-[#0F172A]">Claim ${esc(d.id)}</span></div>` +
-    head('Held for review', '<span class="chip bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">Needs a person</span>', `Policy <span class="mono font-semibold text-[#0F172A]">${esc(p.id)}</span> &middot; Flight <span class="mono font-semibold text-[#0F172A]">${esc(f.airline)} ${esc(f.code)}</span> &middot; ${esc(f.origin)} to ${esc(f.dest)} &middot; delay ${hm(d.delay_minutes)} (${d.delay_minutes} min)`) + `
-  ${q.length > 1 ? `<div class="flex gap-2 mb-4">${q.map(x => `<a href="#review/${esc(x.id)}" class="chip ${x.id === d.id ? 'bg-[#0D5C5A] text-white' : 'bg-white border border-[#E2E8F0]'} mono">${esc(x.id)}</a>`).join('')}</div>` : ''}
-  <div class="rg grid grid-cols-2 gap-6"><div class="card p-6"><div class="bg-[#FEF2F2] border border-[#FECACA] rounded-xl p-4 flex gap-5 items-center">${gauge(d.risk_score)}<div><div class="text-[20px] font-bold text-[#DC2626]">Score ${d.risk_score}, flagged</div><p class="text-[12px] text-[#334155] mt-1">Above the threshold of ${th}. Payout held for a person to check.</p></div></div>
-      <div class="flex justify-between items-center mt-5 mb-2"><span class="text-[12px] font-semibold tracking-wide text-[#64748B]">TOP 3 REASONS</span><span class="chip bg-[#FEF2F2] text-[#DC2626]">High risk</span></div>
-      <div class="flex flex-col gap-2">${d.reasons.map((r, i) => `<div class="bg-[#F8FAFB] border border-[#E2E8F0] rounded-xl px-3 py-2.5 flex gap-3 items-center text-[13px]"><span class="w-6 h-6 rounded-full bg-[#FEE2E2] text-[#DC2626] text-[11px] font-bold flex items-center justify-center">${i + 1}</span>${esc(r)}</div>`).join('')}</div>
-      <p class="text-[12px] text-[#64748B] mt-4">${esc(d.explanation)}</p></div>
-    <div class="card p-6"><div class="flex justify-between items-center"><h2 class="text-[18px] font-bold">Your decision</h2><span class="chip bg-[#F1F5F9] text-[#334155]">Action required</span></div>
-      <div class="bg-[#F8FAFB] border border-[#E2E8F0] rounded-xl p-4 mt-4 grid grid-cols-3 gap-3 text-[13px]"><div><div class="text-[10px] tracking-wide text-[#64748B]">FLIGHT</div><div class="mono font-semibold">${esc(f.code)}</div></div><div><div class="text-[10px] tracking-wide text-[#64748B]">TRAVELER</div><div class="font-semibold">${esc(p.traveler)}</div></div><div class="text-right"><div class="text-[10px] tracking-wide text-[#64748B]">POTENTIAL PAYOUT</div><div class="mono font-bold text-[18px] text-[#0D5C5A]">${thb(d.amount)}</div></div></div>
-      <label class="block text-[13px] font-semibold mt-5 mb-1">Reason for decision</label><textarea id="note" rows="4" class="w-full border border-[#E2E8F0] rounded-xl p-3 text-[13px] outline-none focus:border-[#0D5C5A]" placeholder="Add rationale for approval or decline..."></textarea>
-      <div class="flex gap-3 mt-4"><button class="btn btn-p act" data-id="${esc(d.id)}" data-a="approve"><span class="material-symbols-outlined">check_circle</span>Approve</button><button class="btn btn-d act" data-id="${esc(d.id)}" data-a="decline"><span class="material-symbols-outlined">cancel</span>Decline</button></div>
-      <p class="text-[12px] text-[#64748B] mt-4 border-t border-[#E2E8F0] pt-3">Your decision is saved in the audit log.</p></div></div>`;
+  const p = info.policy, f = info.flight, th = info.rules.risk_threshold, cur = p.currency, parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
+  return head('Review queue', `${q.length} ${q.length === 1 ? 'claim needs' : 'claims need'} a person. The system never declines a claim on its own.`) + `
+  <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b><span class="mono">${x.risk_score}</span></div><div class="mute" style="font-size:12px">Policy ${esc(x.policy_id)}</div></a>`).join('')}</div></section>
+  <div class="stack"><section class="panel"><div class="ph"><h2>${esc(p.traveler)}</h2><span class="chip held push"><i></i>Needs a person</span></div><div class="pb">
+      <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd></dl></div></section>
+    <section class="panel"><div class="ph"><h2>Why it was held</h2></div><div class="pb" style="display:grid;gap:14px">${scoreBreakdown(parts, th)}<p class="mute">${esc(d.explanation)}</p></div></section>
+    <section class="panel"><div class="ph"><h2>Your decision</h2></div><div class="pb"><label class="lbl" for="note">Reason, saved in the audit log</label><textarea id="note" rows="3" class="field" placeholder="Why you approve or decline"></textarea>
+      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div></div></section></div></div>`;
 }
 
 /* ---------- Baggage ---------- */
 async function vBaggage(id) {
   const list = await api('/api/console/baggage');
-  if (!list.length) return head('Baggage claims', '', 'Lost bag claims waiting for a decision.') + empty('No baggage claims yet', 'On the traveler app, add baggage cover and tap "My bag is lost".');
-  const b = list.find(x => x.id === id) || list[0]; CUR = b.policy.currency; const d = b.decision, p = b.policy, th = b.rules.risk_threshold, done = d.status === 'paid' || d.status === 'declined';
-  return `<div class="mb-2 text-[13px] text-[#64748B]">Baggage claims / <span class="mono text-[#0F172A]">Claim ${esc(b.id)}</span></div>` +
-    (list.length > 1 ? `<div class="flex gap-2 mb-4">${list.map(x => `<a href="#baggage/${esc(x.id)}" class="chip ${x.id === b.id ? 'bg-[#0D5C5A] text-white' : 'bg-white border border-[#E2E8F0]'} mono">${esc(x.id)}</a>`).join('')}</div>` : '') +
-    head(`Lost Baggage Claim, ${esc(p.traveler)}`, `<span class="chip ${d.status === 'paid' ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' : d.status === 'declined' ? 'bg-[#FEF2F2] text-[#DC2626]' : 'bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]'}">${d.status === 'paid' ? 'Approved and paid' : d.status === 'declined' ? 'Declined' : 'Waiting for approval'}</span>`, `Policy <span class="mono font-semibold text-[#0F172A]">${esc(p.id)}</span>`) + `
-  <div class="rg grid grid-cols-5 gap-6"><div class="col-span-3 flex flex-col gap-5"><h2 class="text-[18px] font-bold flex items-center gap-2"><span class="material-symbols-outlined">description</span>Documents the system read</h2>
-    <div class="card p-6"><div class="flex justify-between"><span class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined">flight_land</span>Airline lost bag report</span><span class="chip bg-[#ECFDF5] text-[#059669]">Report received</span></div>
-      <div class="grid grid-cols-2 gap-4 mt-4 text-[13px]"><div><div class="text-[11px] text-[#64748B]">Report ID</div><div class="mono font-semibold">${esc(b.report_id)}</div></div><div><div class="text-[11px] text-[#64748B]">Flight</div><div class="mono font-semibold">${esc(p.flight)}</div></div><div><div class="text-[11px] text-[#64748B]">Bag tag</div><div class="mono font-semibold">${esc(b.bag_tag)}</div></div><div><div class="text-[11px] text-[#64748B]">Reported at</div><div>Airline baggage desk</div></div></div>
-      <div class="mt-4 bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] rounded-lg px-3 py-2 text-[13px] flex gap-2 items-center"><span class="material-symbols-outlined !text-[16px]">cancel</span>${esc(b.status)}</div></div>
-    <div class="card p-6"><div class="flex justify-between"><span class="font-semibold">Item list, <span class="mono">${thb(b.total)}</span></span><span class="chip bg-[#F1F5F9] text-[#334155]">${b.items.length} items</span></div>
-      <div class="mt-3 text-[13px]">${b.items.map((i, n) => `<div class="flex justify-between py-2.5 border-b border-[#F1F5F9]"><span>${n + 1}. ${esc(i.name)}</span><span class="mono">${thb(i.amount)}</span></div>`).join('')}</div>
-      <div class="flex justify-between items-end mt-4"><div><div class="font-semibold">Total</div><div class="text-[12px] text-[#059669] flex gap-1 items-center"><span class="material-symbols-outlined !text-[14px]">check_circle</span>Matches the lost bag rule, ${thb(b.rules.lost_bag_payout)}</div></div><span class="mono font-bold text-[22px] text-[#0D5C5A]">${thb(b.total)}</span></div></div></div>
-   <div class="col-span-2 flex flex-col gap-5"><h2 class="text-[18px] font-bold">Recommendation</h2>
-    <div class="card p-6 border-t-4 !border-t-[#0D5C5A]"><div class="flex justify-between"><span class="text-[11px] tracking-wide text-[#64748B]">${done ? 'OUTCOME' : 'RECOMMENDED OUTCOME'}</span><span class="chip ${d.risk_score < th ? 'bg-[#ECFDF5] text-[#059669]' : 'bg-[#FEF2F2] text-[#DC2626]'}">${d.risk_score < th ? 'Eligible' : 'Check closely'}</span></div><div class="mono text-[26px] font-bold mt-2">${d.status === 'paid' ? 'Approved' : d.status === 'declined' ? 'Declined' : 'Approve'} ${thb(d.amount)}</div><p class="text-[13px] text-[#334155] mt-2">${esc(d.explanation)}</p></div>
-    <div class="card p-6"><div class="flex justify-between"><span class="font-semibold">Risk score ${d.risk_score}, ${d.risk_score < th ? 'low' : 'high'}</span></div><div class="mt-3">${bar(d.risk_score, th)}</div></div>
-    <div class="card p-6"><div class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined">menu_book</span>${esc(d.clause)}</div><div class="mt-2 border-l-4 border-[#0D5C5A] pl-3 text-[13px] italic text-[#334155]">&ldquo;Benefit paid when a checked bag is declared lost by the airline.&rdquo;</div></div>
-    <div class="card p-4 flex items-center gap-3"><span class="material-symbols-outlined">account_balance</span><div><div class="text-[11px] text-[#64748B]">Payout destination</div><div class="font-semibold text-[14px]">${esc(p.payout_account)}</div></div></div>
-    ${done ? '' : `<div class="flex gap-3"><button class="btn btn-p flex-1 bact" data-id="${esc(b.id)}" data-a="approve"><span class="material-symbols-outlined">check</span>Approve</button><button class="btn btn-o flex-1 bact" data-id="${esc(b.id)}" data-a="decline">Decline</button></div>`}</div></div>`;
+  if (!list.length) return head('Baggage claims', 'Lost bag claims waiting for a decision.') + empty('luggage', 'No baggage claims yet', 'In the traveler app, add baggage cover and tap "My bag is lost".');
+  const b = list.find(x => x.id === id) || list[0], d = b.decision, p = b.policy, th = b.rules.risk_threshold, cur = p.currency, done = d.status === 'paid' || d.status === 'declined';
+  const parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
+  return head('Baggage claims', 'Lost bag claims. The airline report and item list come from the traveler.') + `
+  <div class="split"><section class="panel"><div class="qlist">${list.map(x => `<a class="qitem ${x.id === b.id ? 'on' : ''}" href="#baggage/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b>${outcomeChip({status: x.decision.status, decided_by: 'x'}).replace('Approved by a person', 'Paid')}</div><div class="mute" style="font-size:12px">${esc(x.policy.traveler)}, ${money(x.total, x.policy.currency)}</div></a>`).join('')}</div></section>
+  <div class="stack"><section class="panel"><div class="ph"><h2>Lost bag, ${esc(p.traveler)}</h2><span class="push">${outcomeChip({status: d.status, decided_by: 'x'}).replace('Approved by a person', 'Paid')}</span></div><div class="pb">
+      <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd class="mono">${esc(p.flight)}</dd><dt>Airline report</dt><dd class="mono">${esc(b.report_id)}</dd><dt>Bag tag</dt><dd class="mono">${esc(b.bag_tag)}</dd><dt>Payout to</dt><dd>${esc(p.payout_account)}</dd></dl></div></section>
+    <section class="panel"><div class="ph"><h2>Items claimed</h2><span class="push mono">${money(b.total, cur)}</span></div><div class="tbl"><table><tbody>${b.items.map((i, n) => `<tr><td>${n + 1}. ${esc(i.name)}</td><td class="r mono">${money(i.amount, cur)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="pb mute" style="border-top:1px solid var(--line2)">Pays up to ${money(b.rules.lost_bag_payout, cur)}. Item values are declared by the traveler, so a person checks them.</div></section>
+    <section class="panel"><div class="ph"><h2>Recommendation</h2></div><div class="pb" style="display:grid;gap:14px"><div class="disp" style="font-size:26px">${d.status === 'paid' ? 'Approved' : d.status === 'declined' ? 'Declined' : 'Approve'} ${money(d.amount, cur)}</div>${scoreBreakdown(parts, th)}<div class="note info"><b>${esc(d.clause)}</b>. Benefit paid when a checked bag is declared lost by the airline.</div><p class="mute">${esc(d.explanation)}</p>
+      ${done ? '' : `<div style="display:flex;gap:10px"><button class="btn primary bact" data-id="${esc(b.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger bact" data-id="${esc(b.id)}" data-a="decline">${ico('close')}Decline</button></div>`}</div></section></div></div>`;
 }
 
 /* ---------- Rules ---------- */
 function vRules() {
-  const r = ov.rules, mk = ov.rules_market, c = mk.currency;
-  CUR = c;
+  const r = ov.rules, m = ov.rules_market, c = m.currency;
   const fields = [['delay_premium', `Delay cover price (${c})`], ['baggage_premium', `Baggage cover price (${c})`], ['delay_tier1_minutes', 'Tier 1 delay (minutes)'], ['delay_tier1_payout', `Tier 1 payout (${c})`], ['delay_tier2_minutes', 'Tier 2 delay (minutes)'], ['delay_tier2_payout', `Tier 2 payout (${c})`], ['lost_bag_payout', `Lost bag payout (${c})`], ['risk_threshold', 'Pay automatically below risk score']];
-  return head('Rules', '', 'Set by the insurer for each market. Changes apply to the next flight delay, not to past decisions.') +
-    `<div class="card p-6 max-w-[600px] flex flex-col gap-4"><label class="flex items-center justify-between text-[14px] font-semibold"><span>Market</span><select id="rmSel" class="border border-[#E2E8F0] rounded-lg px-3 py-2 text-[13px] font-normal">${ov.markets.map(m => `<option value="${m.code}" ${m.code === RM ? 'selected' : ''}>${esc(m.name)} (${esc(m.currency)})</option>`).join('')}</select></label>
-    ${fields.map(([k, l]) => `<label class="flex items-center justify-between text-[14px]"><span>${l}</span><input data-rule="${k}" type="number" min="0" value="${r[k]}" class="mono w-32 border border-[#E2E8F0] rounded-lg px-3 py-2 text-right outline-none focus:border-[#0D5C5A]"></label>`).join('')}
-    <div class="flex items-center gap-3 pt-2 border-t border-[#E2E8F0]"><button id="saveRules" class="btn btn-p">Save rules</button><span id="saved" class="text-[13px] text-[#059669]"></span></div>
-    <p class="text-[12px] text-[#64748B]">Prices and payouts here are demo values in local currency. They are not actuarially priced.</p></div>`;
+  return head('Rules', 'Set by the insurer for each market. A change applies to the next flight delay, never to past decisions.') + `
+  <div class="cols" style="grid-template-columns:minmax(0,420px) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Rules for a market</h2></div><div class="pb" style="display:grid;gap:12px">
+      <div><label class="lbl" for="rmSel">Market</label><select id="rmSel" class="field">${ov.markets.map(x => `<option value="${x.code}" ${x.code === RM ? 'selected' : ''}>${esc(x.name)} (${esc(x.currency)})</option>`).join('')}</select></div>
+      ${fields.map(([k, l]) => `<div style="display:grid;grid-template-columns:1fr 130px;gap:12px;align-items:center"><label for="r_${k}">${l}</label><input id="r_${k}" data-rule="${k}" type="number" min="0" value="${r[k]}" class="field mono" style="text-align:right"></div>`).join('')}
+      <div style="display:flex;align-items:center;gap:12px;padding-top:6px;border-top:1px solid var(--line2)"><button id="saveRules" class="btn primary">Save rules</button><span id="saved" style="color:var(--green);font-size:13px"></span></div>
+      <p class="mute" style="font-size:12px">Prices and payouts are demo values in local currency. They are not actuarially priced.</p></div></section>
+    <div class="stack"><section class="panel"><div class="ph"><h2>What a traveler is paid</h2><span class="push mute">${esc(m.name)}</span></div><div class="pb">${payoutCurve(r, c)}</div></section>
+    <section class="panel"><div class="ph"><h2>Cover price against the top payout</h2></div><div class="pb">${barList([{label: 'Delay cover', value: r.delay_premium, text: money(r.delay_premium, c)}, {label: 'Top delay payout', value: r.delay_tier2_payout, text: money(r.delay_tier2_payout, c)}, {label: 'Baggage cover', value: r.baggage_premium, text: money(r.baggage_premium, c)}, {label: 'Lost bag payout', value: r.lost_bag_payout, text: money(r.lost_bag_payout, c)}])}</div></section></div></div>`;
 }
 
+/* ---------- Markets and law ---------- */
 function vCompliance() {
-  return head('Markets and law', '', 'How the product adapts to each market. A summary for the demo, not legal advice. A launch needs a licensed insurer and local counsel to confirm the current text.') +
-    `<div class="flex flex-col gap-4">${ov.markets.map(m => `<details class="card p-5" ${m.code === 'EU' ? 'open' : ''}><summary class="cursor-pointer flex flex-wrap items-center gap-3"><span class="text-[16px] font-bold">${esc(m.name)}</span><span class="chip bg-[#F1F5F9] text-[#334155]">${esc(m.currency)}</span><span class="text-[12px] text-[#64748B]">${esc(m.regulator)}</span></summary>
-      <div class="mt-4 grid gap-3 text-[13px]">
-        <div><span class="text-[11px] tracking-wide text-[#64748B]">PAYOUT OPTIONS (SIMULATED)</span><div>${esc(m.rails.join(', '))}</div></div>
-        <div><span class="text-[11px] tracking-wide text-[#64748B]">TAX</span><div>${esc(m.tax)}</div></div>
-        ${m.statutory ? `<div class="bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-3 py-2"><b>Airline obligations.</b> ${esc(m.statutory)}</div>` : ''}
-        <div class="tbl"><table class="w-full text-[12px]"><thead class="text-left text-[#64748B]"><tr><th class="py-1 pr-3">Area</th><th class="pr-3">Law or rule</th><th>What Calmy does</th></tr></thead><tbody>${m.notes.map(n => `<tr class="border-t border-[#E2E8F0] align-top"><td class="py-2 pr-3 font-semibold">${esc(n.area)}</td><td class="pr-3">${esc(n.law)}</td><td>${esc(n.handling)}</td></tr>`).join('')}</tbody></table></div></div></details>`).join('')}</div>
-    <div class="card p-5 mt-4"><h2 class="text-[16px] font-bold mb-2">Rules that apply in every market</h2><div class="text-[13px] flex flex-col gap-1.5">${(ov.markets[0].principles || []).map(t => `<div class="flex gap-2"><span class="material-symbols-outlined !text-[16px] text-[#0D5C5A]">check</span>${esc(t)}</div>`).join('')}</div></div>`;
+  return head('Markets and law', 'How the product adapts to each market. This is a summary for the demo and not legal advice. A launch needs a licensed insurer and local counsel to confirm the current text of each law.') + `
+  <div class="stack">${ov.markets.map(m => `<details class="panel mk" ${m.code === 'EU' ? 'open' : ''}><summary><h2 style="font-size:17px">${esc(m.name)}</h2><span class="chip">${esc(m.currency)}</span><span class="mute">${esc(m.regulator)}</span></summary>
+    <div class="body"><dl class="kv"><dt>Payout options</dt><dd>${esc(m.rails.join(', '))} (simulated)</dd><dt>Tax</dt><dd>${esc(m.tax)}</dd></dl>
+      ${m.statutory ? `<div class="note"><b>Airline obligations.</b> ${esc(m.statutory)}</div>` : ''}
+      <div class="tbl"><table><thead><tr><th>Area</th><th>Law or rule</th><th>What Calmy does</th></tr></thead><tbody>${m.notes.map(n => `<tr style="vertical-align:top"><td><b>${esc(n.area)}</b></td><td>${esc(n.law)}</td><td>${esc(n.handling)}</td></tr>`).join('')}</tbody></table></div></div></details>`).join('')}
+    <section class="panel"><div class="ph"><h2>Rules that apply in every market</h2></div><div class="pb" style="display:grid;gap:10px">${(ov.markets[0].principles || []).map(t => `<div style="display:flex;gap:10px">${ico('check', 'mute')}<span>${esc(t)}</span></div>`).join('')}</div></section></div>`;
 }
 
+/* ---------- Audit ---------- */
 async function vAudit() {
   const rows = await api('/api/console/audit');
-  if (!rows.length) return head('Audit log', '', 'Every action the system and reviewers take.') + empty('Nothing logged yet', 'Actions appear here as they happen.');
-  return head('Audit log', '', 'The latest 50 actions by the system and by reviewers.') + `<div class="card tbl overflow-hidden"><table class="w-full text-[12px]"><thead class="bg-[#F8FAFB] text-[#64748B] text-left"><tr><th class="p-3">Time</th><th>Policy</th><th>Event</th><th>Detail</th></tr></thead><tbody>
-    ${rows.map(e => `<tr class="border-t border-[#E2E8F0] align-top"><td class="p-3 whitespace-nowrap">${esc(new Date(e.ts * 1000).toLocaleString())}</td><td class="mono">${esc(e.policy_id || '-')}</td><td class="font-semibold">${esc(e.type)}</td><td class="mono text-[11px] break-all">${esc(e.detail)}</td></tr>`).join('')}</tbody></table></div>`;
+  if (!rows.length) return head('Audit log', 'Every action by the system and by reviewers.') + empty('history', 'Nothing logged yet', 'Actions appear here as they happen.');
+  return head('Audit log', 'The latest 50 actions by the system and by reviewers.') + `<div class="panel tbl"><table><thead><tr><th>Time</th><th>Policy</th><th>Event</th><th>Detail</th></tr></thead><tbody>
+    ${rows.map(e => `<tr style="vertical-align:top"><td class="nowrap">${esc(new Date(e.ts * 1000).toLocaleString())}</td><td class="mono">${esc(e.policy_id || '')}</td><td><b>${esc(e.type)}</b></td><td class="mono" style="font-size:12px;word-break:break-all">${esc(e.detail)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
-function empty(t, s) {
-  return `<div class="card p-12 text-center text-[#64748B]"><span class="material-symbols-outlined !text-[40px] text-[#0D5C5A]">inbox</span><h2 class="text-[18px] font-bold text-[#0F172A] mt-2">${t}</h2><p class="text-[13px] mt-1">${s}</p></div>`;
-}
-
+/* ---------- events ---------- */
 function bindAll() {
   const simGo = $('#simGo');
   if (simGo) simGo.onclick = async () => {
     const m = parseInt($('#simMin').value, 10), code = $('#simFlight').value;
-    if (!code) return toast('There is no flight to test yet.');
-    if (!(m >= 0 && m <= 2880)) return toast('Enter minutes between 0 and 2880.');
+    if (!code) return fail('There is no flight to test yet.');
+    if (!(m >= 0 && m <= 2880)) return fail('Enter minutes between 0 and 2880.');
     simGo.disabled = true;
     try {
       const r = await api('/api/demo/delay', 'POST', {flight: code, minutes: m});
-      if (!r.covered) toast('Nobody is covered on this flight yet. Open the traveler app and add cover first.');
-      else if (!r.results.length) toast('Nothing new to pay. This flight already paid out at this level. Try a longer delay.', false);
-      else toast(r.results.some(x => x.status === 'upgraded') ? 'Delay grew into the next level. Payouts were topped up.' : `${r.results.length} decision${r.results.length > 1 ? 's' : ''} made.`, false);
-    } catch (e) { toast(e); }
+      if (!r.covered) fail('Nobody is covered on this flight yet. Open the traveler app and add cover first.');
+      else if (!r.results.length) toast('Nothing new to pay. This flight already paid at this level. Try a longer delay.', 'ok');
+      else toast(r.results.some(x => x.status === 'upgraded') ? 'The delay grew into the next level. Payouts were topped up.' : `${r.results.length} decision${r.results.length > 1 ? 's' : ''} made.`, 'ok');
+    } catch (e) { fail(e); }
     last = ''; refresh();
   };
   document.querySelectorAll('.chk').forEach(b => b.onclick = async () => {
     b.disabled = true;
-    try { const r = await api('/api/flights/' + encodeURIComponent(b.dataset.f) + '/refresh', 'POST'); toast(`Checked ${r.flight.code}. Delay ${r.flight.delay_minutes} min.`, false); } catch (e) { toast(e); }
+    try { const r = await api('/api/flights/' + encodeURIComponent(b.dataset.f) + '/refresh', 'POST'); toast(`Checked ${r.flight.code}. Delay is ${r.flight.delay_minutes} min.`, 'ok'); } catch (e) { fail(e); }
     last = ''; refresh();
   });
   const rm = $('#rmSel'); if (rm) rm.onchange = () => { RM = rm.value; last = ''; refresh(); };
-  document.querySelectorAll('.act').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note: ($('#note') || {}).value || ''}); } catch (e) { toast(e); } last = ''; refresh(); });
-  document.querySelectorAll('.bact').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/baggage/' + b.dataset.id, 'POST', {action: b.dataset.a}); } catch (e) { toast(e); } last = ''; refresh(); });
+  const fq = $('#fq'); if (fq) fq.oninput = () => { FQ = fq.value; last = ''; const pos = fq.selectionStart; refresh().then(() => { const n = $('#fq'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }); };
+  document.querySelectorAll('.act').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note: ($('#note') || {}).value || ''}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
+  document.querySelectorAll('.bact').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/baggage/' + b.dataset.id, 'POST', {action: b.dataset.a}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
   const sv = $('#saveRules');
   if (sv) sv.onclick = async () => {
     const values = {}; document.querySelectorAll('[data-rule]').forEach(i => values[i.dataset.rule] = +i.value);
-    if (Object.values(values).some(v => !Number.isFinite(v))) { toast('Enter a number in every field.'); return; }
+    if (Object.values(values).some(v => !Number.isFinite(v))) return fail('Enter a number in every field.');
     $('#saved').textContent = '';
-    try { await api('/api/console/rules?market=' + RM, 'PUT', {values}); $('#saved').textContent = 'Saved. Applies to the next delay.'; } catch (e) { toast(e); }
+    try { await api('/api/console/rules?market=' + RM, 'PUT', {values}); $('#saved').textContent = 'Saved. Applies to the next delay.'; last = ''; ov = await api('/api/console/overview?market=' + RM); } catch (e) { fail(e); }
   };
 }
-$('#reset').onclick = async () => { try { await api('/api/demo/reset', 'POST'); toast('Demo data reset.', false); } catch (e) { toast(e); } last = ''; refresh(); };
-
-// Poll so a claim submitted on the traveler app shows up without a reload.
-// Skip while the rules form is open so typing is not wiped.
+$('#reset').onclick = async () => { try { await api('/api/demo/reset', 'POST'); toast('Demo data reset.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); };
+// Poll so a claim made in the traveler app shows up. Skip while a form is in use so typing is never wiped.
 setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, 3000);
 refresh();
 </script>

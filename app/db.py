@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS decisions (
     status TEXT,                           -- paid | held | declined | pending
     amount INTEGER, risk_score INTEGER,
     reasons TEXT, timeline TEXT, clause TEXT, explanation TEXT,
-    delay_minutes INTEGER, created_at REAL, decided_by TEXT, note TEXT
+    delay_minutes INTEGER, created_at REAL, decided_by TEXT, note TEXT,
+    breakdown TEXT                         -- JSON list of [label, points] that add up to the risk score
 );
 CREATE TABLE IF NOT EXISTS baggage (
     id TEXT PRIMARY KEY,
@@ -89,7 +90,7 @@ def conn():
 # Columns added after the first release. Applied to an existing database file on start.
 MIGRATIONS = [
     ("flights", "flight_date", "TEXT"), ("flights", "sched_ts", "REAL"), ("flights", "market", "TEXT DEFAULT 'TH'"),
-    ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'THB'"),
+    ("decisions", "breakdown", "TEXT"), ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'THB'"),
     ("policies", "created_at", "REAL"), ("policies", "sched_at_purchase", "TEXT"),
 ]
 

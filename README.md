@@ -86,6 +86,9 @@ State lives in one SQLite file, so run a single instance.
 The service account needs the Vertex AI User role for Gemini. Without it the app still works
 and uses the template explanation.
 
-## Rebuild the stylesheet
+## Design system
 
-    cd build && npm install && npx tailwindcss -c tailwind.config.js -i in.css -o ../static/app.css --minify
+No build step and no CDN. `static/ui.css` holds the tokens and components, `static/ui.js` holds the
+shared helpers and the charts (delay track, risk score breakdown, outcome bar, payout curve, route
+art). Fonts and a 25 KB icon subset are served from `static/fonts`. Charts follow one rule set:
+status colors always carry a label, one axis only, values labeled directly.

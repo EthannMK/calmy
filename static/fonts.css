@@ -1,5 +1,5 @@
-/* Fonts are bundled so the demo looks right on any network. */
-@font-face{font-family:'Manrope';font-weight:200 800;font-display:swap;src:url(/static/fonts/manrope.woff2) format('woff2')}
-@font-face{font-family:'JetBrains Mono';font-weight:100 800;font-display:swap;src:url(/static/fonts/jetbrains-mono.woff2) format('woff2')}
+/* Fonts are served from this site, so the app works offline and nothing is fetched from a third party. */
+@font-face{font-family:'Bricolage Grotesque';font-weight:200 800;font-display:swap;src:url(/static/fonts/bricolage.woff2) format('woff2')}
+@font-face{font-family:'Geist';font-weight:100 900;font-display:swap;src:url(/static/fonts/geist.woff2) format('woff2')}
+@font-face{font-family:'Geist Mono';font-weight:100 900;font-display:swap;src:url(/static/fonts/geist-mono.woff2) format('woff2')}
 @font-face{font-family:'Material Symbols Outlined';font-style:normal;font-weight:100 700;font-display:block;src:url(/static/fonts/material-symbols.woff2) format('woff2')}
-.material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;letter-spacing:normal;text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-feature-settings:'liga';font-feature-settings:'liga';-webkit-font-smoothing:antialiased}

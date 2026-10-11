@@ -3,37 +3,117 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0C1B2E">
 <title>Calmy, smart flight cover</title>
 <link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/ui.css">
 <style>
-  :root{--teal:#0D5C5A;--dteal:#0A4D4A;--seafoam:#E6F4F1;--bg:#F8FAFB;--bd:#E2E8F0}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);font-family:'Manrope',sans-serif;color:#0F172A;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .wrap{max-width:760px;width:100%;text-align:center}
-  .logo{display:inline-flex;align-items:center;gap:10px;font-size:28px;font-weight:800;color:var(--dteal)}
-  .logo i{width:38px;height:38px;border-radius:12px;background:var(--teal);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:20px}
-  h1{font-size:40px;line-height:1.15;letter-spacing:-.02em;margin:28px 0 10px}
-  p.lead{font-size:17px;color:#334155;margin:0 auto 32px;max-width:560px;line-height:1.55}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  a.card{display:block;text-align:left;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:22px;text-decoration:none;color:inherit;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:border-color .15s,transform .15s}
-  a.card:hover{border-color:var(--teal);transform:translateY(-2px)}
-  a.card b{display:block;font-size:18px;margin-bottom:6px}
-  a.card span{font-size:14px;color:#64748B;line-height:1.5}
-  a.card em{display:inline-block;margin-top:14px;font-style:normal;font-weight:700;font-size:14px;color:var(--teal)}
-  .note{margin-top:28px;font-size:12px;color:#64748B}
-  @media(max-width:640px){.grid{grid-template-columns:1fr}h1{font-size:30px}}
+  body{background:#fff}
+  .split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);min-height:100vh}
+  .L{background:var(--navy);color:#fff;padding:40px 48px;display:flex;flex-direction:column;gap:28px;position:relative;overflow:hidden}
+  .L::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--navy-line) 1px,transparent 1px),linear-gradient(90deg,var(--navy-line) 1px,transparent 1px);background-size:60px 60px;opacity:.28;mask-image:radial-gradient(ellipse at 30% 80%,#000,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at 30% 80%,#000,transparent 70%)}
+  .L>*{position:relative}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .mark{background:#18304F}.brand .wordmark{color:#fff;font-size:24px}
+  .L h1{font-size:clamp(38px,4.6vw,62px);line-height:1;max-width:600px}
+  .L h1 em{font-style:normal;color:var(--amber)}
+  .L .lead{font-size:17px;line-height:1.55;color:#B9C7DB;max-width:520px}
+
+  /* the board: a delay grows, a payout lands */
+  .board{background:#07111F;border:1px solid var(--navy-line);border-radius:12px;max-width:560px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .board header{display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--navy-line);font-size:12px;color:var(--navy-mute);letter-spacing:.02em}
+  .board .row{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;padding:13px 16px;border-bottom:1px solid #12233A;font-family:'Geist Mono',monospace;font-size:14px;color:#C9D6E8}
+  .board .row:last-of-type{border-bottom:0}
+  .board .row b{color:var(--amber);font-weight:700}
+  .board .dly{font-weight:700;min-width:84px;text-align:right}
+  .board .dly.ok{color:#7FE3B8}.board .dly.late{color:var(--amber)}
+  .hero-row{background:#0C1B2E}
+  .payline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#0B2A22;color:#7FE3B8;font-size:14px;font-weight:600;transition:opacity .4s,transform .4s;border-top:1px solid #14503D}
+  .payline.off{opacity:0;transform:translateY(6px)}
+  .payline .amt{font-family:'Geist Mono',monospace;font-weight:700;font-size:16px;color:#fff}
+  .board .trk{padding:4px 16px 10px;background:#0C1B2E}
+  .facts{display:flex;gap:30px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+  .facts div{font-size:13px;color:#8EA2BD;max-width:170px;line-height:1.35}
+  .facts b{display:block;white-space:nowrap;font-family:'Bricolage Grotesque',sans-serif;font-size:30px;color:#fff;letter-spacing:-.02em;margin-bottom:2px}
+
+  .R{display:flex;align-items:center;justify-content:center;padding:40px 32px;background:var(--paper)}
+  .login{width:100%;max-width:410px}
+  .login h2{font-size:28px}
+  .login .sub{color:var(--mute);margin:8px 0 22px;font-size:14px}
+  .role{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;color:var(--ink);transition:border-color .15s,box-shadow .15s,transform .15s;text-decoration:none}
+  .role:hover{border-color:var(--cobalt);box-shadow:0 6px 22px rgba(31,79,209,.12);transform:translateY(-1px);text-decoration:none}
+  .role .ic{width:46px;height:46px;border-radius:10px;background:var(--navy);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .role .ic .ms{font-size:24px}
+  .role b{display:block;font-size:16px}.role span.d{display:block;font-size:13px;color:var(--mute);margin-top:2px}
+  .role .go{margin-left:auto;color:var(--cobalt)}
+  .or{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:12px;margin:18px 0}
+  .or::before,.or::after{content:'';flex:1;border-top:1px solid var(--line)}
+  .who{display:flex;gap:8px}
+  .who a{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink);text-decoration:none}
+  .who a:hover{border-color:var(--cobalt);text-decoration:none}
+  .who small{display:block;color:var(--mute);margin-top:1px}
+  .fine{margin-top:22px;font-size:12px;color:var(--mute);line-height:1.5}
+  @media(max-width:900px){.split{grid-template-columns:1fr}.L{padding:28px 20px}.R{padding:28px 18px 40px}.L h1{font-size:38px}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo"><i>&#9099;</i>Calmy</div>
-  <h1>Your flight is late.<br>You are already paid.</h1>
-  <p class="lead">Calmy is flight delay and lost bag cover that pays automatically. No forms. The insurer sees every decision and the reason behind it.</p>
-  <div class="grid">
-    <a class="card" href="/traveler"><b>Try as traveler</b><span>Pick a flight, add cover, and watch the payout arrive when it is late.</span><em>Open traveler app &rarr;</em></a>
-    <a class="card" href="/console"><b>Try as insurer</b><span>See paid decisions, review held claims, and change the payout rules.</span><em>Open insurer console &rarr;</em></a>
-  </div>
-  <div class="note">Demo mode. Pick a real flight or a sample flight in any of 11 markets. Prices and payouts are in local currency. Payouts are simulated and no real money moves.</div>
+<div class="split">
+  <section class="L">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span class="wordmark">calmy</span></div>
+    <h1>Your flight is late.<br><em>You are already paid.</em></h1>
+    <p class="lead">Embedded delay and lost bag cover that pays by itself. The traveler fills in nothing. The insurer sees every decision and the reason behind it.</p>
+
+    <div class="board" aria-label="Illustration of a delay growing and a payout landing">
+      <header><span>DEPARTURES · LIVE ILLUSTRATION</span><span id="clk">--:--</span></header>
+      <div class="row"><b>OA 420</b><span>LHR → AMS</span><span class="dly ok">On time</span></div>
+      <div class="row hero-row"><b>TG 102</b><span>BKK → HND</span><span class="dly late" id="dly">On time</span></div>
+      <div class="trk" id="trk"></div>
+      <div class="payline off" id="pay"><span>Delay rule met. Paid to your account.</span><span class="amt" id="amt">1,500 THB</span></div>
+    </div>
+
+    <div class="facts">
+      <div><b>0</b>forms for the traveler</div>
+      <div><b>11</b>markets, local money and law</div>
+      <div><b>Pay or hold</b>the system never auto declines</div>
+    </div>
+  </section>
+
+  <section class="R">
+    <main class="login">
+      <h2>Sign in to the demo</h2>
+      <p class="sub">Choose who you want to be. No password needed, and no real money moves.</p>
+      <a class="role" href="/traveler"><span class="ic"><span class="ms" aria-hidden="true">luggage</span></span><span><b>I am a traveler</b><span class="d">Pick a real flight, add cover, watch the payout arrive.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
+      <a class="role" href="/console"><span class="ic"><span class="ms" aria-hidden="true">monitoring</span></span><span><b>I am the insurer</b><span class="d">Decisions, reviews, rules and audit log for Orchid Insure.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
+      <div class="or">or open a ready made traveler</div>
+      <div class="who">
+        <a href="/traveler?p=CL-44910">Somchai K.<small>clean, paid</small></a>
+        <a href="/traveler?p=CL-45102">Anan T.<small>risky, held for review</small></a>
+      </div>
+      <p class="fine">Judges: in the traveler app, open Test tools to delay a real flight and see the payout. Then open the insurer console to see the same decision with its reasons.</p>
+    </main>
+  </section>
 </div>
+<script src="/static/ui.js"></script>
+<script>
+// The hook: a delay grows on the board, crosses the payout line, and the money lands.
+const R = {delay_tier1_minutes: 180, delay_tier2_minutes: 360, delay_tier1_payout: 1500, delay_tier2_payout: 3000};
+const dly = $('#dly'), trk = $('#trk'), pay = $('#pay'), amt = $('#amt');
+const tick = () => { const d = new Date(); $('#clk').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+tick(); setInterval(tick, 30000);
+let m = 0, still = matchMedia('(prefers-reduced-motion:reduce)').matches;
+function paint() {
+  dly.textContent = m ? hm(m) + ' late' : 'On time';
+  dly.className = 'dly ' + (m ? 'late' : 'ok');
+  trk.innerHTML = delayTrack(m, R, 'THB', true);
+  const p = m >= 360 ? 3000 : m >= 180 ? 1500 : 0;
+  amt.textContent = num(p) + ' THB';
+  pay.classList.toggle('off', !p);
+}
+function run() {
+  m = 0; paint();
+  const t = setInterval(() => { m += 6; paint(); if (m >= 400) { clearInterval(t); setTimeout(run, 4500); } }, 55);
+}
+if (still) { m = 200; paint(); } else run();
+</script>
 </body>
 </html>

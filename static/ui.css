@@ -1,0 +1,111 @@
+/* Calmy design system. One file for both apps.
+   Idea: an airline operations room. Quiet paper surfaces, thin rules, square-ish corners,
+   and one loud element, the navy and amber departure board, used only for flights. */
+:root{
+  --ink:#0C1B2E; --ink2:#34445A; --mute:#66758B; --faint:#97A3B4;
+  --line:#DCE2EA; --line2:#EBEFF4; --paper:#F0F3F7; --panel:#FFFFFF;
+  --navy:#0C1B2E; --navy2:#142B4D; --navy-line:#25405F; --navy-mute:#8EA2BD;
+  --cobalt:#1F4FD1; --cobalt-d:#173DA6; --cobalt-t:#E7EDFC;
+  --amber:#FFB224; --amber-d:#8A5300; --amber-t:#FFF2D3;
+  --green:#0B8A5C; --green-t:#E2F4EC; --red:#C0362C; --red-t:#FCE8E6;
+  --r:6px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:14px/1.45 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+h1,h2,h3,.disp{font-family:'Bricolage Grotesque','Geist',sans-serif;letter-spacing:-.02em;margin:0;line-height:1.12;font-weight:700}
+p{margin:0}
+a{color:var(--cobalt);text-decoration:none}a:hover{text-decoration:underline}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px;border-radius:4px}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.mute{color:var(--mute)}.faint{color:var(--faint)}.right{text-align:right}.nowrap{white-space:nowrap}
+.ms{font-family:'Material Symbols Outlined';font-weight:400;font-style:normal;display:inline-block;width:1em;height:1em;line-height:1;overflow:hidden;white-space:nowrap;font-size:20px;vertical-align:middle;font-feature-settings:'liga';font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;flex-shrink:0;user-select:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 16px;border-radius:var(--r);font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);transition:background .12s,border-color .12s}
+.btn:hover{background:var(--line2);text-decoration:none}
+.btn.primary{background:var(--cobalt);border-color:var(--cobalt);color:#fff}.btn.primary:hover{background:var(--cobalt-d)}
+.btn.danger{color:var(--red);border-color:#E7B9B5}.btn.danger:hover{background:var(--red-t)}
+.btn.sm{height:30px;padding:0 10px;font-size:13px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{height:40px;width:100%;border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:0 12px;font-size:14px}
+.field:focus{border-color:var(--cobalt);outline:0;box-shadow:0 0 0 3px var(--cobalt-t)}
+textarea.field{height:auto;padding:10px 12px}
+.lbl{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:4px;font-size:12px;font-weight:600;background:var(--line2);color:var(--ink2);white-space:nowrap}
+.chip.paid{background:var(--green-t);color:var(--green)}.chip.held{background:var(--amber-t);color:var(--amber-d)}
+.chip.red{background:var(--red-t);color:var(--red)}.chip.blue{background:var(--cobalt-t);color:var(--cobalt)}
+.chip i{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* surfaces */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.panel>.ph{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.panel>.ph h2{font-size:16px}
+.panel>.pb{padding:18px}
+.ph .push{margin-left:auto}
+.note{border-radius:var(--r);padding:10px 12px;font-size:13px;line-height:1.45;background:var(--amber-t);color:#5C3A00;border:1px solid #F3D68E}
+.note.info{background:var(--cobalt-t);color:#1B3C94;border-color:#C5D3F6}
+.note.good{background:var(--green-t);color:#0B6B49;border-color:#BCE5D3}
+
+/* tables */
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:12px;font-weight:600;color:var(--mute);text-align:left;padding:10px 14px;background:#F8FAFC;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}tbody tr.click:hover{background:#F8FAFD}
+th.r,td.r{text-align:right}
+
+/* delay track: where a delay sits against the payout tiers */
+.dtrack{position:relative;padding:26px 0 34px}
+.dt-bar{position:relative;display:flex;height:10px;border-radius:5px;overflow:visible;gap:2px}
+.dt-bar i{display:block;height:100%}
+.dt-off{background:#E3E8EF;border-radius:5px 0 0 5px}.dt-t1{background:#F6C768}.dt-t2{background:#2AA37A;border-radius:0 5px 5px 0}
+.dt-mark{position:absolute;top:-8px;width:0;height:26px;border-left:2px solid var(--ink)}
+.dt-mark::before{content:'';position:absolute;left:-6px;top:-1px;border:5px solid transparent;border-top:7px solid var(--ink);border-bottom:0}
+.dt-mark span{position:absolute;bottom:30px;left:0;transform:translateX(-50%);font-size:11px;font-weight:700;background:var(--ink);color:#fff;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.dt-mark.edge span{transform:translateX(-100%)}
+.dt-scale,.dt-pay{position:absolute;left:0;right:0;font-size:11px;color:var(--mute)}
+.dt-scale{top:46px}.dt-pay{top:60px;color:var(--ink2);font-weight:600}
+.dt-scale span,.dt-pay span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.dt-scale span:first-child{transform:none}
+.dtrack.tall{padding-bottom:62px}
+.dark .dt-off{background:#27405F}.dark .dt-scale,.dark .dt-pay{color:var(--navy-mute)}.dark .dt-mark{border-color:var(--amber)}.dark .dt-mark::before{border-top-color:var(--amber)}.dark .dt-mark span{background:var(--amber);color:var(--navy)}
+
+/* score breakdown */
+.sb{position:relative;padding-top:22px}
+.sb-bar{display:flex;gap:2px;height:14px}
+.sb-bar i{display:block;height:100%;min-width:3px;border-radius:2px}
+.sb-th{position:absolute;top:0;bottom:46px;width:0;border-left:2px dashed var(--ink)}
+.sb-th span{position:absolute;top:-2px;left:6px;font-size:11px;font-weight:700;white-space:nowrap}
+.sb-rows{margin-top:16px;display:grid;gap:8px}
+.sb-row{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:center;font-size:13px}
+.sb-row u{width:12px;height:12px;border-radius:3px;display:block}
+
+/* bar list */
+.bl{display:grid;grid-template-columns:110px 1fr 74px;gap:12px;align-items:center;font-size:13px;padding:6px 0}
+.bl-t{height:10px;background:var(--line2);border-radius:5px;overflow:hidden}.bl-t i{display:block;height:100%;background:var(--cobalt);border-radius:5px}
+.bl b{text-align:right;font-weight:600}
+
+/* stacked outcome bar */
+.ob{display:flex;gap:2px;height:16px}.ob i{display:block;min-width:4px;border-radius:3px}
+.leg{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:13px}
+.leg span{display:inline-flex;align-items:center;gap:8px}.leg u{width:10px;height:10px;border-radius:3px;display:block}.leg b{font-weight:700}
+
+/* brand */
+.mark{width:30px;height:30px;border-radius:8px;background:var(--navy);position:relative;overflow:hidden;flex-shrink:0}
+.mark::before{content:'';position:absolute;left:50%;bottom:-9px;width:26px;height:26px;margin-left:-13px;border-radius:50%;background:var(--amber)}
+.mark::after{content:'';position:absolute;left:5px;right:5px;bottom:10px;height:2px;background:#fff;opacity:.9}
+.wordmark{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.03em}
+
+/* toast */
+#toast{position:fixed;z-index:90;left:50%;bottom:28px;transform:translateX(-50%);max-width:min(520px,92vw);background:var(--ink);color:#fff;border-radius:var(--r);padding:11px 16px;font-size:13px;box-shadow:0 8px 30px rgba(12,27,46,.25)}
+#toast.bad{background:var(--red)}#toast.hidden{display:none}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:no-preference){.rise{animation:rise .28s ease both}@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}}
+.dtrack.mini{padding:26px 0 4px}.dtrack.mini .dt-scale,.dtrack.mini .dt-pay{display:none}

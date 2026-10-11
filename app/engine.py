@@ -90,6 +90,21 @@ def features(c, p: dict) -> dict:
     }
 
 
+def risk_parts(p: dict) -> list[tuple[str, int]]:
+    """Every contribution to the score as (plain reason, points), starting with the base."""
+    parts = [("Base score for any traveler", 12)]
+    extra = max(0, min(3, p["f_covers_2h"] - 1))
+    if extra:
+        parts.append(("Several covers bought on one profile within 2 hours", 9 * extra))
+    if p["f_schedule_changed"]:
+        parts.append(("Flight time changed shortly before the cover was bought", 20))
+    if p["f_shared_account"]:
+        parts.append(("Several payout accounts share the same contact details", 28))
+    if p["f_prior_claims"]:
+        parts.append(("A claim was paid on this profile in the last 12 months", 4))
+    return parts
+
+
 def risk_score(p: dict) -> tuple[int, list[str]]:
     """Transparent additive score from 0 to 100.
 
@@ -97,23 +112,9 @@ def risk_score(p: dict) -> tuple[int, list[str]]:
     cloud version the same features feed a BigQuery ML model, and these
     weights are the readable baseline it is checked against.
     """
-    score = 12
-    reasons: list[tuple[int, str]] = []
-    extra = max(0, min(3, p["f_covers_2h"] - 1))
-    if extra:
-        score += 9 * extra
-        reasons.append((9 * extra, "Several covers bought on one profile within 2 hours"))
-    if p["f_schedule_changed"]:
-        score += 20
-        reasons.append((20, "Flight time changed shortly before the cover was bought"))
-    if p["f_shared_account"]:
-        score += 28
-        reasons.append((28, "Several payout accounts share the same contact details"))
-    if p["f_prior_claims"]:
-        score += 4
-        reasons.append((4, "A claim was paid on this profile in the last 12 months"))
-    reasons.sort(key=lambda r: -r[0])
-    return min(score, 100), [r[1] for r in reasons[:3]]
+    parts = risk_parts(p)
+    signals = sorted(parts[1:], key=lambda r: -r[1])
+    return min(sum(pts for _, pts in parts), 100), [label for label, _ in signals[:3]]
 
 
 def clean_checks() -> list[str]:
@@ -219,12 +220,14 @@ def run_delay(c, flight_code: str, minutes: int) -> list[dict]:
                 db.log(c, p["id"], "tier_upgrade", {"decision": prior["id"], "extra": extra, "total": amount})
                 results.append({"policy": p["id"], "decision": prior["id"], "status": "upgraded", "extra": extra})
             continue  # double claim prevention
-        score, reasons = risk_score(features(c, p))
+        feats = features(c, p)
+        score, reasons = risk_score(feats)
         status = "paid" if score < rules["risk_threshold"] else "held"
         reasons_out = clean_checks() if status == "paid" else reasons
         did = _new_id("RQ") if status == "held" else _new_id("DC")
         c.execute(
-            "INSERT INTO decisions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
+            "delay_minutes,created_at,decided_by,note) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 did, p["id"], "delay", status, amount, score,
                 json.dumps(reasons_out), json.dumps(_timeline("Paid", amount, p["payout_account"], status)),
@@ -232,6 +235,7 @@ def run_delay(c, flight_code: str, minutes: int) -> list[dict]:
                 "system" if status == "paid" else None, None,
             ),
         )
+        c.execute("UPDATE decisions SET breakdown=? WHERE id=?", (json.dumps(risk_parts(feats)), did))
         db.log(c, p["id"], f"decision_{status}", {"decision": did, "score": score, "amount": amount})
         results.append({"policy": p["id"], "decision": did, "status": status, "score": score})
     return results
@@ -288,17 +292,21 @@ def submit_bag_claim(c, policy_id: str, report_id: str, bag_tag: str, items: lis
     cur = currency_of(market)
     rules = get_rules(c, market)
     amount = min(total, int(rules["lost_bag_payout"]))
-    score, reasons = risk_score({**features(c, p), "f_covers_2h": 1})
+    feats = {**features(c, p), "f_covers_2h": 1}
+    score, reasons = risk_score(feats)
     score += 6  # claim loading: values are self declared
     status = "pending" if score < rules["risk_threshold"] else "held"
     c.execute(
-        "INSERT INTO decisions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
+            "delay_minutes,created_at,decided_by,note) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             bid + "-D", policy_id, "baggage", status, amount, score,
             json.dumps(reasons if status == "held" else clean_checks()), json.dumps([]), CLAUSE_BAG,
             template_explanation("baggage", amount, 0, rules, cur), 0, time.time(), None, None,
         ),
     )
+    c.execute("UPDATE decisions SET breakdown=? WHERE id=?",
+              (json.dumps(risk_parts(feats) + [("Loading for self declared item values", 6)]), bid + "-D"))
     db.log(c, policy_id, "baggage_claim", {"claim": bid, "total": total, "score": score})
     return db.one(c, "SELECT * FROM baggage WHERE id=?", (bid,))
 
