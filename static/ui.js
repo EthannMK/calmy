@@ -86,3 +86,43 @@ function routeArt() {
     ${pts.slice(0, -1).map((p, i) => `<path d="${arc(p, pts[i + 1])}" fill="none" stroke="#FFB224" stroke-width="1.6" stroke-dasharray="3 4"/>`).join('')}
     ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === 3 ? 5 : 3.5}" fill="${i === 3 ? '#FFB224' : '#0C1B2E'}" stroke="#FFB224" stroke-width="1.6"/>`).join('')}</svg>`;
 }
+
+/* ---- AI identity helpers ---- */
+const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="aig" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B8CFF"/><stop offset="1" stop-color="#A78BFA"/></linearGradient></defs><path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z" fill="url(#aig)"/></svg>';
+const aiChip = (t = 'AI', dark = false) => `<span class="ai ${dark ? 'dark' : ''}">${STAR}${esc(t)}</span>`;
+
+/* Text the AI wrote. It types in once; after that it renders whole so polling never replays it. */
+const _typed = new Set();
+function aiText(t) {
+  const done = _typed.has(t);
+  return `<p class="aitext" data-t="${esc(t)}">${done ? esc(t) : ''}</p>`;
+}
+function typeAll(root = document) {
+  root.querySelectorAll('.aitext[data-t]').forEach(el => {
+    const t = el.dataset.t; if (_typed.has(t) || el.textContent) return;
+    _typed.add(t);
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) { el.textContent = t; return; }
+    let i = 0; el.classList.add('typing');
+    const tm = setInterval(() => { i = Math.min(t.length, i + 2); el.textContent = t.slice(0, i); if (i >= t.length) { clearInterval(tm); el.classList.remove('typing'); } }, 18);
+  });
+}
+
+/* Risk gauge: green up to the auto pay line, amber past it. */
+function gauge(score, th) {
+  const a = v => Math.PI * (1 - v / 100), cx = 120, cy = 112, r = 88;
+  const pt = (v, rr = r) => [cx + rr * Math.cos(a(v)), cy - rr * Math.sin(a(v))];
+  const arc = (v0, v1) => { const [x0, y0] = pt(v0), [x1, y1] = pt(v1); return `M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)}`; };
+  const [nx, ny] = pt(Math.min(score, 100), r - 14), hold = score >= th;
+  return `<svg class="gauge" viewBox="0 0 240 168" role="img" aria-label="Risk score ${score} of 100. Auto pay below ${th}.">
+    <path d="${arc(0, th)}" stroke="#0B8A5C" stroke-width="16" fill="none" opacity=".9"/><path d="${arc(th + .8, 100)}" stroke="#E08A12" stroke-width="16" fill="none"/>
+    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#0C1B2E" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="7" fill="#0C1B2E"/>
+    <text x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="26" font-weight="800" fill="#0C1B2E">${score}</text>
+    <text x="22" y="${cy + 18}" font-size="11" fill="#66758B" font-family="Geist">0</text><text x="218" y="${cy + 18}" text-anchor="end" font-size="11" fill="#66758B" font-family="Geist">100</text>
+    <text x="${cx}" y="${cy + 50}" text-anchor="middle" font-size="12" font-weight="700" fill="${hold ? '#8A5300' : '#0B6B49'}" font-family="Geist">${hold ? 'Sent to a person' : 'Safe to pay automatically'}</text></svg>`;
+}
+
+/* Calmy's decision time next to a manual claim. The manual bar is illustrative, drawn hatched on purpose. */
+function speedCompare(sec) {
+  return `<div class="spd"><div class="r"><b>Calmy AI</b><div class="b calmy"><i style="width:7%">${sec}s</i></div></div>
+    <div class="r"><span class="mute">Manual claim</span><div class="b manual"><i>days, illustrative</i></div></div></div>`;
+}

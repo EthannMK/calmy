@@ -371,9 +371,13 @@ def overview(market: str = "TH"):
             "FROM flights f ORDER BY f.sched_ts IS NULL, f.sched_ts, f.code",
         )
         decisions = db.rows(
-            c, "SELECT d.id, d.policy_id, d.kind, d.status, d.amount, d.decided_by, p.currency FROM decisions d "
-               "JOIN policies p ON p.id=d.policy_id ORDER BY d.created_at DESC"
+            c, "SELECT d.id, d.policy_id, d.kind, d.status, d.amount, d.decided_by, d.delay_minutes, d.risk_score, d.timeline, "
+               "p.currency, p.flight, p.traveler FROM decisions d JOIN policies p ON p.id=d.policy_id ORDER BY d.created_at DESC"
         )
+        for d in decisions:
+            tl = json.loads(d["timeline"]) if d.get("timeline") else []
+            d["seconds"] = tl[-1]["sec"] if tl else None
+            del d["timeline"]
     for f in flights:
         track.maybe_refresh(f)
         f["travelers"] = f["covered"]

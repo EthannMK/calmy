@@ -36,6 +36,7 @@
   .board{background:var(--navy);color:#fff;border-radius:var(--r);overflow:hidden}
   .board .bh{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--navy-line)}
   .board .bh h2{font-size:16px}.board .bh span{color:var(--navy-mute);font-size:13px;margin-left:auto}
+  @media(max-width:1000px){#aiDesk{grid-template-columns:1fr!important}}
   .brow{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:6px 16px;padding:14px 18px;border-bottom:1px solid var(--navy-line)}
   .brow:last-of-type{border-bottom:0}
   .brow .code{font-family:'Geist Mono',monospace;font-weight:600;color:var(--amber);font-size:18px;letter-spacing:.02em}
@@ -85,14 +86,14 @@
   </aside>
   <div class="main">
     <header class="top"><span class="crumb" id="crumb"></span>
-      <div class="env"><span class="chip blue">Demo</span><div style="text-align:right;line-height:1.2"><div style="font-weight:600;font-size:13px">Nok P.</div><div class="mute" style="font-size:12px">Claims reviewer</div></div><span class="avatar">NP</span></div></header>
+      <div class="env"><span id="aiOn"></span><span class="chip blue">Demo</span><div style="text-align:right;line-height:1.2"><div style="font-weight:600;font-size:13px">Nok P.</div><div class="mute" style="font-size:12px">Claims reviewer</div></div><span class="avatar">NP</span></div></header>
     <main id="view" class="page"></main>
   </div>
 </div>
 <script src="/static/ui.js"></script>
 <script>
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
-let SIMSEL = '';
+let SIMSEL = '', LIVE = {};
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
   ['Book of business', [['policies', 'verified_user', 'Policies']]],
@@ -111,14 +112,15 @@ const matchQ = (...v) => !FQ || v.join(' ').toLowerCase().includes(FQ.toLowerCas
 async function refresh() {
   ov = await api('/api/console/overview?market=' + RM);
   const held = ov.stats.held, bags = ov.stats.bag_waiting, base = route.split('/')[0];
-  $('#srcNote').textContent = ov.flights.some(f => f.source === 'live') ? 'Includes real flights. Payouts are simulated.' : 'Sample flights. Payouts are simulated.';
+  try { LIVE = await api('/api/live/status'); } catch (e) { LIVE = {}; }
+  $('#srcNote').innerHTML = LIVE.enabled ? (LIVE.last_error ? `<b>Live flights:</b> ${esc(LIVE.last_error)}` : `<span class="radar" style="width:8px;height:8px;margin-right:6px"></span>Live flight data on, ${LIVE.used} of ${LIVE.budget} lookups used.`) : 'Live flight data is off here. Set AVIATIONSTACK_KEY on Cloud Run to switch it on.';
   $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
   $('#crumb').textContent = 'Orchid Insure  /  ' + (TITLES[page] || 'Overview');
   let html;
   try { html = await ({overview: vOverview, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit}[page] || vOverview)(arg); }
   catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
-  if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); }
+  if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); typeAll($('#view')); }
 }
 
 /* ---------- Overview ---------- */
@@ -134,6 +136,7 @@ function vOverview() {
     ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts') + ', simulated')}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
     ${kpi('Paid automatically', 'bolt', share, 'Payouts with no human step')}</div>
+  ${aiDesk()}
   <div class="cols"><div class="stack">
     <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${covered} of ${tracked.length} flights have cover</span></div>
       ${tracked.length ? tracked.slice(0, 5).map(f => {
@@ -152,6 +155,21 @@ function vOverview() {
     <section class="panel"><div class="ph"><h2>Claim outcomes</h2></div><div class="pb">${outcomeBar(o)}</div></section>
     <section class="panel"><div class="ph"><h2>Paid out by market</h2></div><div class="pb">${ov.by_market.length ? barList(ov.by_market.map(m => ({label: mk(m.market).name, value: m.usd, text: usd(m.usd)}))) : '<p class="mute">No payouts yet.</p>'}</div></section>
   </div></div>`;
+}
+function aiDesk() {
+  const done = ov.decisions.filter(d => d.kind === 'delay' && d.status !== 'pending');
+  const secs = done.map(d => d.seconds).filter(x => x != null), avg = secs.length ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : 8;
+  const auto = ov.decisions.filter(d => d.decided_by === 'system' && d.status === 'paid').length;
+  const feed = ov.decisions.slice(0, 5).map(d => {
+    const m = d.status === 'held' ? 'sent to a person' : d.status === 'declined' ? 'declined by a person' : d.decided_by === 'system' ? 'paid with no human step' : 'approved by a person';
+    const href = d.status === 'held' ? '#review/' + esc(d.id) : d.kind === 'baggage' ? '#baggage/' + esc(d.id.replace('-D', '')) : '#decisions/' + esc(d.policy_id);
+    return `<a href="${href}"><span class="ic">${STAR}</span><span><b>${esc(d.flight)}${d.kind === 'delay' ? ', ' + hm(d.delay_minutes || 0) + ' late' : ', lost bag'}</b><small>Risk ${d.risk_score ?? '-'}, ${m}</small></span><span class="mono">${d.status === 'held' ? 'review' : money(d.amount, d.currency)}</span></a>`;
+  }).join('');
+  return `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Calmy AI at work</h2>${aiChip('Gemini on Vertex AI')}<span class="push mute">${auto} ${auto === 1 ? 'claim' : 'claims'} paid with no human step</span></div>
+    <div class="pb" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:32px" id="aiDesk">
+      <div><div class="mute" style="font-size:13px;margin-bottom:12px">Time from delay to decision</div>${speedCompare(avg)}
+        <div class="aistrip" style="margin-top:18px"><div>${ico('flight')}Watches the flight</div><div>${ico('shield')}Scores the risk</div><div>${ico('paid')}Pays or asks a person</div></div></div>
+      <div><div class="mute" style="font-size:13px;margin-bottom:4px">Latest decisions</div>${feed ? `<div class="feed">${feed}</div>` : '<p class="mute" style="padding:12px 0">Run a delay test below and watch the AI decide.</p>'}</div></div></section>`;
 }
 function outcomeChip(d) {
   return d.status === 'held' ? '<span class="chip held"><i></i>Held for review</span>' : d.status === 'declined' ? '<span class="chip red"><i></i>Declined</span>'
@@ -190,9 +208,9 @@ async function vDecisions(pid) {
   <div class="panel" style="margin-bottom:20px"><div class="ph"><h2>Delay against the payout rules</h2><span class="push mute">${esc(mkt.name)}, ${esc(cur)}</span></div><div class="pb">${delayTrack(d.delay_minutes, rules, cur)}</div></div>
   <div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Decision timeline</h2>${auto ? '<span class="chip push mono">8s</span>' : ''}</div><div class="pb tl">
       ${d.timeline.map(s => `<div><span class="dot ${s.pending ? 'wait' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span><div><b>${esc(s.label)}</b><div class="mute" style="font-size:13px">${sub[s.label] || ''}</div></div><span class="mono mute" style="font-size:12px">${s.sec}s</span></div>`).join('')}</div></section>
-    <div class="stack"><section class="panel"><div class="ph"><h2>Risk score</h2></div><div class="pb">${scoreBreakdown(parts, th)}</div></section>
-      <section class="panel"><div class="ph"><h2>${declined ? 'Why it was declined' : 'Why it was paid'}</h2></div><div class="pb" style="display:grid;gap:12px">
-        <div class="note info"><b>${esc(d.clause)}</b></div><p>${esc(d.explanation)}</p>
+    <div class="stack"><section class="panel"><div class="ph"><h2>Risk score</h2><span class="push">${aiChip('AI scored')}</span></div><div class="pb">${gauge(d.risk_score, th)}<div style="height:12px"></div>${scoreBreakdown(parts, th)}</div></section>
+      <section class="panel"><div class="ph"><h2>${declined ? 'Why it was declined' : 'Why it was paid'}</h2><span class="push">${aiChip('AI explained')}</span></div><div class="pb" style="display:grid;gap:12px">
+        <div class="note info"><b>${esc(d.clause)}</b></div><div class="aicard">${aiChip('Calmy AI')}${aiText(d.explanation)}</div>
         ${mkt.statutory ? `<div class="note"><b>Airline obligations in ${esc(mkt.name)}.</b> ${esc(mkt.statutory)} Calmy pays on top of this.</div>` : ''}
         <div class="note good">${auto ? 'Paid with no human review and no forms.' : `Decided by ${esc(d.decided_by)}.${d.note ? ' Note: ' + esc(d.note) : ''}`}</div></div></section></div></div>`;
 }
@@ -208,7 +226,7 @@ async function vReview(id) {
   <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b><span class="mono">${x.risk_score}</span></div><div class="mute" style="font-size:12px">Policy ${esc(x.policy_id)}</div></a>`).join('')}</div></section>
   <div class="stack"><section class="panel"><div class="ph"><h2>${esc(p.traveler)}</h2><span class="chip held push"><i></i>Needs a person</span></div><div class="pb">
       <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd></dl></div></section>
-    <section class="panel"><div class="ph"><h2>Why it was held</h2></div><div class="pb" style="display:grid;gap:14px">${scoreBreakdown(parts, th)}<p class="mute">${esc(d.explanation)}</p></div></section>
+    <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('Calmy AI')}${aiText(d.explanation)}</div></div></section>
     <section class="panel"><div class="ph"><h2>Your decision</h2></div><div class="pb"><label class="lbl" for="note">Reason, saved in the audit log</label><textarea id="note" rows="3" class="field" placeholder="Why you approve or decline"></textarea>
       <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div></div></section></div></div>`;
 }
@@ -225,7 +243,7 @@ async function vBaggage(id) {
       <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd class="mono">${esc(p.flight)}</dd><dt>Airline report</dt><dd class="mono">${esc(b.report_id)}</dd><dt>Bag tag</dt><dd class="mono">${esc(b.bag_tag)}</dd><dt>Payout to</dt><dd>${esc(p.payout_account)}</dd></dl></div></section>
     <section class="panel"><div class="ph"><h2>Items claimed</h2><span class="push mono">${money(b.total, cur)}</span></div><div class="tbl"><table><tbody>${b.items.map((i, n) => `<tr><td>${n + 1}. ${esc(i.name)}</td><td class="r mono">${money(i.amount, cur)}</td></tr>`).join('')}</tbody></table></div>
       <div class="pb mute" style="border-top:1px solid var(--line2)">Pays up to ${money(b.rules.lost_bag_payout, cur)}. Item values are declared by the traveler, so a person checks them.</div></section>
-    <section class="panel"><div class="ph"><h2>Recommendation</h2></div><div class="pb" style="display:grid;gap:14px"><div class="disp" style="font-size:26px">${d.status === 'paid' ? 'Approved' : d.status === 'declined' ? 'Declined' : 'Approve'} ${money(d.amount, cur)}</div>${scoreBreakdown(parts, th)}<div class="note info"><b>${esc(d.clause)}</b>. Benefit paid when a checked bag is declared lost by the airline.</div><p class="mute">${esc(d.explanation)}</p>
+    <section class="panel"><div class="ph"><h2>Recommendation</h2></div><div class="pb" style="display:grid;gap:14px"><div class="disp" style="font-size:26px">${d.status === 'paid' ? 'Approved' : d.status === 'declined' ? 'Declined' : 'Approve'} ${money(d.amount, cur)}</div>${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="note info"><b>${esc(d.clause)}</b>. Benefit paid when a checked bag is declared lost by the airline.</div><div class="aicard">${aiChip('Calmy AI')}${aiText(d.explanation)}</div>
       ${done ? '' : `<div style="display:flex;gap:10px"><button class="btn primary bact" data-id="${esc(b.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger bact" data-id="${esc(b.id)}" data-a="decline">${ico('close')}Decline</button></div>`}</div></section></div></div>`;
 }
 
@@ -297,6 +315,7 @@ function bindAll() {
     try { await api('/api/console/rules?market=' + RM, 'PUT', {values}); $('#saved').textContent = 'Saved. Applies to the next delay.'; last = ''; ov = await api('/api/console/overview?market=' + RM); } catch (e) { fail(e); }
   };
 }
+$('#aiOn').innerHTML = aiChip('AI on');
 $('#reset').onclick = async () => { try { await api('/api/demo/reset', 'POST'); toast('Demo data reset.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); };
 // Poll so a claim made in the traveler app shows up. Skip while a form is in use so typing is never wiped.
 setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, 3000);

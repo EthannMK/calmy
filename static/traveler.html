@@ -158,7 +158,7 @@
 <script>
 let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid');
 let S = null, MK = {}, tab = 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
-let SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
+let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
 const cur = () => (S && S.policy && S.policy.currency) || 'USD';
 const M = n => money(n, cur());
@@ -188,7 +188,7 @@ function render(force) {
   if (force || v.dataset.k !== html) {
     const vk = tab + bagForm + (PID || ''); const top = vk === v.dataset.vk ? v.scrollTop : 0; v.dataset.vk = vk;
     v.innerHTML = '<div class="fade">' + html + '</div>';
-    v.dataset.k = html; v.scrollTop = top; bind();
+    v.dataset.k = html; v.scrollTop = top; bind(); typeAll(v);
   }
 }
 
@@ -205,7 +205,7 @@ function flightCard(withTrack) {
     <div class="perf"></div>
     <div class="bp-foot"><div><small>Departs</small><b>${esc(f.depart_label)}</b></div><div style="text-align:right"><small>Passenger</small><b>${esc(S.policy.traveler)}</b></div></div>
     ${withTrack ? `<div class="bp-track">${delayTrack(f.delay_minutes, S.rules, cur(), true)}</div>` : ''}
-    <div class="bp-status"><span class="tag ${late ? 'late' : 'ok'}">${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time so far'}</span>
+    <div class="bp-status"><span style="display:flex;align-items:center;gap:10px"><span class="tag ${late ? 'late' : 'ok'}">${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time so far'}</span>${S.policy.status === 'active' && S.policy.delay_cover ? `<span class="radar" title="Calmy AI is watching this flight"></span>${aiChip('Watching', true)}` : ''}</span>
       ${live ? `<span>Checked ${ago(f.fetched_at)} <button id="checkNow">Check now</button></span>` : '<span>Use Test tools to simulate a delay</span>'}</div>
   </section>`;
 }
@@ -238,12 +238,13 @@ function startView() {
   const m = MK[form.market];
   const rails = m ? m.rails : [];
   if (m && !rails.includes(form.rail)) form.rail = rails[0];
-  return `<section class="hero"><h1>Late flight?<br>You get paid.</h1>
+  return `<section class="hero"><h1>Your flight is late.<br>Your money isn't.</h1>
       <p>Pick your flight. If it runs late or your bag is lost, we pay you automatically. Works in 11 markets.</p>
       ${routeArt()}</section>
     <section><div class="cap">1. Your flight</div>
       <div class="row2"><input id="fFlight" class="field mono" style="text-transform:uppercase" placeholder="Flight number, e.g. TG102" maxlength="8" value="${esc(form.flight)}"><button id="fUse" class="btn primary" style="padding:0 20px">Use</button></div>
-      <div class="mute" style="font-size:13px;margin:14px 0 6px">Real departures from an airport</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:14px 0 6px;color:var(--ink2);font-weight:600">${LIVE.enabled ? `<span class="radar"></span>Live flight data is on` : 'Live flight data is off on this demo'}${LIVE.enabled ? aiChip('Real flights') : ''}</div>
+      ${!LIVE.enabled ? `<div class="note" style="margin-bottom:8px">Real flights need a flight data key on the server. Sample flights below work now.</div>` : LIVE.last_error ? `<div class="note" style="margin-bottom:8px">${esc(LIVE.last_error)}</div>` : ''}
       <div class="row2"><input id="fAp" maxlength="3" class="field mono" style="width:80px;text-transform:uppercase;text-align:center" value="${esc(ap)}"><button id="fReal" class="btn" style="flex:1">Show next departures</button></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${['BKK', 'LHR', 'JFK', 'SIN', 'DEL', 'SYD'].map(a => `<button data-ap="${a}" class="apq">${a}</button>`).join('')}</div>
       ${realMsg ? `<div class="note" style="margin-top:10px">${esc(realMsg)}</div>` : ''}
@@ -266,6 +267,8 @@ function coverView() {
     return `<div><span class="chip paid"><i></i>Covered</span><h1 style="margin-top:10px">You are covered</h1>
       <p class="sub">Policy <span class="mono" style="font-weight:600;color:var(--ink)">${esc(p.id)}</span>. We watch your flight and pay you if it is late.</p></div>
       ${flightCard(p.delay_cover)}
+      <div class="aistrip" aria-label="What Calmy AI does for you">
+        <div>${ico('flight')}Watches your flight</div><div>${ico('shield')}Checks the risk</div><div>${ico('paid')}Pays you</div></div>
       <section class="card">
         <div class="kv"><span>Delay cover</span><b class="mono">${p.delay_cover ? 'Active' : 'Not added'}</b></div>
         <div class="kv"><span>Baggage cover</span><b class="mono">${p.baggage_cover ? 'Active' : 'Not added'}</b></div>
@@ -324,7 +327,7 @@ function claimsView() {
 function steps(tl) {
   const subs = {'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, delay rule met', 'Risk checked': 'Checked automatically, no forms', 'Paid': 'Sent to your payout account', 'Held for review': 'A person is taking a look'};
   return `<section class="card">` + tl.map(s => `<div class="step"><span class="dot ${s.pending ? 'wait' : s.label === 'Paid' ? 'fill' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span>
-      <div style="flex:1"><b>${esc(s.label)}</b><small>${esc(subs[s.label] || '')}</small></div><time>${s.sec}s</time></div>`).join('') + `</section>`;
+      <div style="flex:1"><b>${esc(s.label)}</b>${s.label === 'Risk checked' ? ' ' + aiChip('AI') : ''}<small>${esc(subs[s.label] || '')}</small></div><time>${s.sec}s</time></div>`).join('') + `</section>`;
 }
 function paidView(d) {
   const r = S.rules, topped = r.delay_tier2_payout > r.delay_tier1_payout && d.amount >= r.delay_tier2_payout;
@@ -340,16 +343,16 @@ function paidView(d) {
       <div class="kv"><span>Policy</span><b class="mono">${esc(S.policy.id)}</b></div>
       <div class="kv"><span>Speed</span><b>Instant, simulated</b></div>
       <div class="barcode" aria-hidden="true"></div></div>
+    <div class="aicard">${aiChip('Calmy AI explains')}${aiText(d.explanation)}</div>
     ${steps(d.timeline)}
     ${S.market.statutory ? `<div class="note"><b>The airline may owe you too.</b> ${esc(S.market.statutory)} This payment does not reduce it.</div>` : ''}
-    <button id="why" style="color:var(--cobalt);font-weight:600;text-align:center">Why was I paid this?</button>
-    ${showWhy ? `<div class="note info"><b>${esc(d.clause)}.</b> ${esc(d.explanation)}</div>` : ''}
     <button id="done" class="btn primary block">Done</button>`;
 }
 function reviewView(d) {
   return `<div><span class="chip held"><i></i>Under review</span>
     <h1 style="margin-top:10px">A person is checking your claim</h1>
     <p class="sub">We never deny a claim automatically. A person on our team decides it.</p></div>
+    <div class="aicard">${aiChip('Calmy AI')}${aiText(d.explanation)}</div>
     <section class="card"><div class="cap">Claim timeline</div>
       ${[['Received', 'Delay found and cover matched', 'done'], ['Under review', 'A person is checking the claim', 'now'], ['Decision', 'Payout is sent once confirmed', 'next']].map(([t, s, st]) =>
         `<div class="step"><span class="dot ${st === 'done' ? 'fill' : st === 'now' ? 'wait' : 'next'}">${st === 'done' ? ico('check') : st === 'now' ? ico('hourglass_top') : ''}</span><div><b>${t}</b><small>${s}</small></div></div>`).join('')}
@@ -453,6 +456,7 @@ async function loadReal() {
   realMsg = 'Loading real departures...'; render(true);
   try { REAL = await api('/api/live/upcoming?airport=' + encodeURIComponent(ap)); realMsg = REAL.length ? '' : 'No upcoming departures found for ' + ap + '.'; }
   catch (e) { realMsg = e; REAL = []; }
+  try { LIVE = await api('/api/live/status'); } catch (e) {}
   render(true);
 }
 
@@ -512,8 +516,10 @@ $('#liveList').onclick = async () => {
 setInterval(() => { if (!document.hidden && PID) load().catch(() => {}); }, 4000);
 (async () => {
   try { SAMPLES = await api('/api/live/samples'); } catch (e) {}
+  try { LIVE = await api('/api/live/status'); } catch (e) {}
   await load().catch(e => fail(e));
   render(true);
+  if (LIVE.enabled && !PID) loadReal();
 })();
 </script>
 </body>

@@ -43,7 +43,10 @@ def usage() -> dict:
     with db.conn() as c:
         row = db.one(c, "SELECT calls FROM api_usage WHERE month=?", (month,))
     used = row["calls"] if row else 0
-    return {"enabled": enabled(), "used": used, "budget": MONTHLY_BUDGET, "month": month}
+    return {"enabled": enabled(), "used": used, "budget": MONTHLY_BUDGET, "month": month, "last_ok": LAST["ok"], "last_error": LAST["error"]}
+
+
+LAST = {"ok": None, "error": None}  # outcome of the latest live call, shown on the screens so a missing key or refusal is visible
 
 
 def _count_call():
@@ -72,10 +75,16 @@ def _fetch(params: dict, key: str):
     if usage()["used"] >= MONTHLY_BUDGET:
         raise LiveError("The monthly free allowance for live flight data is used up. The simulator still works.")
     _count_call()  # counted before the request, so a failed call still uses allowance
-    body = _http_get(params)
+    try:
+        body = _http_get(params)
+    except LiveError as e:
+        LAST["error"] = str(e)
+        raise
     if "error" in body:
         msg = (body["error"] or {}).get("message") or "request refused"
-        raise LiveError(f"The live flight service said: {msg}")
+        LAST["error"] = f"The live flight service said: {msg}"
+        raise LiveError(LAST["error"])
+    LAST["ok"], LAST["error"] = time.time(), None
     _cache[key] = (time.time(), body)
     return body
 

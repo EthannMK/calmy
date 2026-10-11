@@ -81,7 +81,7 @@ th.r,td.r{text-align:right}
 .sb{position:relative;padding-top:22px}
 .sb-bar{display:flex;gap:2px;height:14px}
 .sb-bar i{display:block;height:100%;min-width:3px;border-radius:2px}
-.sb-th{position:absolute;top:0;bottom:46px;width:0;border-left:2px dashed var(--ink)}
+.sb-th{position:absolute;top:0;height:36px;width:0;border-left:2px dashed var(--ink)}
 .sb-th span{position:absolute;top:-2px;left:6px;font-size:11px;font-weight:700;white-space:nowrap}
 .sb-rows{margin-top:16px;display:grid;gap:8px}
 .sb-row{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:center;font-size:13px}
@@ -109,3 +109,48 @@ th.r,td.r{text-align:right}
 .hidden{display:none!important}
 @media (prefers-reduced-motion:no-preference){.rise{animation:rise .28s ease both}@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}}
 .dtrack.mini{padding:26px 0 4px}.dtrack.mini .dt-scale,.dtrack.mini .dt-pay{display:none}
+
+/* AI identity: one violet-blue gradient used only where the system decides or explains, so it reads at a glance */
+:root{--ai1:#1F4FD1;--ai2:#8B5CF6;--ai-t:#F1EDFE}
+.ai{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 7px;border-radius:99px;font-size:12px;font-weight:700;color:#3B2A9A;border:1px solid transparent;background:linear-gradient(var(--ai-t),var(--ai-t)) padding-box,linear-gradient(120deg,var(--ai1),var(--ai2)) border-box;white-space:nowrap}
+.ai svg{width:14px;height:14px;display:block}
+.ai.dark{color:#E4DCFF;background:linear-gradient(#1B1740,#1B1740) padding-box,linear-gradient(120deg,#5B8CFF,#A78BFA) border-box}
+.aicard{position:relative;border-radius:12px;padding:14px 16px;background:linear-gradient(var(--ai-t),#fff) padding-box;border:1px solid #D9CFFB;overflow:hidden}
+.aicard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(var(--ai1),var(--ai2))}
+.aicard .aitext{margin-top:8px;font-size:14px;line-height:1.5;color:var(--ink);min-height:21px}
+.aitext.typing::after{content:'';display:inline-block;width:2px;height:1em;background:var(--ai2);margin-left:2px;vertical-align:-2px;animation:caret .8s steps(1) infinite}
+@keyframes caret{50%{opacity:0}}
+@media(prefers-reduced-motion:no-preference){.ai svg{animation:twinkle 2.6s ease-in-out infinite}@keyframes twinkle{50%{transform:scale(.8) rotate(18deg);opacity:.75}}}
+
+/* watching pulse */
+.radar{position:relative;width:10px;height:10px;border-radius:50%;background:#34D399;flex-shrink:0;display:inline-block}
+.radar::before,.radar::after{content:'';position:absolute;inset:-1px;border-radius:50%;border:2px solid #34D399;opacity:0}
+@media(prefers-reduced-motion:no-preference){.radar::before{animation:ping 2.2s ease-out infinite}.radar::after{animation:ping 2.2s ease-out 1.1s infinite}@keyframes ping{from{transform:scale(1);opacity:.8}to{transform:scale(3.2);opacity:0}}}
+
+/* the three things the AI does for a policy, lighting up in turn */
+.aistrip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.aistrip div{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:12px 6px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--ink2)}
+.aistrip .ms{font-size:22px;color:var(--ai2)}
+@media(prefers-reduced-motion:no-preference){.aistrip div{animation:lite 4.5s ease-in-out infinite}.aistrip div:nth-child(2){animation-delay:1.5s}.aistrip div:nth-child(3){animation-delay:3s}
+@keyframes lite{0%,40%,100%{border-color:var(--line);box-shadow:none}15%{border-color:#B8A5F7;box-shadow:0 0 0 4px var(--ai-t)}}}
+
+/* gauge */
+.gauge{display:block;width:100%;max-width:240px;margin:0 auto}
+.gauge text{font-family:'Bricolage Grotesque',sans-serif}
+
+/* speed comparison */
+.spd{display:grid;gap:12px}
+.spd .r{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center;font-size:13px}
+.spd .b{height:26px;border-radius:6px;background:var(--line2);position:relative;overflow:hidden}
+.spd .b i{display:flex;align-items:center;height:100%;padding:0 10px;font-weight:700;font-size:13px;white-space:nowrap}
+.spd .calmy i{background:linear-gradient(120deg,var(--ai1),var(--ai2));color:#fff;min-width:64px}
+.spd .manual i{width:100%;background:repeating-linear-gradient(135deg,#E4E9F0 0 6px,#EEF1F6 6px 12px);color:var(--ink2)}
+@media(prefers-reduced-motion:no-preference){.spd .calmy i{animation:grow 1.1s cubic-bezier(.2,.8,.2,1) both}@keyframes grow{from{width:0;opacity:.4}}}
+
+/* AI activity feed */
+.feed{display:grid}
+.feed a{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line2);color:var(--ink);text-decoration:none;font-size:13px}
+.feed a:last-child{border-bottom:0}.feed a:hover{background:#FAFBFE;text-decoration:none}
+.feed .ic{width:26px;height:26px;border-radius:8px;background:linear-gradient(120deg,var(--ai1),var(--ai2));display:flex;align-items:center;justify-content:center}
+.feed .ic svg{width:14px;height:14px}
+.feed small{display:block;color:var(--mute);font-size:12px}
