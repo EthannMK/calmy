@@ -11,14 +11,18 @@ import threading
 import time
 from contextlib import contextmanager
 
+from . import markets
+
 DB_PATH = os.environ.get("CALMY_DB", os.path.join(os.path.dirname(__file__), "..", "calmy.db"))
 _lock = threading.RLock()
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS rules (
-    key TEXT PRIMARY KEY,
-    value REAL NOT NULL,
-    label TEXT NOT NULL
+    market TEXT NOT NULL,                 -- TH, US, EU, UK, IN, SG, JP, AU, BR, CA, GLOBAL
+    key TEXT NOT NULL,
+    value REAL NOT NULL,                  -- money values are in the market currency
+    label TEXT NOT NULL,
+    PRIMARY KEY (market, key)
 );
 CREATE TABLE IF NOT EXISTS flights (
     code TEXT PRIMARY KEY,
@@ -26,7 +30,10 @@ CREATE TABLE IF NOT EXISTS flights (
     depart_label TEXT, scheduled TEXT, delay_minutes INTEGER DEFAULT 0,
     travelers INTEGER DEFAULT 0,
     source TEXT DEFAULT 'sim',            -- sim | live
-    fetched_at REAL
+    fetched_at REAL,
+    market TEXT DEFAULT 'TH',             -- set by the departure country
+    flight_date TEXT,                     -- the dated flight being tracked (live only)
+    sched_ts REAL                         -- scheduled departure as epoch seconds (live only)
 );
 CREATE TABLE IF NOT EXISTS api_usage (
     month TEXT PRIMARY KEY,               -- YYYY-MM, free flight data plans are monthly
@@ -42,7 +49,10 @@ CREATE TABLE IF NOT EXISTS policies (
     f_covers_2h INTEGER DEFAULT 1,         -- covers bought on this profile in 2 hours
     f_schedule_changed INTEGER DEFAULT 0,  -- flight time changed shortly before purchase
     f_shared_account INTEGER DEFAULT 0,    -- payout account shared with other profiles
-    f_prior_claims INTEGER DEFAULT 0       -- prior claims in 12 months
+    f_prior_claims INTEGER DEFAULT 0,      -- prior claims in 12 months
+    market TEXT DEFAULT 'TH', currency TEXT DEFAULT 'THB',
+    created_at REAL,                       -- when cover was bought
+    sched_at_purchase TEXT                 -- scheduled time seen at purchase, to spot later changes
 );
 CREATE TABLE IF NOT EXISTS decisions (
     id TEXT PRIMARY KEY,
@@ -63,18 +73,6 @@ CREATE TABLE IF NOT EXISTS events (
 );
 """
 
-DEFAULT_RULES = [
-    ("delay_tier1_minutes", 180, "Tier 1 delay (minutes)"),
-    ("delay_tier1_payout", 1500, "Tier 1 payout (THB)"),
-    ("delay_tier2_minutes", 360, "Tier 2 delay (minutes)"),
-    ("delay_tier2_payout", 3000, "Tier 2 payout (THB)"),
-    ("lost_bag_payout", 1250, "Lost bag payout (THB)"),
-    ("risk_threshold", 45, "Auto pay below this risk score"),
-    ("delay_premium", 149, "Delay cover price (THB)"),
-    ("baggage_premium", 59, "Baggage cover price (THB)"),
-]
-
-
 @contextmanager
 def conn():
     """Yield a connection guarded by a lock so the demo is safe under threads."""
@@ -88,9 +86,24 @@ def conn():
             c.close()
 
 
+# Columns added after the first release. Applied to an existing database file on start.
+MIGRATIONS = [
+    ("flights", "flight_date", "TEXT"), ("flights", "sched_ts", "REAL"), ("flights", "market", "TEXT DEFAULT 'TH'"),
+    ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'THB'"),
+    ("policies", "created_at", "REAL"), ("policies", "sched_at_purchase", "TEXT"),
+]
+
+
 def init():
     with conn() as c:
+        old = [r["name"] for r in c.execute("PRAGMA table_info(rules)")]
+        if old and "market" not in old:  # rules from before markets existed: rebuild and reseed
+            c.execute("DROP TABLE rules")
         c.executescript(SCHEMA)
+        for table, col, typ in MIGRATIONS:
+            have = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
+            if col not in have:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
         if not c.execute("SELECT 1 FROM rules LIMIT 1").fetchone():
             seed(c)
 
@@ -98,13 +111,27 @@ def init():
 def seed(c):
     """Fill the demo world. Two travelers share one flight so the same delay
     produces one clean payout and one held case."""
-    c.executemany("INSERT OR REPLACE INTO rules VALUES (?,?,?)", DEFAULT_RULES)
+    seed_rules(c)
     c.executemany(
         "INSERT OR REPLACE INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,"
         "scheduled,delay_minutes,travelers,source) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         [
             ("OA 108", "Orchid Air", "BKK", "Bangkok", "CNX", "Chiang Mai", "Thu 14 Nov, 11:30", "11:30", 0, 84, "sim"),
             ("OA 204", "Orchid Air", "BKK", "Bangkok", "HKT", "Phuket", "Thu 14 Nov, 14:10", "14:10", 0, 112, "sim"),
+        ],
+    )
+    # Sample flights in other markets, so every currency and rule set can be tried without a live key.
+    c.executemany(
+        "INSERT OR REPLACE INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,"
+        "scheduled,delay_minutes,travelers,source,market) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            ("OA 310", "Orchid Air", "LHR", "London", "CDG", "Paris", "Thu 14 Nov, 09:20", "09:20", 0, 0, "sim", "UK"),
+            ("OA 420", "Orchid Air", "FRA", "Frankfurt", "MAD", "Madrid", "Thu 14 Nov, 10:05", "10:05", 0, 0, "sim", "EU"),
+            ("OA 530", "Orchid Air", "JFK", "New York", "LAX", "Los Angeles", "Thu 14 Nov, 08:00", "08:00", 0, 0, "sim", "US"),
+            ("OA 640", "Orchid Air", "DEL", "Delhi", "BOM", "Mumbai", "Thu 14 Nov, 07:40", "07:40", 0, 0, "sim", "IN"),
+            ("OA 750", "Orchid Air", "SYD", "Sydney", "MEL", "Melbourne", "Thu 14 Nov, 12:15", "12:15", 0, 0, "sim", "AU"),
+            ("OA 860", "Orchid Air", "YYZ", "Toronto", "YVR", "Vancouver", "Thu 14 Nov, 13:30", "13:30", 0, 0, "sim", "CA"),
+            ("OA 970", "Orchid Air", "GRU", "Sao Paulo", "GIG", "Rio de Janeiro", "Thu 14 Nov, 15:45", "15:45", 0, 0, "sim", "BR"),
         ],
     )
     c.executemany(
@@ -118,6 +145,13 @@ def seed(c):
             ("CL-45102", "Anan T.", "OA 108", "PromptPay ending 7730", 0, 0, 0, "quote", 4, 1, 1, 1),
         ],
     )
+
+
+def seed_rules(c):
+    """Every market starts with its own default prices and payouts in local currency."""
+    for code in markets.MARKETS:
+        for key, value in markets.rules_for(code).items():
+            c.execute("INSERT OR REPLACE INTO rules VALUES (?,?,?,?)", (code, key, value, markets.RULE_LABELS[key]))
 
 
 def reset():

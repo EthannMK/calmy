@@ -14,23 +14,24 @@
   @media(min-width:430px){#app{margin:16px auto;min-height:844px;max-height:844px;border-radius:32px;box-shadow:0 8px 40px rgba(15,23,42,.12);overflow:hidden}}
   .fade{animation:fade .25s ease}
   @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  input,select{outline:none}input:focus,select:focus{border-color:#0D5C5A}
 </style>
 </head>
 <body class="antialiased">
 <div id="app" class="w-full max-w-[390px] mx-auto h-[100dvh] bg-[#F8FAFB] text-[#0F172A] relative flex flex-col">
   <header class="w-full h-11 pt-3 px-7 flex justify-between items-center bg-[#F8FAFB] shrink-0">
-    <span class="text-[12px] font-semibold">9:41</span>
-    <div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span><span class="material-symbols-outlined text-[16px]">wifi</span><span class="material-symbols-outlined text-[18px]">battery_full</span></div>
+    <span class="text-[12px] font-semibold">Calmy</span>
+    <span id="mkt" class="text-[11px] font-semibold text-[#64748B]"></span>
   </header>
   <nav class="h-14 w-full flex justify-between items-center px-4 bg-surface border-b border-outline-variant/30 shrink-0">
     <div class="text-[18px] font-bold text-primary tracking-tight">Calmy</div>
-    <div id="avatar" class="w-9 h-9 rounded-full bg-secondary-fixed flex items-center justify-center border border-outline-variant/30 text-primary-container text-[12px] font-bold">SK</div>
+    <div id="avatar" class="w-9 h-9 rounded-full bg-secondary-fixed flex items-center justify-center border border-outline-variant/30 text-primary-container text-[12px] font-bold">?</div>
   </nav>
 
   <div id="view" class="flex-1 overflow-y-auto px-5 pt-3 pb-4 flex flex-col gap-3 scrollbar-none"></div>
 
   <div class="text-center text-[11px] text-[#64748B] py-1.5 shrink-0">
-    <span id="srcNote">Demo data. Flight data simulated.</span> <button id="demoBtn" class="underline text-primary-container font-semibold">Demo controls</button>
+    <span id="srcNote">Demo cover. Payouts are simulated.</span> <button id="demoBtn" class="underline text-primary-container font-semibold">Test tools</button>
   </div>
   <nav class="h-16 border-t border-[#E2E8F0] bg-white flex justify-around items-center shrink-0">
     <button data-tab="cover" class="tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold"><span class="material-symbols-outlined">shield</span>Cover</button>
@@ -40,89 +41,94 @@
 
   <div id="toast" class="hidden absolute left-4 right-4 bottom-24 z-[60] bg-[#0F172A] text-white text-[13px] rounded-xl px-4 py-3 shadow-lg"></div>
 
-  <!-- Demo controls sheet -->
+  <!-- Test tools sheet -->
   <div id="sheet" class="hidden absolute inset-0 bg-black/30 z-50 items-end">
-    <div class="bg-white w-full rounded-t-2xl p-5 flex flex-col gap-3 max-h-[85%] overflow-y-auto scrollbar-none">
-      <div class="flex justify-between items-center"><h3 class="font-bold text-[16px]">Demo controls</h3><button id="sheetClose" class="material-symbols-outlined" aria-label="Close">close</button></div>
-      <p class="text-[12px] text-[#64748B]">Nothing here moves real money.</p>
-      <div>
-        <div class="text-[11px] font-semibold text-[#64748B] tracking-wide mb-1.5">TRAVELER</div>
-        <div class="grid grid-cols-2 gap-2">
-          <a href="?p=CL-44910" class="persona h-11 rounded-xl border text-[13px] font-semibold flex flex-col items-center justify-center" data-p="CL-44910">Somchai K.<span class="text-[10px] font-normal text-[#64748B]">clean profile, paid</span></a>
-          <a href="?p=CL-45102" class="persona h-11 rounded-xl border text-[13px] font-semibold flex flex-col items-center justify-center" data-p="CL-45102">Anan T.<span class="text-[10px] font-normal text-[#64748B]">risky profile, held</span></a>
-        </div>
-      </div>
-      <div class="text-[11px] font-semibold text-[#64748B] tracking-wide -mb-1">SIMULATE A DELAY</div>
+    <div class="bg-white w-full rounded-t-2xl p-5 flex flex-col gap-3 max-h-[88%] overflow-y-auto scrollbar-none">
+      <div class="flex justify-between items-center"><h3 class="font-bold text-[16px]">Test tools</h3><button id="sheetClose" class="material-symbols-outlined" aria-label="Close">close</button></div>
+      <p class="text-[12px] text-[#64748B]">Real flights are tracked automatically. Real delays of 3 hours are rare, so these tools let you test the payout anyway. No real money moves.</p>
+      <div class="text-[11px] font-semibold text-[#64748B] tracking-wide -mb-1">SIMULATE A DELAY ON MY FLIGHT</div>
       <div id="demoHint" class="hidden text-[12px] text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-3 py-2"></div>
-      <button data-demo="192" class="demoAct h-11 rounded-full bg-primary-container text-white font-semibold text-[14px] disabled:opacity-40"></button>
-      <button data-demo="370" class="demoAct h-11 rounded-full border border-primary-container text-primary-container font-semibold text-[14px] disabled:opacity-40"></button>
+      <div class="flex gap-2"><input id="simMin" type="number" min="0" max="2880" value="200" class="w-24 h-11 rounded-full border border-[#E2E8F0] px-4 text-[14px] mono"><button id="simGo" class="flex-1 h-11 rounded-full bg-primary-container text-white font-semibold text-[14px] disabled:opacity-40">Delay my flight by this many minutes</button></div>
+      <div class="flex gap-2"><button data-min="192" class="simQuick flex-1 h-9 rounded-full border border-primary-container text-primary-container font-semibold text-[12px] disabled:opacity-40">3h 12m</button><button data-min="370" class="simQuick flex-1 h-9 rounded-full border border-primary-container text-primary-container font-semibold text-[12px] disabled:opacity-40">6h 10m</button></div>
       <div id="liveBox" class="hidden flex flex-col gap-2 border-t border-[#F1F5F9] pt-3">
-        <div class="text-[11px] font-semibold text-[#64748B] tracking-wide">REAL FLIGHT DATA <span id="liveUsage" class="font-normal"></span></div>
-        <p class="text-[12px] text-[#64748B]">Pick a flight that is really delayed now. Its real delay is replayed against your cover.</p>
-        <button id="liveList" class="h-10 rounded-full border border-primary-container text-primary-container font-semibold text-[13px]">Show flights delayed now</button>
+        <div class="text-[11px] font-semibold text-[#64748B] tracking-wide">REPLAY A FLIGHT THAT IS REALLY LATE <span id="liveUsage" class="font-normal"></span></div>
+        <div class="flex gap-2"><input id="liveAp" maxlength="3" value="BKK" class="w-20 h-10 rounded-full border border-[#E2E8F0] px-3 text-[13px] uppercase mono text-center"><button id="liveList" class="flex-1 h-10 rounded-full border border-primary-container text-primary-container font-semibold text-[13px]">Show delayed flights</button></div>
         <div id="liveRows" class="flex flex-col gap-1.5"></div>
-        <div class="flex gap-2"><input id="liveNo" maxlength="8" placeholder="Flight number, e.g. TG102" class="flex-1 h-10 rounded-full border border-[#E2E8F0] px-4 text-[13px] uppercase"><button id="liveGo" class="h-10 px-4 rounded-full bg-primary-container text-white font-semibold text-[13px]">Replay</button></div>
       </div>
-      <p id="liveOff" class="hidden text-[12px] text-[#64748B] border-t border-[#F1F5F9] pt-3">Real flight data is switched off on this demo, so the simulator is used.</p>
-      <button id="resetBtn" class="h-11 rounded-full border border-[#E2E8F0] text-[#334155] font-semibold text-[14px]">Reset demo data</button>
+      <div class="border-t border-[#F1F5F9] pt-3 flex flex-col gap-2">
+        <button id="newTrip" class="h-11 rounded-full border border-primary-container text-primary-container font-semibold text-[14px]">Start a new trip</button>
+        <div class="grid grid-cols-2 gap-2">
+          <a href="?p=CL-44910" class="h-11 rounded-xl border border-[#E2E8F0] text-[12px] font-semibold flex flex-col items-center justify-center">Sample: Somchai K.<span class="text-[10px] font-normal text-[#64748B]">clean, paid</span></a>
+          <a href="?p=CL-45102" class="h-11 rounded-xl border border-[#E2E8F0] text-[12px] font-semibold flex flex-col items-center justify-center">Sample: Anan T.<span class="text-[10px] font-normal text-[#64748B]">risky, held</span></a>
+        </div>
+        <button id="resetBtn" class="h-11 rounded-full border border-[#E2E8F0] text-[#334155] font-semibold text-[14px]">Reset all demo data</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-const PID = new URLSearchParams(location.search).get('p') || 'CL-44910';
-const thb = n => Number(n).toLocaleString('en-US') + ' THB';
-let S = null, tab = 'cover', sel = {delay: true, baggage: true}, showWhy = false, bagOpen = false;
-
 const $ = s => document.querySelector(s);
+const msg = d => typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => (x.loc ? x.loc[x.loc.length - 1] + ': ' : '') + (x.msg || '')).join('. ') || 'Check the values and try again.' : 'Something went wrong. Please try again.';
 const api = (url, method = 'GET', body) =>
   fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined})
     .then(r => r.ok ? r.json() : r.json().catch(() => ({})).then(e => Promise.reject(msg(e.detail))));
-const msg = d => typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => x.msg || '').join('. ') || 'Check the values and try again.' : 'Something went wrong. Please try again.';
 const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-const acct = a => esc(a).replace('ending ', 'ending <b class="mono">') + '</b>';
 let toastT;
-function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 4500); }
-const isLive = () => S && S.flight && S.flight.source === 'live';
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 5000); }
+const store = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }};
+
+let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid');
+let S = null, MK = {}, tab = 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
+let SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
+let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
+const cur = () => (S && S.policy && S.policy.currency) || 'THB';
+const money = n => Number(n).toLocaleString('en-US') + ' ' + cur();
+const acct = a => esc(a).replace('ending ', 'ending <b class="mono">') + '</b>';
+const ago = t => { if (!t) return 'not yet'; const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
+const typing = () => document.activeElement && document.activeElement.matches('input,select,textarea');
 
 async function load() {
-  S = await api('/api/traveler/' + PID);
-  $('#avatar').textContent = S.policy.traveler.split(' ').map(w => w[0]).join('').slice(0, 2);
-  $('#srcNote').textContent = isLive() ? 'Demo data. Real flight data replayed.' : 'Demo data. Flight data simulated.';
-  render();
+  if (!Object.keys(MK).length) { try { (await api('/api/markets')).markets.forEach(m => MK[m.code] = m); } catch (e) {} }
+  if (PID) {
+    try { S = await api('/api/traveler/' + PID); }
+    catch (e) { if (/not found/i.test(e)) { PID = null; store.set('calmy.pid', null); S = null; } else throw e; }
+  }
+  if (S && PID) store.set('calmy.pid', PID);
+  const pol = S && PID ? S.policy : null;
+  $('#avatar').textContent = pol ? pol.traveler.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
+  $('#mkt').textContent = pol ? `${S.market.name} · ${S.market.currency}` : '';
+  $('#srcNote').textContent = pol && S.flight.source === 'live' ? 'Real flight data. Payouts are simulated.' : 'Sample flight. Payouts are simulated.';
+  if (!typing()) render();
 }
-
-function setTab(t) { tab = t; render(); }
+function setTab(t) { tab = t; bagForm = false; render(true); }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 
-function render() {
+function render(force) {
   document.querySelectorAll('.tab').forEach(b => {
     const on = b.dataset.tab === tab;
-    b.className = 'tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold ' +
-      (on ? 'bg-[#E6F4F1] text-primary-container' : 'text-[#64748B]');
+    b.className = 'tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold ' + (on ? 'bg-[#E6F4F1] text-primary-container' : 'text-[#64748B]');
   });
   const v = $('#view');
-  const html = tab === 'cover' ? coverView() : tab === 'claims' ? claimsView() : helpView();
-  const k = html;  // re-render only when the markup changes, so polling does not reset scroll or taps
-  if (v.dataset.k !== k) {
+  const html = !PID || !S ? startView() : tab === 'cover' ? coverView() : tab === 'claims' ? claimsView() : helpView();
+  if (force || v.dataset.k !== html) {
     const top = v.scrollTop;
     v.innerHTML = '<div class="fade flex flex-col gap-3">' + html + '</div>';
-    v.dataset.k = k;
-    v.scrollTop = top;
-    bind();
+    v.dataset.k = html; v.scrollTop = top; bind();
   }
 }
 
+/* ---------------- shared pieces ---------------- */
 function flightCard() {
-  const f = S.flight;
+  const f = S.flight, live = f.source === 'live';
   return `<section class="bg-white rounded-xl border border-[#E2E8F0] p-3 shadow-sm flex flex-col gap-2">
     <div class="flex justify-between items-center border-b border-[#F1F5F9] pb-2">
       <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary-container"></span><span class="text-[12px] font-semibold">${esc(f.airline)}</span></div>
-      <div class="flex items-center gap-1.5"><span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${f.source === 'live' ? 'bg-[#ECFDF5] text-[#047857]' : 'bg-[#F1F5F9] text-[#64748B]'}">${f.source === 'live' ? 'Live data' : 'Simulated'}</span><span class="mono text-[12px] font-semibold text-primary-container bg-secondary-fixed/40 px-1.5 py-0.5 rounded">${esc(f.code)}</span></div>
+      <div class="flex items-center gap-1.5"><span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${live ? 'bg-[#ECFDF5] text-[#047857]' : 'bg-[#F1F5F9] text-[#64748B]'}">${live ? 'Real flight' : 'Sample'}</span><span class="mono text-[12px] font-semibold text-primary-container bg-secondary-fixed/40 px-1.5 py-0.5 rounded">${esc(f.code)}</span></div>
     </div>
     <div class="flex items-center justify-between">
       <div><div class="text-[18px] font-bold">${esc(f.origin)}</div><div class="text-[12px] text-secondary">${esc(f.origin_city)}</div></div>
-      <div class="flex flex-col items-center flex-1 px-3"><div class="w-full flex items-center gap-1"><div class="h-px flex-1 bg-outline-variant/60"></div><span class="material-symbols-outlined text-[16px] text-primary-container rotate-90">flight</span><div class="h-px flex-1 bg-outline-variant/60"></div></div><span class="text-[11px] text-secondary mt-0.5">Direct Flight</span></div>
+      <div class="flex flex-col items-center flex-1 px-3"><div class="w-full flex items-center gap-1"><div class="h-px flex-1 bg-outline-variant/60"></div><span class="material-symbols-outlined text-[16px] text-primary-container rotate-90">flight</span><div class="h-px flex-1 bg-outline-variant/60"></div></div></div>
       <div class="text-right"><div class="text-[18px] font-bold">${esc(f.dest)}</div><div class="text-[12px] text-secondary">${esc(f.dest_city)}</div></div>
     </div>
     <div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-[#F1F5F9] text-[12px]">
@@ -130,47 +136,117 @@ function flightCard() {
       <div class="flex items-center justify-end gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary-container">person</span>${esc(S.policy.traveler)}</div>
     </div></section>`;
 }
-
-/* ---------------- Cover tab ---------------- */
-function coverView() {
-  const r = S.rules, p = S.policy;
-  if (p.status === 'active') {
-    return `<div><h1 class="text-[20px] leading-[26px] font-bold">You are covered</h1>
-      <p class="text-[12px] text-secondary mt-0.5">Policy <span class="mono font-semibold">${esc(p.id)}</span>. We watch your flight and pay you if it is late.</p></div>
-      ${flightCard()}
-      <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex flex-col gap-2 text-[13px]">
-        <div class="flex justify-between"><span>Delay cover</span><span class="mono text-primary-container font-semibold">${p.delay_cover ? 'Active' : 'Not added'}</span></div>
-        <div class="flex justify-between"><span>Baggage cover</span><span class="mono text-primary-container font-semibold">${p.baggage_cover ? 'Active' : 'Not added'}</span></div>
-        <div class="flex justify-between border-t border-[#F1F5F9] pt-2"><span>Paid so far</span><span class="mono font-semibold">${thb(paidTotal())}</span></div>
-      </section>
-      <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span>${p.delay_cover ? `3h late pays ${thb(r.delay_tier1_payout)}. 6h late pays ${thb(r.delay_tier2_payout)}.` : 'Add delay cover from a new booking.'}</div>
-      ${p.baggage_cover ? `<button id="bagStart" class="h-12 rounded-full border border-primary-container text-primary-container font-semibold text-[14px]">My bag is lost</button>` : ''}`;
-  }
-  const total = (sel.delay ? r.delay_premium : 0) + (sel.baggage ? r.baggage_premium : 0);
-  return `<div><h1 class="text-[20px] leading-[26px] font-bold">Add Calmy to your trip</h1>
-    <p class="text-[12px] text-secondary mt-0.5">Automated reimbursement for flight delays &amp; luggage.</p></div>
-    ${flightCard()}
-    ${coverCard('delay', 'Delay cover', r.delay_premium, `3h late pays <b class="mono">${thb(r.delay_tier1_payout)}</b>. 6h late pays <b class="mono">${thb(r.delay_tier2_payout)}</b>.`)}
-    ${coverCard('baggage', 'Baggage cover', r.baggage_premium, `Pays <b class="mono">${thb(r.lost_bag_payout)}</b> if your bag is lost.`)}
-    <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span>No forms. Paid straight to ${acct(S.policy.payout_account)}.</div>
-    <div class="mt-auto pt-2 flex flex-col gap-2">
-      <div class="flex justify-between items-center text-[13px] text-secondary"><span>Trip protection plan</span><span>Total <b class="mono text-[#0F172A] text-[16px]">${thb(total)}</b></span></div>
-      <button id="addCover" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px] disabled:opacity-40" ${total ? '' : 'disabled'}>Add cover &rarr;</button>
-    </div>`;
-}
-function coverCard(key, title, price, text) {
-  const on = sel[key];
-  return `<article data-sel="${key}" class="cursor-pointer bg-white rounded-xl border-2 ${on ? 'border-primary-container' : 'border-[#E2E8F0]'} p-3 flex flex-col gap-1">
-    <div class="flex justify-between items-center"><span class="text-[15px] font-semibold">${title}</span>
-      <div class="flex items-center gap-2"><span class="mono text-[13px] font-semibold text-primary-container">${thb(price)}</span>
-      <span class="w-6 h-6 rounded-full flex items-center justify-center ${on ? 'bg-primary-container text-white' : 'border border-outline-variant'}">${on ? '<span class="material-symbols-outlined text-[16px]">check</span>' : ''}</span></div></div>
-    <p class="text-[12px] text-secondary">${text}</p></article>`;
+function statusCard() {
+  const f = S.flight, live = f.source === 'live', late = f.delay_minutes > 0;
+  return `<section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex flex-col gap-2 text-[13px]">
+    <div class="flex justify-between items-center"><span class="font-semibold">Flight status</span>
+      <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${late ? 'bg-[#FEF2F2] text-[#DC2626]' : 'bg-[#ECFDF5] text-[#059669]'}">${late ? 'Delayed ' + Math.floor(f.delay_minutes / 60) + 'h ' + (f.delay_minutes % 60) + 'm' : 'On time so far'}</span></div>
+    ${live ? `<div class="flex justify-between items-center text-[12px] text-secondary"><span>Real data, checked ${ago(f.fetched_at)}</span><button id="checkNow" class="text-primary-container font-semibold underline">Check now</button></div>`
+      : `<div class="text-[12px] text-secondary">Sample flight. Use Test tools to simulate a delay.</div>`}</section>`;
 }
 function paidTotal() {
   let t = 0;
   if (S.delay_decision?.status === 'paid') t += S.delay_decision.amount;
   if (S.baggage?.decision?.status === 'paid') t += S.baggage.decision.amount;
   return t;
+}
+function factsBlock() {
+  const m = S.market;
+  return `<div class="bg-white rounded-xl border border-[#E2E8F0] px-3 py-2.5 text-[12px]">
+    <button id="factsToggle" class="w-full flex justify-between items-center text-left font-semibold text-[13px]">Key facts for ${esc(m.name)}<span class="material-symbols-outlined text-[18px]">${factsOpen ? 'expand_less' : 'expand_more'}</span></button>
+    ${factsOpen ? `<div class="mt-2 flex flex-col gap-2 leading-[17px]">
+      ${m.principles.map(t => `<div class="flex gap-1.5"><span class="material-symbols-outlined text-[14px] text-primary-container mt-0.5">check</span><span>${esc(t)}</span></div>`).join('')}
+      ${m.statutory ? `<div class="bg-[#FFFBEB] border border-[#FDE68A] rounded-lg p-2"><b>Your rights with the airline.</b> ${esc(m.statutory)} This cover pays on top. It does not replace what the airline owes you.</div>` : ''}
+      <div class="text-[#64748B]">Regulator: ${esc(m.regulator)}. ${esc(m.tax)}</div>
+      ${m.notes.map(n => `<div><b>${esc(n.area)}.</b> ${esc(n.law)}. ${esc(n.handling)}</div>`).join('')}
+      <div class="text-[11px] text-[#64748B]">Summary for the demo, not legal advice. Notes version ${esc(m.law_version)}.</div></div>` : ''}</div>`;
+}
+
+/* ---------------- start: pick a flight ---------------- */
+function flightRow(f) {
+  const on = form.flight.replace(/\s/g, '') === f.code.replace(/\s/g, '');
+  const m = MK[f.market] || {};
+  return `<button data-pick="${esc(f.code)}" data-mk="${esc(f.market || '')}" class="pick text-left border ${on ? 'border-primary-container bg-[#F0FAF8]' : 'border-[#E2E8F0] bg-white'} rounded-xl px-3 py-2 text-[12px] flex items-center gap-2">
+    <span class="mono font-semibold w-14 shrink-0">${esc(f.code)}</span><span class="flex-1">${esc(f.origin)} to ${esc(f.dest)}<span class="text-secondary"> · ${esc(f.depart_label)}</span></span>
+    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569]">${esc(m.currency || '')}</span></button>`;
+}
+function startView() {
+  const m = MK[form.market];
+  const rails = m ? m.rails : [];
+  if (m && !rails.includes(form.rail)) form.rail = rails[0];
+  const inp = 'w-full h-11 rounded-xl border border-[#E2E8F0] bg-white px-3 text-[14px]';
+  return `<div><h1 class="text-[20px] leading-[26px] font-bold">Protect your trip</h1>
+    <p class="text-[12px] text-secondary mt-0.5">Pick your flight. We pay you automatically if it is late or your bag is lost. Works in any country.</p></div>
+    <section class="flex flex-col gap-2"><div class="text-[11px] font-semibold text-[#64748B] tracking-wide">1. YOUR FLIGHT</div>
+      <div class="flex gap-2"><input id="fFlight" class="${inp} mono uppercase" placeholder="Flight number, e.g. TG102" maxlength="8" value="${esc(form.flight)}"><button id="fUse" class="h-11 px-4 rounded-xl bg-primary-container text-white text-[13px] font-semibold">Use</button></div>
+      <div class="text-[11px] text-secondary mt-1">Real departures</div>
+      <div class="flex gap-2"><input id="fAp" maxlength="3" class="w-20 h-10 rounded-xl border border-[#E2E8F0] px-3 text-[13px] uppercase mono text-center" value="${esc(ap)}"><button id="fReal" class="flex-1 h-10 rounded-xl border border-primary-container text-primary-container text-[13px] font-semibold">Show next departures</button></div>
+      <div class="flex gap-1.5 flex-wrap">${['BKK', 'LHR', 'JFK', 'SIN', 'DEL', 'SYD'].map(a => `<button data-ap="${a}" class="apq text-[11px] mono px-2 py-1 rounded-full border border-[#E2E8F0] bg-white">${a}</button>`).join('')}</div>
+      ${realMsg ? `<div class="text-[12px] text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-3 py-2">${esc(realMsg)}</div>` : ''}
+      ${REAL.map(flightRow).join('')}
+      <div class="text-[11px] text-secondary mt-1">Sample flights, one for each market</div>
+      ${SAMPLES.map(flightRow).join('')}</section>
+    <section class="flex flex-col gap-2"><div class="text-[11px] font-semibold text-[#64748B] tracking-wide">2. YOU</div>
+      <input id="fName" class="${inp}" placeholder="Full name" maxlength="40" value="${esc(form.name)}">
+      <input id="fLast4" class="${inp} mono" placeholder="Last 4 digits of your payout account" inputmode="numeric" maxlength="4" value="${esc(form.last4)}">
+      ${rails.length ? `<select id="fRail" class="${inp}">${rails.map(r => `<option ${r === form.rail ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select><div class="text-[11px] text-secondary">Payout in ${esc(m.currency)} to your own account. Simulated.</div>` : '<div class="text-[11px] text-secondary">Payout options appear once you pick a flight.</div>'}</section>
+    <button id="quote" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px] mt-1">See price &rarr;</button>`;
+}
+
+/* ---------------- Cover tab ---------------- */
+function coverView() {
+  const r = S.rules, p = S.policy;
+  if (bagForm) return bagFormView();
+  if (p.status === 'active') {
+    return `<div><h1 class="text-[20px] leading-[26px] font-bold">You are covered</h1>
+      <p class="text-[12px] text-secondary mt-0.5">Policy <span class="mono font-semibold">${esc(p.id)}</span>. We watch your flight and pay you if it is late.</p></div>
+      ${flightCard()}${statusCard()}
+      <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex flex-col gap-2 text-[13px]">
+        <div class="flex justify-between"><span>Delay cover</span><span class="mono text-primary-container font-semibold">${p.delay_cover ? 'Active' : 'Not added'}</span></div>
+        <div class="flex justify-between"><span>Baggage cover</span><span class="mono text-primary-container font-semibold">${p.baggage_cover ? 'Active' : 'Not added'}</span></div>
+        <div class="flex justify-between border-t border-[#F1F5F9] pt-2"><span>Paid so far</span><span class="mono font-semibold">${money(paidTotal())}</span></div>
+      </section>
+      <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span>${p.delay_cover ? `${Math.round(r.delay_tier1_minutes / 60)}h late pays ${money(r.delay_tier1_payout)}. ${Math.round(r.delay_tier2_minutes / 60)}h late pays ${money(r.delay_tier2_payout)}.` : 'Delay cover was not added to this trip.'}</div>
+      ${factsBlock()}
+      ${p.baggage_cover && !S.baggage ? `<button id="bagStart" class="h-12 rounded-full border border-primary-container text-primary-container font-semibold text-[14px]">My bag is lost</button>` : ''}`;
+  }
+  const total = (sel.delay ? r.delay_premium : 0) + (sel.baggage ? r.baggage_premium : 0);
+  const m = S.market, tax = m.tax_rate ? Math.round(total * m.tax_rate / (1 + m.tax_rate)) : 0;
+  return `<div><h1 class="text-[20px] leading-[26px] font-bold">Add Calmy to your trip</h1>
+    <p class="text-[12px] text-secondary mt-0.5">Automatic payout for flight delays and lost bags.</p></div>
+    ${flightCard()}${statusCard()}
+    ${coverCard('delay', 'Delay cover', r.delay_premium, `${Math.round(r.delay_tier1_minutes / 60)}h late pays <b class="mono">${money(r.delay_tier1_payout)}</b>. ${Math.round(r.delay_tier2_minutes / 60)}h late pays <b class="mono">${money(r.delay_tier2_payout)}</b>.`)}
+    ${coverCard('baggage', 'Baggage cover', r.baggage_premium, `Pays up to <b class="mono">${money(r.lost_bag_payout)}</b> if your bag is lost.`)}
+    <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span><span>No forms. Paid straight to ${acct(S.policy.payout_account)}.</span></div>
+    ${factsBlock()}
+    <label class="flex gap-2 items-start text-[12px] leading-[17px] cursor-pointer"><input id="ack" type="checkbox" class="mt-0.5 w-4 h-4" ${ack ? 'checked' : ''}><span>I have read the key facts and agree that Calmy uses my details to run this cover.</span></label>
+    <div class="mt-auto pt-2 flex flex-col gap-2">
+      <div class="flex justify-between items-center text-[13px] text-secondary"><span>${tax ? `Includes ${money(tax)} tax (indicative)` : esc(m.tax)}</span><span>Total <b class="mono text-[#0F172A] text-[16px]">${money(total)}</b></span></div>
+      <button id="addCover" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px] disabled:opacity-40" ${total && ack ? '' : 'disabled'}>Add cover &rarr;</button>
+    </div>`;
+}
+function coverCard(key, title, price, text) {
+  const on = sel[key];
+  return `<article data-sel="${key}" class="cursor-pointer bg-white rounded-xl border-2 ${on ? 'border-primary-container' : 'border-[#E2E8F0]'} p-3 flex flex-col gap-1">
+    <div class="flex justify-between items-center"><span class="text-[15px] font-semibold">${title}</span>
+      <div class="flex items-center gap-2"><span class="mono text-[13px] font-semibold text-primary-container">${money(price)}</span>
+      <span class="w-6 h-6 rounded-full flex items-center justify-center ${on ? 'bg-primary-container text-white' : 'border border-outline-variant'}">${on ? '<span class="material-symbols-outlined text-[16px]">check</span>' : ''}</span></div></div>
+    <p class="text-[12px] text-secondary">${text}</p></article>`;
+}
+
+/* ---------------- lost bag form ---------------- */
+function bagFormView() {
+  const inp = 'h-10 rounded-lg border border-[#E2E8F0] bg-white px-3 text-[13px]';
+  const total = bag.items.reduce((a, i) => a + (+i.amount || 0), 0), cap = S.rules.lost_bag_payout;
+  return `<div><h1 class="text-[20px] font-bold">Report a lost bag</h1>
+    <p class="text-[12px] text-secondary mt-0.5">Report it to the airline first. Then enter the airline report number and what was inside.</p></div>
+    <section class="flex flex-col gap-2"><input id="bReport" class="${inp} w-full mono" placeholder="Airline report number" maxlength="30" value="${esc(bag.report_id)}">
+      <input id="bTag" class="${inp} w-full mono" placeholder="Bag tag number" maxlength="20" value="${esc(bag.bag_tag)}"></section>
+    <section class="flex flex-col gap-2"><div class="text-[11px] font-semibold text-[#64748B] tracking-wide">WHAT WAS INSIDE (${esc(cur())})</div>
+      ${bag.items.map((it, i) => `<div class="flex gap-2"><input data-bi="${i}" data-k="name" class="${inp} flex-1 min-w-0" placeholder="Item" maxlength="60" value="${esc(it.name)}"><input data-bi="${i}" data-k="amount" class="${inp} w-24 mono" placeholder="Value" inputmode="numeric" value="${esc(it.amount)}">${bag.items.length > 1 ? `<button data-rm="${i}" class="rmItem material-symbols-outlined text-[#64748B]" aria-label="Remove">close</button>` : ''}</div>`).join('')}
+      ${bag.items.length < 12 ? `<button id="addItem" class="text-primary-container text-[13px] font-semibold text-left">+ Add another item</button>` : ''}
+      <div class="text-[12px] text-secondary">Total <b class="mono text-[#0F172A]">${money(total)}</b>. The cover pays up to ${money(cap)}.</div></section>
+    <div class="flex gap-2 mt-auto"><button id="bagCancel" class="flex-1 h-12 rounded-full border border-[#E2E8F0] font-semibold text-[14px]">Cancel</button><button id="bagSend" class="flex-1 h-12 rounded-full bg-primary-container text-white font-bold text-[14px]">Send claim</button></div>`;
 }
 
 /* ---------------- Claims tab ---------------- */
@@ -179,170 +255,213 @@ function claimsView() {
   let out = '';
   if (d) out += d.status === 'paid' ? paidView(d) : d.status === 'held' ? reviewView(d) : declinedView(d);
   if (b) out += bagView(b);
-  if (!d && !b) out = `<div class="flex flex-col items-center text-center gap-2 pt-16 text-secondary">
+  if (!d && !b) out = `<div class="flex flex-col items-center text-center gap-2 pt-12 text-secondary">
       <span class="material-symbols-outlined text-[40px] text-primary-container">flight_takeoff</span>
       <h2 class="text-[18px] font-bold text-[#0F172A]">No claims yet</h2>
-      <p class="text-[13px] max-w-[260px]">${S.policy.status === 'active' ? 'Nothing to do. If your flight is late, we pay you automatically and it shows up here.' : 'Add cover first. Then claims show up here.'}</p></div>`;
+      <p class="text-[13px] max-w-[260px]">${S.policy.status === 'active' ? 'Nothing to do. If your flight is late, we pay you automatically and it shows up here.' : 'Add cover first. Then claims show up here.'}</p></div>` + (S.policy.status === 'active' ? statusCard() : '');
   return out;
 }
-function steps(tl, held) {
-  return `<section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-3">` + tl.map((s, i) => {
-    const sub = {'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, 3 hour rule met', 'Risk checked': 'Checked automatically, no forms', 'Paid': 'Sent to your PromptPay', 'Held for review': 'A person is taking a look'}[s.label] || '';
+function steps(tl) {
+  const subs = {'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, delay rule met', 'Risk checked': 'Checked automatically, no forms', 'Paid': 'Sent to your payout account', 'Held for review': 'A person is taking a look'};
+  return `<section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-3">` + tl.map(s => {
     const pending = s.pending;
     return `<div class="flex gap-3 items-start"><span class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${pending ? 'bg-[#FFFBEB] border border-[#D97706] text-[#D97706]' : 'border border-[#059669] text-[#059669]'}"><span class="material-symbols-outlined text-[14px]">${pending ? 'hourglass_top' : 'check'}</span></span>
-      <div class="flex-1"><div class="text-[14px] font-semibold ${s.label === 'Paid' ? 'text-[#059669]' : ''}">${s.label}</div><div class="text-[12px] text-secondary">${sub}</div></div>
+      <div class="flex-1"><div class="text-[14px] font-semibold ${s.label === 'Paid' ? 'text-[#059669]' : ''}">${esc(s.label)}</div><div class="text-[12px] text-secondary">${esc(subs[s.label] || '')}</div></div>
       <span class="mono text-[11px] text-secondary">${s.sec}s</span></div>`;
   }).join('') + `</section>`;
 }
 function paidView(d) {
-  const h = Math.floor(d.delay_minutes / 60), m = d.delay_minutes % 60;
-  const r = S.rules, topped = r.delay_tier2_payout > r.delay_tier1_payout && d.amount >= r.delay_tier2_payout;
+  const h = Math.floor(d.delay_minutes / 60), m = d.delay_minutes % 60, r = S.rules;
+  const topped = r.delay_tier2_payout > r.delay_tier1_payout && d.amount >= r.delay_tier2_payout;
   return `<div class="flex flex-col items-center text-center gap-1 pt-1">
       <div class="w-16 h-16 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center"><span class="material-symbols-outlined text-[34px] text-[#059669]" style="font-variation-settings:'FILL' 1">check_circle</span></div>
       <h1 class="text-[22px] leading-[28px] font-bold mt-1">Flight delayed ${h}h ${m}m.<br>We paid you.</h1>
-      <div class="mono text-[32px] font-bold text-[#059669] leading-10">${thb(d.amount)}</div>
+      <div class="mono text-[30px] font-bold text-[#059669] leading-10">${money(d.amount)}</div>
       <div class="text-[12px] text-secondary">${esc(S.flight.airline)} <span class="mono font-semibold text-[#0F172A]">${esc(S.flight.code)}</span> &middot; ${esc((S.flight.depart_label || '').split(',')[0])}</div>
       ${topped ? `<div class="text-[11px] font-semibold text-[#047857] bg-[#ECFDF5] px-2.5 py-1 rounded-full mt-1">Topped up as the delay passed ${Math.round(r.delay_tier2_minutes / 60)} hours</div>` : ''}</div>
     ${steps(d.timeline)}
     <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex items-center gap-3">
       <span class="w-10 h-10 rounded-lg bg-[#F1F5F9] flex items-center justify-center"><span class="material-symbols-outlined text-primary-container">account_balance_wallet</span></span>
-      <div class="flex-1 text-[13px]">Sent to ${acct(S.policy.payout_account)}<div class="text-[11px] text-secondary">Policy <span class="mono">${esc(S.policy.id)}</span></div></div>
+      <div class="flex-1 text-[13px]">Sent to ${acct(S.policy.payout_account)}<div class="text-[11px] text-secondary">Policy <span class="mono">${esc(S.policy.id)}</span> &middot; simulated</div></div>
       <span class="text-[11px] font-semibold text-[#059669] bg-[#ECFDF5] px-2 py-1 rounded-full">Instant</span></section>
+    ${S.market.statutory ? `<div class="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-3 text-[12px] leading-[17px]"><b>The airline may owe you too.</b> ${esc(S.market.statutory)} This payment does not reduce it.</div>` : ''}
     <button id="why" class="text-primary-container text-[13px] font-semibold text-center">Why was I paid this? &rarr;</button>
     ${showWhy ? `<div class="bg-[#F0FAF8] rounded-xl p-3 text-[12px] leading-[18px]"><b>${esc(d.clause)}.</b> ${esc(d.explanation)}</div>` : ''}
     <button id="done" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px]">Done</button>`;
 }
 function reviewView(d) {
   return `<div><span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] px-2.5 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>Under review</span>
-    <h1 class="text-[22px] font-bold mt-2">We are checking your claim</h1>
-    <p class="text-[13px] text-secondary mt-1">A person on our team is reviewing it. Most reviews take under 2 hours.</p></div>
+    <h1 class="text-[22px] font-bold mt-2">A person is checking your claim</h1>
+    <p class="text-[13px] text-secondary mt-1">We never deny a claim automatically. A person on our team decides it.</p></div>
     <section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-3">
       <div class="text-[13px] font-semibold">Claim timeline</div>
-      ${[['Received', 'Automated submission confirmed', 'done'], ['Under review', 'Specialist checking the flight delay', 'now'], ['Decision', 'PromptPay transfer sent once confirmed', 'next']].map(([t, s, st]) =>
+      ${[['Received', 'Delay found and cover matched', 'done'], ['Under review', 'A person is checking the claim', 'now'], ['Decision', 'Payout is sent once confirmed', 'next']].map(([t, s, st]) =>
         `<div class="flex gap-3 items-start"><span class="w-5 h-5 rounded-full mt-0.5 flex items-center justify-center shrink-0 ${st === 'done' ? 'bg-primary-container text-white' : st === 'now' ? 'border-2 border-[#D97706] bg-[#FEF3C7]' : 'border border-dashed border-outline'}">${st === 'done' ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}</span>
         <div><div class="text-[14px] font-semibold ${st === 'now' ? 'text-[#B45309]' : st === 'next' ? 'text-secondary' : ''}">${t}</div><div class="text-[12px] text-secondary">${s}</div></div></div>`).join('')}
     </section>
     <section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-2 text-[13px]">
-      <div class="flex justify-between"><span class="text-secondary">Claim ID</span><span class="mono font-semibold">${esc(S.policy.id)}</span></div>
-      <div class="flex justify-between"><span class="text-secondary">Amount requested</span><span class="mono font-bold text-[16px]">${thb(d.amount)}</span></div>
-      <div class="flex justify-between"><span class="text-secondary">Policy</span><span>Delay cover, ${esc(S.flight.airline)} <span class="mono">${esc(S.flight.code)}</span></span></div>
-      <div class="flex justify-between"><span class="text-secondary">Destination</span><span>${esc(S.policy.payout_account)}</span></div></section>
-    <div class="text-center text-[11px] text-secondary">No action needed from you unless we ask.</div>`;
+      <div class="flex justify-between"><span class="text-secondary">Policy</span><span class="mono font-semibold">${esc(S.policy.id)}</span></div>
+      <div class="flex justify-between"><span class="text-secondary">Amount</span><span class="mono font-bold text-[16px]">${money(d.amount)}</span></div>
+      <div class="flex justify-between"><span class="text-secondary">Flight</span><span>${esc(S.flight.airline)} <span class="mono">${esc(S.flight.code)}</span></span></div>
+      <div class="flex justify-between"><span class="text-secondary">Payout to</span><span>${esc(S.policy.payout_account)}</span></div></section>`;
 }
 function declinedView(d) {
   return `<div class="bg-white rounded-xl border border-[#FECACA] p-4"><h1 class="text-[18px] font-bold text-[#DC2626]">Claim not paid</h1>
-    <p class="text-[13px] text-secondary mt-1">After review we could not pay this claim. ${d.note ? 'Note from our team: ' + esc(d.note) : ''} You can contact support from the Help tab.</p></div>`;
+    <p class="text-[13px] text-secondary mt-1">A person reviewed this claim and could not pay it. ${d.note ? 'Note from our team: ' + esc(d.note) + '.' : ''} You can ask for a second review.</p>
+    <button id="reReview" class="mt-3 h-11 w-full rounded-full border border-primary-container text-primary-container font-semibold text-[14px]">Ask for a second review</button></div>`;
 }
 function bagView(b) {
-  const d = b.decision;
-  const paid = d.status === 'paid', declined = d.status === 'declined';
+  const d = b.decision, paid = d.status === 'paid', declined = d.status === 'declined';
   return `<div class="pt-2"><h2 class="text-[20px] font-bold">Lost baggage claim</h2>
     <p class="text-[12px] text-secondary">Flight ${esc(S.flight.airline)} <span class="mono font-semibold text-[#0F172A]">${esc(S.flight.code)}</span> &middot; Policy <span class="mono font-semibold text-[#0F172A]">${esc(S.policy.id)}</span></p></div>
     <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 text-[12px] flex flex-col gap-2">
-      <div class="text-[11px] font-semibold text-[#64748B] tracking-wide">VERIFIED EVIDENCE</div>
-      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Airline lost bag report</div><div class="text-secondary">bag tag <span class="mono font-semibold">${esc(b.bag_tag)}</span></div></div></div>
-      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Item list, <span class="mono">${thb(b.total)}</span></div><div class="text-secondary">${b.items.length} items verified</div></div></div></section>
+      <div class="text-[11px] font-semibold text-[#64748B] tracking-wide">YOUR EVIDENCE</div>
+      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Airline report <span class="mono">${esc(b.report_id)}</span></div><div class="text-secondary">bag tag <span class="mono font-semibold">${esc(b.bag_tag)}</span></div></div></div>
+      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Item list, <span class="mono">${money(b.total)}</span></div><div class="text-secondary">${b.items.length} ${b.items.length === 1 ? 'item' : 'items'}: ${esc(b.items.map(i => i.name).join(', '))}</div></div></div></section>
     <section class="rounded-xl p-3 border ${paid ? 'bg-[#ECFDF5] border-[#A7F3D0]' : declined ? 'bg-[#FEF2F2] border-[#FECACA]' : 'bg-[#FFFBEB] border-[#FDE68A]'}">
-      <div class="flex justify-between items-center"><span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70">${paid ? 'Approved' : declined ? 'Not approved' : 'Under review'}</span><span class="mono font-bold text-[20px] ${paid ? 'text-[#059669]' : ''}">${thb(d.amount)}</span></div>
-      <p class="text-[12px] mt-2">${paid ? `Covered under baggage cover, clause 4.2. Paid to ${acct(S.policy.payout_account)}.` : declined ? 'We could not approve this claim.' : 'A person is checking your claim. We will pay you here once it is approved.'}</p></section>
+      <div class="flex justify-between items-center"><span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70">${paid ? 'Approved' : declined ? 'Not approved' : 'Under review'}</span><span class="mono font-bold text-[18px] ${paid ? 'text-[#059669]' : ''}">${money(d.amount)}</span></div>
+      <p class="text-[12px] mt-2">${paid ? `Covered under baggage cover, clause 4.2. Paid to ${acct(S.policy.payout_account)}.` : declined ? 'A person could not approve this claim.' : 'A person is checking your claim. We will pay you here once it is approved.'}</p></section>
     <div class="bg-white rounded-xl border border-[#E2E8F0] px-3 py-2.5 text-[13px]">
       <button id="bagToggle" class="w-full flex justify-between items-center text-left">What the airline also owes you <span class="material-symbols-outlined text-[18px]">${bagOpen ? 'expand_less' : 'expand_more'}</span></button>
-      ${bagOpen ? '<p class="text-[12px] text-secondary mt-2 leading-[18px]">Under the Montreal Convention the airline is liable first for lost checked bags. Keep your Property Irregularity Report. We top up what the airline does not pay.</p>' : ''}</div>`;
+      ${bagOpen ? '<p class="text-[12px] text-secondary mt-2 leading-[18px]">Under the Montreal Convention the airline is liable first for lost checked bags, up to 1,519 SDR. Keep your Property Irregularity Report. This cover tops up what the airline does not pay.</p>' : ''}</div>`;
 }
 
 /* ---------------- Help tab ---------------- */
 function helpView() {
   return `<h1 class="text-[20px] font-bold">Help</h1>
-    ${[['How do I get paid?', 'If your flight is late by 3 hours or more, we pay you to your PromptPay. You fill in nothing.'],
-       ['What if my bag is lost?', 'Open the Cover tab and tap "My bag is lost". Your airline report is the proof we need.'],
-       ['Why was my claim held?', 'Some claims are checked by a person. Most reviews take under 2 hours.']].map(([q, a]) =>
+    ${[['How do I get paid?', 'If your flight is late by the delay in your cover, we pay you to your payout account. You fill in nothing.'],
+       ['What if my bag is lost?', 'Report it to the airline. Then open the Cover tab, tap "My bag is lost" and enter the airline report number and your items.'],
+       ['Can a claim be denied automatically?', 'No. The system can only pay or send a claim to a person. Only a person can decline, and you can ask for a second review.'],
+       ['Does this replace what the airline owes me?', 'No. In some countries the airline owes you compensation for long delays. This cover pays on top. Claim from the airline too.'],
+       ['Why was my claim held?', 'Some claims are checked by a person to prevent fraud. Most reviews are quick.']].map(([q, a]) =>
       `<div class="bg-white rounded-xl border border-[#E2E8F0] p-3"><div class="text-[14px] font-semibold">${q}</div><p class="text-[12px] text-secondary mt-1">${a}</p></div>`).join('')}`;
 }
 
 /* ---------------- events ---------------- */
+function pickFlight(code, market) { form.flight = code; form.market = market; form.rail = ''; render(true); }
 function bind() {
-  document.querySelectorAll('[data-sel]').forEach(el => el.onclick = () => { sel[el.dataset.sel] = !sel[el.dataset.sel]; render(); });
-  const add = $('#addCover');
-  if (add) add.onclick = async () => {
-    add.disabled = true;
-    try { await api(`/api/traveler/${PID}/checkout`, 'POST', sel); } catch (e) { toast(e); }
+  document.querySelectorAll('[data-sel]').forEach(el => el.onclick = () => { sel[el.dataset.sel] = !sel[el.dataset.sel]; render(true); });
+  const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  const ak = $('#ack'); if (ak) ak.onchange = () => { ack = ak.checked; render(true); };
+  on('#factsToggle', () => { factsOpen = !factsOpen; render(true); });
+  on('#addCover', async () => {
+    $('#addCover').disabled = true;
+    try { await api(`/api/traveler/${PID}/checkout`, 'POST', {...sel, ack}); ack = false; } catch (e) { toast(e); }
     await load();
-  };
-  const why = $('#why'); if (why) why.onclick = () => { showWhy = !showWhy; render(); };
-  const done = $('#done'); if (done) done.onclick = () => setTab('cover');
-  const tg = $('#bagToggle'); if (tg) tg.onclick = () => { bagOpen = !bagOpen; render(); };
-  const bs = $('#bagStart');
-  if (bs) bs.onclick = async () => {
-    bs.disabled = true;
-    try { await api(`/api/traveler/${PID}/baggage`, 'POST', {}); tab = 'claims'; } catch (e) { toast(e); }
+  });
+  on('#why', () => { showWhy = !showWhy; render(true); });
+  on('#done', () => setTab('cover'));
+  on('#bagToggle', () => { bagOpen = !bagOpen; render(true); });
+  on('#bagStart', () => { bagForm = true; render(true); });
+  on('#bagCancel', () => { bagForm = false; render(true); });
+  on('#addItem', () => { bag.items.push({name: '', amount: ''}); render(true); });
+  document.querySelectorAll('.rmItem').forEach(b => b.onclick = () => { bag.items.splice(+b.dataset.rm, 1); render(true); });
+  document.querySelectorAll('[data-bi]').forEach(i => i.oninput = () => { bag.items[+i.dataset.bi][i.dataset.k] = i.value; });
+  const br = $('#bReport'); if (br) br.oninput = () => bag.report_id = br.value;
+  const bt = $('#bTag'); if (bt) bt.oninput = () => bag.bag_tag = bt.value;
+  on('#bagSend', async () => {
+    const items = bag.items.filter(i => i.name.trim() || i.amount).map(i => ({name: i.name.trim(), amount: parseInt(i.amount, 10)}));
+    if (!bag.report_id.trim() || !bag.bag_tag.trim()) return toast('Enter the airline report number and the bag tag.');
+    if (!items.length || items.some(i => !i.name || !(i.amount > 0))) return toast('Each item needs a name and a value above zero.');
+    try { await api(`/api/traveler/${PID}/baggage`, 'POST', {report_id: bag.report_id.trim(), bag_tag: bag.bag_tag.trim(), items}); bagForm = false; tab = 'claims'; bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]}; }
+    catch (e) { return toast(e); }
     await load();
-  };
+  });
+  on('#reReview', async () => { try { await api(`/api/traveler/${PID}/review-request`, 'POST'); toast('Sent. A person will look at it again.'); } catch (e) { toast(e); } await load(); });
+  on('#checkNow', async () => {
+    try { const r = await api(`/api/flights/${encodeURIComponent(S.flight.code)}/refresh`, 'POST'); toast(`Checked. Delay now ${r.flight.delay_minutes} min.`); } catch (e) { toast(e); }
+    await load();
+  });
+  // start view
+  const fl = $('#fFlight'); if (fl) fl.oninput = () => { form.flight = fl.value; };
+  const fn = $('#fName'); if (fn) fn.oninput = () => form.name = fn.value;
+  const f4 = $('#fLast4'); if (f4) f4.oninput = () => { form.last4 = f4.value.replace(/\D/g, ''); f4.value = form.last4; };
+  const fr = $('#fRail'); if (fr) fr.onchange = () => form.rail = fr.value;
+  const fa = $('#fAp'); if (fa) fa.oninput = () => ap = fa.value.toUpperCase();
+  document.querySelectorAll('.pick').forEach(b => b.onclick = () => pickFlight(b.dataset.pick, b.dataset.mk));
+  document.querySelectorAll('.apq').forEach(b => b.onclick = () => { ap = b.dataset.ap; loadReal(); });
+  on('#fReal', loadReal);
+  on('#fUse', () => { const v = form.flight.replace(/\s/g, '').toUpperCase(); const hit = [...SAMPLES, ...REAL].find(f => f.code.replace(/\s/g, '') === v); pickFlight(v, hit ? hit.market : ''); });
+  on('#quote', async () => {
+    if (!form.flight.trim()) return toast('Pick a flight first.');
+    if (form.name.trim().length < 2) return toast('Enter your name.');
+    if (!/^\d{4}$/.test(form.last4)) return toast('Enter the last 4 digits of your payout account.');
+    $('#quote').disabled = true;
+    try {
+      const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.last4, flight: form.flight.trim(), rail: form.rail || null});
+      PID = r.policy; store.set('calmy.pid', PID); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false;
+    } catch (e) { toast(e); $('#quote') && ($('#quote').disabled = false); return; }
+    await load();
+  });
+}
+async function loadReal() {
+  realMsg = ''; REAL = [];
+  if (ap.length !== 3) { realMsg = 'Enter a three letter airport code such as BKK or LHR.'; return render(true); }
+  realMsg = 'Loading real departures...'; render(true);
+  try { REAL = await api('/api/live/upcoming?airport=' + encodeURIComponent(ap)); realMsg = REAL.length ? '' : 'No upcoming departures found for ' + ap + '.'; }
+  catch (e) { realMsg = e; REAL = []; }
+  render(true);
 }
 
-// Demo controls
+// Test tools
 const closeSheet = () => $('#sheet').classList.replace('flex', 'hidden');
 function openSheet() {
   $('#sheet').classList.replace('hidden', 'flex');
-  const active = S.policy.status === 'active' && S.policy.delay_cover;
-  const hint = $('#demoHint');
-  hint.classList.toggle('hidden', active);
-  hint.textContent = 'Add delay cover on the Cover tab first. A delay only pays if the cover was bought before it.';
-  document.querySelectorAll('.demoAct').forEach(b => {
-    const m = +b.dataset.demo;
-    b.textContent = `Delay flight ${S.flight.code} by ${Math.floor(m / 60)}h ${m % 60}m`;
-    b.disabled = !active;
-  });
-  document.querySelectorAll('.persona').forEach(a => {
-    const on = a.dataset.p === PID;
-    a.className = 'persona h-11 rounded-xl border text-[13px] font-semibold flex flex-col items-center justify-center ' + (on ? 'border-primary-container bg-[#E6F4F1] text-primary-container' : 'border-[#E2E8F0]');
-  });
+  const ok = S && PID && S.policy.status === 'active' && S.policy.delay_cover;
+  const hint = $('#demoHint'); hint.classList.toggle('hidden', !!ok);
+  hint.textContent = !S || !PID ? 'Pick a flight and add cover first.' : 'Add delay cover on the Cover tab first. A delay only pays if the cover was bought before it.';
+  $('#simGo').disabled = !ok; document.querySelectorAll('.simQuick').forEach(b => b.disabled = !ok);
   api('/api/live/status').then(u => {
     $('#liveBox').classList.toggle('hidden', !u.enabled);
-    $('#liveOff').classList.toggle('hidden', u.enabled);
     $('#liveUsage').textContent = u.enabled ? `(${u.used} of ${u.budget} lookups used this month)` : '';
   }).catch(() => {});
+}
+async function simulate(min) {
+  closeSheet();
+  try {
+    const r = await api('/api/demo/delay', 'POST', {flight: S.flight.code, minutes: min});
+    if (!r.covered) toast('Nobody is covered on this flight yet.');
+    else if (!r.results.length) toast('Nothing new to pay at this length. Try a longer delay, or start a new trip.');
+    else if (r.results.some(x => x.status === 'upgraded')) toast('The delay grew into the next level. The payout was topped up.');
+    await load(); tab = 'claims'; render(true);
+  } catch (e) { toast(e); }
 }
 $('#demoBtn').onclick = openSheet;
 $('#sheetClose').onclick = closeSheet;
 $('#sheet').onclick = e => { if (e.target.id === 'sheet') closeSheet(); };
-document.querySelectorAll('.demoAct').forEach(b => b.onclick = async () => {
-  closeSheet();
-  try {
-    const r = await api('/api/demo/delay', 'POST', {flight: S.flight.code, minutes: +b.dataset.demo});
-    if (!r.covered) toast('Nobody is covered on this flight yet. Add cover first.');
-    else if (!r.results.length) toast('Nothing new to pay. This flight already paid out at this level. Try the longer delay, or reset.');
-    else if (r.results.some(x => x.status === 'upgraded')) toast('Delay grew into the next level. The payout was topped up.');
-    await load(); tab = 'claims'; render();
-  } catch (e) { toast(e); }
-});
+$('#simGo').onclick = () => { const m = parseInt($('#simMin').value, 10); if (!(m >= 0 && m <= 2880)) return toast('Enter minutes between 0 and 2880.'); simulate(m); };
+document.querySelectorAll('.simQuick').forEach(b => b.onclick = () => simulate(+b.dataset.min));
+$('#newTrip').onclick = () => { closeSheet(); PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); form = {name: '', last4: '', flight: '', rail: '', market: ''}; tab = 'cover'; load(); };
 $('#resetBtn').onclick = async () => {
   try { await api('/api/demo/reset', 'POST'); } catch (e) { toast(e); return; }
+  PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname);
   sel = {delay: true, baggage: true}; tab = 'cover'; showWhy = false; bagOpen = false; closeSheet(); await load();
 };
-
-// Real flight data (only shown when the server has a key)
 async function liveReplay(code) {
   closeSheet(); toast('Fetching the real flight...');
   try {
     const r = await api('/api/demo/live', 'POST', {policy: PID, flight: code});
-    toast(r.paid ? `Real flight ${r.flight.code}: delayed ${r.flight.delay_minutes} min. Cover paid out.` : `Real flight ${r.flight.code}: delayed ${r.flight.delay_minutes} min, under the ${S.rules.delay_tier1_minutes} minute rule, so no payout.`);
-    await load(); tab = 'claims'; render();
+    toast(r.paid ? `Real flight ${r.flight.code}: delayed ${r.flight.delay_minutes} min. Cover paid out.` : `Real flight ${r.flight.code}: delayed ${r.flight.delay_minutes} min, under the payout rule, so no payout.`);
+    await load(); tab = 'claims'; render(true);
   } catch (e) { toast(e); }
 }
 $('#liveList').onclick = async () => {
   const box = $('#liveRows'); box.innerHTML = '<div class="text-[12px] text-[#64748B]">Loading...</div>';
   try {
-    const list = await api('/api/live/delayed?min_minutes=30');
+    const list = await api('/api/live/delayed?airport=' + encodeURIComponent($('#liveAp').value.trim().toUpperCase() || 'BKK') + '&min_minutes=30');
     box.innerHTML = list.length ? list.map(f => `<button data-fl="${esc(f.code)}" class="liveRow text-left border border-[#E2E8F0] rounded-xl px-3 py-2 text-[12px]"><b class="mono">${esc(f.code)}</b> ${esc(f.origin)} to ${esc(f.dest)} <span class="float-right mono font-semibold text-[#B45309]">${f.delay_minutes} min late</span></button>`).join('')
-      : '<div class="text-[12px] text-[#64748B]">No Bangkok departures are delayed by 30 minutes or more right now. Try a flight number.</div>';
+      : '<div class="text-[12px] text-[#64748B]">No departures from this airport are delayed by 30 minutes or more right now.</div>';
     box.querySelectorAll('.liveRow').forEach(b => b.onclick = () => liveReplay(b.dataset.fl));
   } catch (e) { box.innerHTML = `<div class="text-[12px] text-[#B45309]">${esc(e)}</div>`; }
 };
-$('#liveGo').onclick = () => { const v = $('#liveNo').value.trim(); if (v) liveReplay(v); };
 
-// Poll so a payout triggered elsewhere (console, simulator) shows up here.
-setInterval(() => { if (document.hidden) return; load().catch(() => {}); }, 3000);
-load();
+// Poll so a payout triggered elsewhere shows up here. Skipped while typing so forms are not wiped.
+setInterval(() => { if (!document.hidden && PID) load().catch(() => {}); }, 4000);
+(async () => {
+  try { SAMPLES = await api('/api/live/samples'); } catch (e) {}
+  await load().catch(e => toast(e));
+  render(true);
+})();
 </script>
 </body>
 </html>

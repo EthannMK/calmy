@@ -18,12 +18,12 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-from . import db
+from . import db, markets
 
 BASE = "http://api.aviationstack.com/v1/flights"
 MONTHLY_BUDGET = int(os.environ.get("AVIATIONSTACK_BUDGET", "80"))  # keep headroom under 100
 CACHE_SECONDS = 15 * 60
-HUBS = ["BKK", "DMK", "CNX", "HKT"]  # Thai airports for the "really delayed now" list
+HUBS = ["BKK", "LHR", "JFK", "SIN", "DEL", "SYD"]  # quick picks in the app; any airport code works
 
 _cache: dict[str, tuple[float, object]] = {}
 
@@ -36,16 +36,20 @@ class LiveError(Exception):
     """Raised with a message that is safe to show to the user."""
 
 
-def usage(c) -> dict:
+def usage() -> dict:
+    """Calls used this month. Opens its own short connection, so callers must not hold one open
+    across a network call (the database lock would block every other request)."""
     month = time.strftime("%Y-%m")
-    row = db.one(c, "SELECT calls FROM api_usage WHERE month=?", (month,))
+    with db.conn() as c:
+        row = db.one(c, "SELECT calls FROM api_usage WHERE month=?", (month,))
     used = row["calls"] if row else 0
     return {"enabled": enabled(), "used": used, "budget": MONTHLY_BUDGET, "month": month}
 
 
-def _count_call(c):
+def _count_call():
     month = time.strftime("%Y-%m")
-    c.execute("INSERT INTO api_usage (month, calls) VALUES (?, 1) ON CONFLICT(month) DO UPDATE SET calls = calls + 1", (month,))
+    with db.conn() as c:
+        c.execute("INSERT INTO api_usage (month, calls) VALUES (?, 1) ON CONFLICT(month) DO UPDATE SET calls = calls + 1", (month,))
 
 
 def _http_get(params: dict) -> dict:
@@ -58,17 +62,16 @@ def _http_get(params: dict) -> dict:
         raise LiveError("The live flight service did not answer. Try again in a minute.") from e
 
 
-def _fetch(c, params: dict, key: str):
-    """Cached, budgeted fetch."""
+def _fetch(params: dict, key: str):
+    """Cached, budgeted fetch. The network call runs without the database lock."""
     hit = _cache.get(key)
     if hit and time.time() - hit[0] < CACHE_SECONDS:
         return hit[1]
     if not enabled():
         raise LiveError("Live flight data is not switched on for this demo.")
-    if usage(c)["used"] >= MONTHLY_BUDGET:
+    if usage()["used"] >= MONTHLY_BUDGET:
         raise LiveError("The monthly free allowance for live flight data is used up. The simulator still works.")
-    _count_call(c)
-    c.commit()  # count the call even if the request fails below
+    _count_call()  # counted before the request, so a failed call still uses allowance
     body = _http_get(params)
     if "error" in body:
         msg = (body["error"] or {}).get("message") or "request refused"
@@ -103,6 +106,8 @@ def normalize(rec: dict) -> dict | None:
     dep, arr = rec.get("departure") or {}, rec.get("arrival") or {}
     fl, al = rec.get("flight") or {}, rec.get("airline") or {}
     code = fl.get("iata")
+    if fl.get("codeshared"):  # the same aircraft is also sold under another number; track the operating flight only
+        return None
     if not code or not dep.get("iata") or not arr.get("iata") or not dep.get("scheduled"):
         return None
     sched = _parse_ts(dep["scheduled"])
@@ -116,44 +121,70 @@ def normalize(rec: dict) -> dict | None:
         "delay_minutes": delay_minutes(dep),
         "status": rec.get("flight_status") or "unknown",
         "flight_date": rec.get("flight_date"),
+        "sched_ts": sched.timestamp() if sched else None,
+        "market": markets.market_for_timezone(dep.get("timezone")),  # departure country decides the rules
     }
 
 
-def lookup(c, flight_iata: str) -> dict:
-    """Status of one flight by number, for example TG102."""
+def lookup(flight_iata: str, flight_date: str | None = None) -> dict:
+    """Status of one flight by number, for example TG102. Prefers the given date, else the
+    flight that is flying or next to fly."""
     q = flight_iata.replace(" ", "").upper()
     if not q.isalnum() or not (3 <= len(q) <= 7):
         raise LiveError("Enter a flight number like TG102.")
-    body = _fetch(c, {"flight_iata": q, "limit": 5}, "f:" + q)
+    body = _fetch({"flight_iata": q, "limit": 10}, "f:" + q)
     flights = [f for f in (normalize(r) for r in body.get("data", [])) if f]
     if not flights:
         raise LiveError(f"No live record found for {q}.")
-    # Most relevant record: one that is flying or about to, else the latest.
-    flights.sort(key=lambda f: (f["status"] not in ("active", "scheduled"), f["flight_date"] or ""), reverse=False)
+    if flight_date:
+        same = [f for f in flights if f["flight_date"] == flight_date]
+        if same:
+            return same[0]
+    now = time.time()
+    # Nearest departure to now, so a number that flies daily returns today's or the next flight.
+    flights.sort(key=lambda f: abs((f["sched_ts"] or now) - now))
     return flights[0]
 
 
-def delayed_now(c, min_minutes: int = 30) -> list[dict]:
-    """Flights leaving Thai hubs that are really delayed right now."""
-    out = []
-    for hub in HUBS[:1]:  # one hub per refresh keeps the monthly budget safe
-        body = _fetch(c, {"dep_iata": hub, "limit": 100}, "d:" + hub)
-        for r in body.get("data", []):
-            f = normalize(r)
-            if f and f["delay_minutes"] >= min_minutes and f["status"] != "cancelled":
-                out.append(f)
+def _board(hub: str) -> list[dict]:
+    hub = hub.upper()
+    if not (hub.isalpha() and len(hub) == 3):
+        raise LiveError("Enter a three letter airport code such as BKK or LHR.")
+    body = _fetch({"dep_iata": hub, "limit": 100}, "d:" + hub)
+    return [f for f in (normalize(r) for r in body.get("data", [])) if f and f["status"] != "cancelled"]
+
+
+def delayed_now(hub: str = "BKK", min_minutes: int = 30) -> list[dict]:
+    """Flights leaving the airport that are really delayed right now."""
+    out = [f for f in _board(hub) if f["delay_minutes"] >= min_minutes]
     out.sort(key=lambda f: -f["delay_minutes"])
     return out[:8]
 
 
+def upcoming(hub: str = "BKK", limit: int = 12) -> list[dict]:
+    """Next departures from an airport, soonest first. Shares one cached call with delayed_now."""
+    now = time.time()
+    out = [f for f in _board(hub) if f["sched_ts"] and f["sched_ts"] > now - 3600 and f["status"] in ("scheduled", "active", "unknown")]
+    out.sort(key=lambda f: f["sched_ts"])
+    seen, uniq = set(), []
+    for f in out:  # one row per aircraft slot
+        k = (f["sched_ts"], f["dest"])
+        if k not in seen:
+            seen.add(k)
+            uniq.append(f)
+    return uniq[:limit]
+
+
 def upsert_flight(c, f: dict):
-    """Store a real flight so the engine and screens can use it like any other."""
+    """Store or refresh a real flight so the engine and screens treat it like any other."""
     c.execute(
         "INSERT INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,scheduled,"
-        "delay_minutes,travelers,source,fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
+        "delay_minutes,travelers,source,fetched_at,flight_date,sched_ts,market) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
         "ON CONFLICT(code) DO UPDATE SET airline=excluded.airline, origin=excluded.origin, origin_city=excluded.origin_city, "
         "dest=excluded.dest, dest_city=excluded.dest_city, depart_label=excluded.depart_label, scheduled=excluded.scheduled, "
-        "delay_minutes=excluded.delay_minutes, source='live', fetched_at=excluded.fetched_at",
+        "delay_minutes=excluded.delay_minutes, source='live', fetched_at=excluded.fetched_at, "
+        "flight_date=excluded.flight_date, sched_ts=excluded.sched_ts, market=excluded.market",
         (f["code"], f["airline"], f["origin"], f["origin_city"], f["dest"], f["dest_city"], f["depart_label"],
-         f["scheduled"], 0, 1, "live", time.time()),
+         f["scheduled"], f["delay_minutes"], 0, "live", time.time(), f.get("flight_date"), f.get("sched_ts"),
+         f.get("market", "GLOBAL")),
     )

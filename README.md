@@ -44,17 +44,36 @@ auto pay below risk score 45. Prices: delay cover 149 THB, baggage cover 59 THB 
     pip install pytest
     python -m pytest -q tests
 
-## Real flight data (optional)
+## Markets and law
 
-The app runs on a simulator by default. To replay a flight that is really delayed, get a free
-key at aviationstack.com and set `AVIATIONSTACK_KEY`. Then open Demo controls in the traveler app.
+The departure country of a flight sets the market. Each market has its own currency, payout rails,
+prices and payouts (simulated, in local currency), tax note and legal notes. Markets: Thailand, United States,
+European Union, United Kingdom, India, Singapore, Japan, Australia, Brazil, Canada, and a global default.
 
-- Free plan: 100 requests a month, HTTP only. Calls are made from the server, cached for 15 minutes,
-  and capped by `AVIATIONSTACK_BUDGET` (default 80 a month).
-- Delay is computed from scheduled versus actual or estimated time, because the API's own delay field is not always consistent.
-- Real delays of 3 hours or more are rare, so this is a replay: the cover is treated as bought before departure.
-  Screens label the flight "Live data" or "Simulated".
-- A delay that later grows past the second level tops the payout up (1,500 then 3,000 in total). Nothing is paid twice.
+What the law changes in the product, not only in text:
+
+- Key facts and a privacy notice must be accepted before cover is bought. The acceptance is logged with the notes version.
+- A claim is never denied by the system. It is paid, or held for a person. Only a person can decline, and the traveler can ask for a second review (GDPR Article 22 and fair claims handling).
+- The airline's own duties (EU261, UK261, Canada APPR and others) are shown, and the payout never replaces them.
+- Cover cannot be bought after a delay is known or after departure.
+- Rules and prices are edited per market in the insurer console. The "Markets and law" page lists the laws and what Calmy does about each.
+
+These notes are a design aid for the demo and not legal advice. A launch needs a licensed insurer and local counsel.
+Source file: `app/markets.py`.
+
+## Real flight data
+
+Set `AVIATIONSTACK_KEY` (free key at aviationstack.com). Then:
+
+- The traveler picks a real upcoming departure from any airport, or types a flight number.
+- The app tracks the real status. A flight is refreshed when someone views it and its data is older than 30 minutes, or when "Check now" is pressed. There is no always-on poller.
+- Payout rules run on the real delay, computed from scheduled versus actual or estimated time.
+- Free plan: 100 requests a month, HTTP only. Calls are cached for 15 minutes and capped by `AVIATIONSTACK_BUDGET` (default 80 a month).
+- Real delays of 3 hours or more are rare, so Test tools can simulate a delay on any flight, or replay a flight that is really late now. The screens label real flights and samples.
+- A delay that later grows past the second level tops the payout up. Nothing is paid twice.
+- Risk signals (several covers in 2 hours, shared payout account, prior paid claim, schedule change after purchase) are computed from stored data.
+
+Without a key the app uses the sample flights, one or more for each market.
 
 ## Deploy to Cloud Run
 

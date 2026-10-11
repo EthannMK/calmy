@@ -13,6 +13,11 @@ from app.main import app  # noqa: E402
 
 client = TestClient(app)
 
+BAG = {"report_id": "PIR-BKK-90412", "bag_tag": "OA482103", "items": [
+    {"name": "Hard-shell suitcase", "amount": 600}, {"name": "Essential clothing", "amount": 350},
+    {"name": "Toiletries kit", "amount": 150}, {"name": "Chargers and accessories", "amount": 150}]}
+
+
 
 def setup_function():
     live._cache.clear()
@@ -24,7 +29,7 @@ def setup_function():
 
 
 def _buy(pid, delay=True, baggage=True):
-    return client.post(f"/api/traveler/{pid}/checkout", json={"delay": delay, "baggage": baggage})
+    return client.post(f"/api/traveler/{pid}/checkout", json={"delay": delay, "baggage": baggage, "ack": True})
 
 
 def _delay(m, flight="OA 108"):
@@ -65,7 +70,7 @@ def test_held_count_matches_queue_and_ignores_baggage():
     with client:
         _buy("CL-45102")
         _delay(192)
-        client.post("/api/traveler/CL-45102/baggage", json={})
+        client.post("/api/traveler/CL-45102/baggage", json=BAG)
         ov = client.get("/api/console/overview").json()
         q = client.get("/api/console/review").json()
         assert ov["stats"]["held"] == len(q) == 1
@@ -154,3 +159,139 @@ def test_live_api_error_is_readable(monkeypatch):
     with client:
         r = client.get("/api/live/lookup", params={"flight": "TG102"})
         assert r.status_code == 502 and "invalid key" in r.json()["detail"]
+
+
+# ------------------------------------------------------------- markets and global behaviour
+
+def _quote(name, last4, flight, rail=None):
+    body = {"name": name, "last4": last4, "flight": flight}
+    if rail:
+        body["rail"] = rail
+    return client.post("/api/policies", json=body)
+
+
+def test_market_sets_currency_rails_and_rules():
+    with client:
+        r = _quote("Lena Fischer", "1234", "OA 420").json()  # Frankfurt to Madrid, EU
+        assert r["market"]["currency"] == "EUR"
+        pid = r["policy"]
+        t = client.get(f"/api/traveler/{pid}").json()
+        assert t["policy"]["payout_account"] == "SEPA Instant ending 1234"
+        assert t["rules"]["delay_tier1_payout"] == 40 and t["market"]["statutory"].startswith("EU Regulation 261")
+
+
+def test_wrong_rail_and_bad_input_rejected():
+    with client:
+        assert _quote("Lena Fischer", "1234", "OA 420", rail="PromptPay").status_code == 400
+        assert _quote("L", "1234", "OA 420").status_code == 422
+        assert _quote("Lena Fischer", "12a4", "OA 420").status_code == 422
+        assert _quote("Lena Fischer", "1234", "ZZ 999").status_code == 400  # not a sample flight and no live key
+
+
+def test_checkout_needs_acknowledgement():
+    with client:
+        pid = _quote("Ken Ito", "5555", "OA 310").json()["policy"]
+        r = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False})
+        assert r.status_code == 400 and "key facts" in r.json()["detail"]
+        ok = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True}).json()
+        assert ok["total"] == 4 and ok["currency"] == "GBP"  # UK price
+        again = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        assert again.status_code == 400
+
+
+def test_payout_uses_market_currency_and_amounts():
+    with client:
+        pid = _quote("Ana Souza", "9876", "OA 970").json()["policy"]  # Brazil
+        client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": True, "ack": True})
+        r = client.post("/api/demo/delay", json={"flight": "OA 970", "minutes": 200}).json()["results"][0]
+        assert r["status"] == "paid"
+        d = client.get(f"/api/traveler/{pid}").json()["delay_decision"]
+        assert d["amount"] == 250 and "BRL" in d["explanation"]
+
+
+def test_rules_are_per_market():
+    with client:
+        assert client.put("/api/console/rules", params={"market": "EU"}, json={"values": {"delay_tier1_payout": 55}}).status_code == 200
+        eu = {r["key"]: r["value"] for r in client.get("/api/console/rules", params={"market": "EU"}).json()}
+        th = {r["key"]: r["value"] for r in client.get("/api/console/rules", params={"market": "TH"}).json()}
+        assert eu["delay_tier1_payout"] == 55 and th["delay_tier1_payout"] == 1500
+        assert client.get("/api/console/rules", params={"market": "XX"}).status_code == 404
+
+
+def test_risk_signals_are_computed_from_real_data():
+    """Two people sharing one payout account, plus several covers in 2 hours, raise the score without any preset flags."""
+    with client:
+        ids = [_quote(n, "7777", "OA 530").json()["policy"] for n in ("Dan Cole", "Eve Park", "Fay Roe", "Gus Lim")]
+        for pid in ids:
+            client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        res = client.post("/api/demo/delay", json={"flight": "OA 530", "minutes": 200}).json()["results"]
+        assert res and all(r["status"] == "held" for r in res)  # shared account + several covers in 2 hours
+
+
+def test_declined_claim_can_be_reviewed_again():
+    with client:
+        pid = _quote("Hal Wu", "4444", "OA 750").json()["policy"]
+        client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        # make it held by sharing the account across names
+        other = _quote("Ivy Tan", "4444", "OA 750").json()["policy"]
+        client.post(f"/api/traveler/{other}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        client.post("/api/demo/delay", json={"flight": "OA 750", "minutes": 200})
+        q = client.get("/api/console/review").json()
+        did = q[0]["id"]
+        client.post(f"/api/console/review/{did}", json={"action": "decline", "note": "x"})
+        pol = q[0]["policy_id"]
+        r = client.post(f"/api/traveler/{pol}/review-request")
+        assert r.status_code == 200 and r.json()["status"] == "held"
+        assert client.post(f"/api/traveler/{pol}/review-request").status_code == 400  # nothing declined now
+
+
+def test_bag_claim_needs_real_input():
+    with client:
+        _buy("CL-44910")
+        assert client.post("/api/traveler/CL-44910/baggage", json={}).status_code == 422
+        bad = {"report_id": "PIR-1", "bag_tag": "ABC123", "items": [{"name": "Bag", "amount": -5}]}
+        assert client.post("/api/traveler/CL-44910/baggage", json=bad).status_code == 422
+
+
+def test_timezone_picks_market():
+    from app import markets
+    assert markets.market_for_timezone("Europe/Paris") == "EU"
+    assert markets.market_for_timezone("Europe/London") == "UK"
+    assert markets.market_for_timezone("America/Chicago") == "US"
+    assert markets.market_for_timezone("Asia/Bangkok") == "TH"
+    assert markets.market_for_timezone(None) == "GLOBAL"
+
+
+def test_real_flight_end_to_end_with_refresh(monkeypatch):
+    """Pick a real flight, buy cover, then a later real status shows a long delay and the payout fires."""
+    os.environ["AVIATIONSTACK_KEY"] = "test"
+    future = time.time() + 3 * 3600
+    from datetime import datetime, timezone
+    sched = datetime.fromtimestamp(future, timezone.utc).isoformat()
+    rec = _rec(sched=sched, actual=None)
+    rec["departure"]["timezone"] = "Europe/Paris"
+    rec["departure"]["estimated"] = None
+    state = {"rec": rec}
+    monkeypatch.setattr(live, "_http_get", lambda p: {"data": [state["rec"]]})
+    with client:
+        r = _quote("Mia Roy", "2468", "TG102").json()
+        assert r["market"]["code"] == "EU"
+        pid = r["policy"]
+        client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        # later: the real record now shows an actual departure 4 hours late
+        late = _rec(sched=sched, actual=datetime.fromtimestamp(future + 4 * 3600, timezone.utc).isoformat())
+        late["departure"]["timezone"] = "Europe/Paris"
+        state["rec"] = late
+        live._cache.clear()
+        out = client.post("/api/flights/TG 102/refresh").json()
+        assert out["flight"]["delay_minutes"] == 240 and out["results"][0]["status"] == "paid"
+        d = client.get(f"/api/traveler/{pid}").json()
+        assert d["delay_decision"]["amount"] == 40 and d["flight"]["source"] == "live"
+
+
+def test_departed_flight_cannot_be_quoted(monkeypatch):
+    os.environ["AVIATIONSTACK_KEY"] = "test"
+    monkeypatch.setattr(live, "_http_get", lambda p: {"data": [_rec(sched="2020-01-01T10:00:00+00:00", actual=None)]})
+    with client:
+        r = _quote("Old Trip", "1111", "TG102")
+        assert r.status_code == 400 and "already left" in r.json()["detail"]

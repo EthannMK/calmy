@@ -10,6 +10,11 @@ from app.main import app  # noqa: E402
 
 client = TestClient(app)
 
+BAG = {"report_id": "PIR-BKK-90412", "bag_tag": "OA482103", "items": [
+    {"name": "Hard-shell suitcase", "amount": 600}, {"name": "Essential clothing", "amount": 350},
+    {"name": "Toiletries kit", "amount": 150}, {"name": "Chargers and accessories", "amount": 150}]}
+
+
 
 def setup_function():
     with client:
@@ -17,7 +22,7 @@ def setup_function():
 
 
 def _activate(pid, delay=True, baggage=True):
-    r = client.post(f"/api/traveler/{pid}/checkout", json={"delay": delay, "baggage": baggage})
+    r = client.post(f"/api/traveler/{pid}/checkout", json={"delay": delay, "baggage": baggage, "ack": True})
     assert r.status_code == 200
     return r.json()
 
@@ -84,7 +89,7 @@ def test_rules_change_applies_to_next_trigger():
 def test_lost_bag_claim_is_1250_with_score_18():
     with client:
         _activate("CL-44910")
-        b = client.post("/api/traveler/CL-44910/baggage", json={}).json()
+        b = client.post("/api/traveler/CL-44910/baggage", json=BAG).json()
         assert b["total"] == 1250
         d = client.get("/api/console/baggage").json()[0]["decision"]
         assert d["amount"] == 1250 and d["risk_score"] == 18 and d["status"] == "pending"
@@ -95,4 +100,4 @@ def test_lost_bag_claim_is_1250_with_score_18():
 def test_baggage_requires_cover():
     with client:
         _activate("CL-44910", baggage=False)
-        assert client.post("/api/traveler/CL-44910/baggage", json={}).status_code == 400
+        assert client.post("/api/traveler/CL-44910/baggage", json=BAG).status_code == 400
