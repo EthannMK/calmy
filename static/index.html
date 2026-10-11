@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calmy, smart flight cover</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<style>
+  :root{--teal:#0D5C5A;--dteal:#0A4D4A;--seafoam:#E6F4F1;--bg:#F8FAFB;--bd:#E2E8F0}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:'Manrope',sans-serif;color:#0F172A;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .wrap{max-width:760px;width:100%;text-align:center}
+  .logo{display:inline-flex;align-items:center;gap:10px;font-size:28px;font-weight:800;color:var(--dteal)}
+  .logo i{width:38px;height:38px;border-radius:12px;background:var(--teal);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:20px}
+  h1{font-size:40px;line-height:1.15;letter-spacing:-.02em;margin:28px 0 10px}
+  p.lead{font-size:17px;color:#334155;margin:0 auto 32px;max-width:560px;line-height:1.55}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  a.card{display:block;text-align:left;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:22px;text-decoration:none;color:inherit;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:border-color .15s,transform .15s}
+  a.card:hover{border-color:var(--teal);transform:translateY(-2px)}
+  a.card b{display:block;font-size:18px;margin-bottom:6px}
+  a.card span{font-size:14px;color:#64748B;line-height:1.5}
+  a.card em{display:inline-block;margin-top:14px;font-style:normal;font-weight:700;font-size:14px;color:var(--teal)}
+  .note{margin-top:28px;font-size:12px;color:#64748B}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}h1{font-size:30px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo"><i>&#9099;</i>Calmy</div>
+  <h1>Your flight is late.<br>You are already paid.</h1>
+  <p class="lead">Calmy is flight delay and lost bag cover that pays automatically. No forms. The insurer sees every decision and the reason behind it.</p>
+  <div class="grid">
+    <a class="card" href="/traveler"><b>Try as traveler</b><span>Add cover at checkout, delay the flight, and watch the payout arrive.</span><em>Open traveler app &rarr;</em></a>
+    <a class="card" href="/console"><b>Try as insurer</b><span>See paid decisions, review held claims, and change the payout rules.</span><em>Open insurer console &rarr;</em></a>
+  </div>
+  <div class="note">Demo mode. Sample data only. Flight data is simulated and no real money moves.</div>
+</div>
+</body>
+</html>

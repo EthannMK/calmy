@@ -1,0 +1,4 @@
+build
+tests
+*.db
+__pycache__

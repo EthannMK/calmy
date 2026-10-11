@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calmy, smart flight cover</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;vertical-align:middle;line-height:1;width:1em;height:1em;overflow:hidden;white-space:nowrap;flex-shrink:0;font-size:24px}
+  body{background:#E2E8F0;font-family:'Manrope',sans-serif}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .scrollbar-none::-webkit-scrollbar{display:none}
+  @media(min-width:430px){#app{margin:16px auto;min-height:844px;max-height:844px;border-radius:32px;box-shadow:0 8px 40px rgba(15,23,42,.12);overflow:hidden}}
+  .fade{animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body class="antialiased">
+<div id="app" class="w-full max-w-[390px] mx-auto h-screen bg-[#F8FAFB] text-[#0F172A] relative flex flex-col">
+  <header class="w-full h-11 pt-3 px-7 flex justify-between items-center bg-[#F8FAFB] shrink-0">
+    <span class="text-[12px] font-semibold">9:41</span>
+    <div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span><span class="material-symbols-outlined text-[16px]">wifi</span><span class="material-symbols-outlined text-[18px]">battery_full</span></div>
+  </header>
+  <nav class="h-14 w-full flex justify-between items-center px-4 bg-surface border-b border-outline-variant/30 shrink-0">
+    <div class="text-[18px] font-bold text-primary tracking-tight">Calmy</div>
+    <div id="avatar" class="w-9 h-9 rounded-full bg-secondary-fixed flex items-center justify-center border border-outline-variant/30 text-primary-container text-[12px] font-bold">SK</div>
+  </nav>
+
+  <div id="view" class="flex-1 overflow-y-auto px-5 pt-3 pb-4 flex flex-col gap-3 scrollbar-none"></div>
+
+  <div class="text-center text-[11px] text-[#64748B] py-1.5 shrink-0">
+    Demo data. Flight data simulated. <button id="demoBtn" class="underline text-primary-container font-semibold">Demo controls</button>
+  </div>
+  <nav class="h-16 border-t border-[#E2E8F0] bg-white flex justify-around items-center shrink-0">
+    <button data-tab="cover" class="tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold"><span class="material-symbols-outlined">shield</span>Cover</button>
+    <button data-tab="claims" class="tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold"><span class="material-symbols-outlined">receipt_long</span>Claims</button>
+    <button data-tab="help" class="tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold"><span class="material-symbols-outlined">support_agent</span>Help</button>
+  </nav>
+
+  <!-- Demo controls sheet -->
+  <div id="sheet" class="hidden absolute inset-0 bg-black/30 z-50 items-end">
+    <div class="bg-white w-full rounded-t-2xl p-5 flex flex-col gap-3">
+      <div class="flex justify-between items-center"><h3 class="font-bold text-[16px]">Demo controls</h3><button id="sheetClose" class="material-symbols-outlined">close</button></div>
+      <p class="text-[12px] text-[#64748B]">Stand in for live flight data. Nothing here moves real money.</p>
+      <button data-demo="192" class="demoAct h-11 rounded-full bg-primary-container text-white font-semibold text-[14px]">Delay flight OA 108 by 3h 12m</button>
+      <button data-demo="370" class="demoAct h-11 rounded-full border border-primary-container text-primary-container font-semibold text-[14px]">Delay flight OA 108 by 6h 10m</button>
+      <button id="resetBtn" class="h-11 rounded-full border border-[#E2E8F0] text-[#334155] font-semibold text-[14px]">Reset demo data</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PID = new URLSearchParams(location.search).get('p') || 'CL-44910';
+const thb = n => Number(n).toLocaleString('en-US') + ' THB';
+let S = null, tab = 'cover', sel = {delay: true, baggage: true}, showWhy = false, bagOpen = false;
+
+const $ = s => document.querySelector(s);
+const api = (url, method = 'GET', body) =>
+  fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined})
+    .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail || 'Something went wrong')));
+
+async function load() {
+  S = await api('/api/traveler/' + PID);
+  $('#avatar').textContent = S.policy.traveler.split(' ').map(w => w[0]).join('').slice(0, 2);
+  render();
+}
+
+function setTab(t) { tab = t; render(); }
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+function render() {
+  document.querySelectorAll('.tab').forEach(b => {
+    const on = b.dataset.tab === tab;
+    b.className = 'tab flex flex-col items-center gap-0.5 px-4 py-1 rounded-full text-[11px] font-semibold ' +
+      (on ? 'bg-[#E6F4F1] text-primary-container' : 'text-[#64748B]');
+  });
+  const v = $('#view');
+  const html = tab === 'cover' ? coverView() : tab === 'claims' ? claimsView() : helpView();
+  if (v.dataset.k !== tab + JSON.stringify(sel) + showWhy + bagOpen + (S.delay_decision?.status || '') + (S.baggage?.decision?.status || '') + S.policy.status) {
+    v.innerHTML = '<div class="fade flex flex-col gap-3">' + html + '</div>';
+    v.dataset.k = tab + JSON.stringify(sel) + showWhy + bagOpen + (S.delay_decision?.status || '') + (S.baggage?.decision?.status || '') + S.policy.status;
+    bind();
+  }
+}
+
+function flightCard() {
+  const f = S.flight;
+  return `<section class="bg-white rounded-xl border border-[#E2E8F0] p-3 shadow-sm flex flex-col gap-2">
+    <div class="flex justify-between items-center border-b border-[#F1F5F9] pb-2">
+      <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary-container"></span><span class="text-[12px] font-semibold">${f.airline}</span></div>
+      <span class="mono text-[12px] font-semibold text-primary-container bg-secondary-fixed/40 px-1.5 py-0.5 rounded">${f.code}</span>
+    </div>
+    <div class="flex items-center justify-between">
+      <div><div class="text-[18px] font-bold">${f.origin}</div><div class="text-[12px] text-secondary">${f.origin_city}</div></div>
+      <div class="flex flex-col items-center flex-1 px-3"><div class="w-full flex items-center gap-1"><div class="h-px flex-1 bg-outline-variant/60"></div><span class="material-symbols-outlined text-[16px] text-primary-container rotate-90">flight</span><div class="h-px flex-1 bg-outline-variant/60"></div></div><span class="text-[11px] text-secondary mt-0.5">Direct Flight</span></div>
+      <div class="text-right"><div class="text-[18px] font-bold">${f.dest}</div><div class="text-[12px] text-secondary">${f.dest_city}</div></div>
+    </div>
+    <div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-[#F1F5F9] text-[12px]">
+      <div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary-container">calendar_today</span>${f.depart_label}</div>
+      <div class="flex items-center justify-end gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary-container">person</span>${S.policy.traveler}</div>
+    </div></section>`;
+}
+
+/* ---------------- Cover tab ---------------- */
+function coverView() {
+  const r = S.rules, p = S.policy;
+  if (p.status === 'active') {
+    return `<div><h1 class="text-[20px] leading-[26px] font-bold">You are covered</h1>
+      <p class="text-[12px] text-secondary mt-0.5">Policy <span class="mono font-semibold">${p.id}</span>. We watch your flight and pay you if it is late.</p></div>
+      ${flightCard()}
+      <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex flex-col gap-2 text-[13px]">
+        <div class="flex justify-between"><span>Delay cover</span><span class="mono text-primary-container font-semibold">${p.delay_cover ? 'Active' : 'Not added'}</span></div>
+        <div class="flex justify-between"><span>Baggage cover</span><span class="mono text-primary-container font-semibold">${p.baggage_cover ? 'Active' : 'Not added'}</span></div>
+        <div class="flex justify-between border-t border-[#F1F5F9] pt-2"><span>Paid so far</span><span class="mono font-semibold">${thb(paidTotal())}</span></div>
+      </section>
+      <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span>${p.delay_cover ? `3h late pays ${thb(r.delay_tier1_payout)}. 6h late pays ${thb(r.delay_tier2_payout)}.` : 'Add delay cover from a new booking.'}</div>
+      ${p.baggage_cover ? `<button id="bagStart" class="h-12 rounded-full border border-primary-container text-primary-container font-semibold text-[14px]">My bag is lost</button>` : ''}`;
+  }
+  const total = (sel.delay ? r.delay_premium : 0) + (sel.baggage ? r.baggage_premium : 0);
+  return `<div><h1 class="text-[20px] leading-[26px] font-bold">Add Calmy to your trip</h1>
+    <p class="text-[12px] text-secondary mt-0.5">Automated reimbursement for flight delays &amp; luggage.</p></div>
+    ${flightCard()}
+    ${coverCard('delay', 'Delay cover', r.delay_premium, `3h late pays <b class="mono">${thb(r.delay_tier1_payout)}</b>. 6h late pays <b class="mono">${thb(r.delay_tier2_payout)}</b>.`)}
+    ${coverCard('baggage', 'Baggage cover', r.baggage_premium, `Pays <b class="mono">${thb(r.lost_bag_payout)}</b> if your bag is lost.`)}
+    <div class="bg-[#F0FAF8] rounded-xl px-3 py-2.5 text-[12px] flex gap-2 items-center"><span class="material-symbols-outlined text-[16px] text-primary-container">verified_user</span>No forms. Paid straight to ${S.policy.payout_account.replace('PromptPay ending', 'PromptPay ending <b class="mono">') + '</b>'}.</div>
+    <div class="mt-auto pt-2 flex flex-col gap-2">
+      <div class="flex justify-between items-center text-[13px] text-secondary"><span>Trip protection plan</span><span>Total <b class="mono text-[#0F172A] text-[16px]">${thb(total)}</b></span></div>
+      <button id="addCover" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px] disabled:opacity-40" ${total ? '' : 'disabled'}>Add cover &rarr;</button>
+    </div>`;
+}
+function coverCard(key, title, price, text) {
+  const on = sel[key];
+  return `<article data-sel="${key}" class="cursor-pointer bg-white rounded-xl border-2 ${on ? 'border-primary-container' : 'border-[#E2E8F0]'} p-3 flex flex-col gap-1">
+    <div class="flex justify-between items-center"><span class="text-[15px] font-semibold">${title}</span>
+      <div class="flex items-center gap-2"><span class="mono text-[13px] font-semibold text-primary-container">${thb(price)}</span>
+      <span class="w-6 h-6 rounded-full flex items-center justify-center ${on ? 'bg-primary-container text-white' : 'border border-outline-variant'}">${on ? '<span class="material-symbols-outlined text-[16px]">check</span>' : ''}</span></div></div>
+    <p class="text-[12px] text-secondary">${text}</p></article>`;
+}
+function paidTotal() {
+  let t = 0;
+  if (S.delay_decision?.status === 'paid') t += S.delay_decision.amount;
+  if (S.baggage?.decision?.status === 'paid') t += S.baggage.decision.amount;
+  return t;
+}
+
+/* ---------------- Claims tab ---------------- */
+function claimsView() {
+  const d = S.delay_decision, b = S.baggage;
+  let out = '';
+  if (d) out += d.status === 'paid' ? paidView(d) : d.status === 'held' ? reviewView(d) : declinedView(d);
+  if (b) out += bagView(b);
+  if (!d && !b) out = `<div class="flex flex-col items-center text-center gap-2 pt-16 text-secondary">
+      <span class="material-symbols-outlined text-[40px] text-primary-container">flight_takeoff</span>
+      <h2 class="text-[18px] font-bold text-[#0F172A]">No claims yet</h2>
+      <p class="text-[13px] max-w-[260px]">${S.policy.status === 'active' ? 'Nothing to do. If your flight is late, we pay you automatically and it shows up here.' : 'Add cover first. Then claims show up here.'}</p></div>`;
+  return out;
+}
+function steps(tl, held) {
+  return `<section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-3">` + tl.map((s, i) => {
+    const sub = {'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, 3 hour rule met', 'Risk checked': 'Checked automatically, no forms', 'Paid': 'Sent to your PromptPay', 'Held for review': 'A person is taking a look'}[s.label] || '';
+    const pending = s.pending;
+    return `<div class="flex gap-3 items-start"><span class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${pending ? 'bg-[#FFFBEB] border border-[#D97706] text-[#D97706]' : 'border border-[#059669] text-[#059669]'}"><span class="material-symbols-outlined text-[14px]">${pending ? 'hourglass_top' : 'check'}</span></span>
+      <div class="flex-1"><div class="text-[14px] font-semibold ${s.label === 'Paid' ? 'text-[#059669]' : ''}">${s.label}</div><div class="text-[12px] text-secondary">${sub}</div></div>
+      <span class="mono text-[11px] text-secondary">${s.sec}s</span></div>`;
+  }).join('') + `</section>`;
+}
+function paidView(d) {
+  const h = Math.floor(d.delay_minutes / 60), m = d.delay_minutes % 60;
+  return `<div class="flex flex-col items-center text-center gap-1 pt-1">
+      <div class="w-16 h-16 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center"><span class="material-symbols-outlined text-[34px] text-[#059669]" style="font-variation-settings:'FILL' 1">check_circle</span></div>
+      <h1 class="text-[22px] leading-[28px] font-bold mt-1">Flight delayed ${h}h ${m}m.<br>We paid you.</h1>
+      <div class="mono text-[32px] font-bold text-[#059669] leading-10">${thb(d.amount)}</div>
+      <div class="text-[12px] text-secondary">${S.flight.airline} <span class="mono font-semibold text-[#0F172A]">${S.flight.code}</span> &middot; Thu 14 Nov</div></div>
+    ${steps(d.timeline)}
+    <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 flex items-center gap-3">
+      <span class="w-10 h-10 rounded-lg bg-[#F1F5F9] flex items-center justify-center"><span class="material-symbols-outlined text-primary-container">account_balance_wallet</span></span>
+      <div class="flex-1 text-[13px]">Sent to ${S.policy.payout_account.replace('ending ', 'ending <b class="mono">') + '</b>'}<div class="text-[11px] text-secondary">Policy <span class="mono">${S.policy.id}</span></div></div>
+      <span class="text-[11px] font-semibold text-[#059669] bg-[#ECFDF5] px-2 py-1 rounded-full">Instant</span></section>
+    <button id="why" class="text-primary-container text-[13px] font-semibold text-center">Why was I paid this? &rarr;</button>
+    ${showWhy ? `<div class="bg-[#F0FAF8] rounded-xl p-3 text-[12px] leading-[18px]"><b>${d.clause}.</b> ${d.explanation}</div>` : ''}
+    <button id="done" class="h-12 rounded-full bg-primary-container text-white font-bold text-[15px]">Done</button>`;
+}
+function reviewView(d) {
+  return `<div><span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] px-2.5 py-1 rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>Under review</span>
+    <h1 class="text-[22px] font-bold mt-2">We are checking your claim</h1>
+    <p class="text-[13px] text-secondary mt-1">A person on our team is reviewing it. Most reviews take under 2 hours.</p></div>
+    <section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-3">
+      <div class="text-[13px] font-semibold">Claim timeline</div>
+      ${[['Received', 'Automated submission confirmed', 'done'], ['Under review', 'Specialist checking the flight delay', 'now'], ['Decision', 'PromptPay transfer sent once confirmed', 'next']].map(([t, s, st]) =>
+        `<div class="flex gap-3 items-start"><span class="w-5 h-5 rounded-full mt-0.5 flex items-center justify-center shrink-0 ${st === 'done' ? 'bg-primary-container text-white' : st === 'now' ? 'border-2 border-[#D97706] bg-[#FEF3C7]' : 'border border-dashed border-outline'}">${st === 'done' ? '<span class="material-symbols-outlined text-[14px]">check</span>' : ''}</span>
+        <div><div class="text-[14px] font-semibold ${st === 'now' ? 'text-[#B45309]' : st === 'next' ? 'text-secondary' : ''}">${t}</div><div class="text-[12px] text-secondary">${s}</div></div></div>`).join('')}
+    </section>
+    <section class="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-col gap-2 text-[13px]">
+      <div class="flex justify-between"><span class="text-secondary">Claim ID</span><span class="mono font-semibold">${S.policy.id}</span></div>
+      <div class="flex justify-between"><span class="text-secondary">Amount requested</span><span class="mono font-bold text-[16px]">${thb(d.amount)}</span></div>
+      <div class="flex justify-between"><span class="text-secondary">Policy</span><span>Delay cover, ${S.flight.airline} <span class="mono">${S.flight.code}</span></span></div>
+      <div class="flex justify-between"><span class="text-secondary">Destination</span><span>${S.policy.payout_account}</span></div></section>
+    <div class="text-center text-[11px] text-secondary">No action needed from you unless we ask.</div>`;
+}
+function declinedView(d) {
+  return `<div class="bg-white rounded-xl border border-[#FECACA] p-4"><h1 class="text-[18px] font-bold text-[#DC2626]">Claim not paid</h1>
+    <p class="text-[13px] text-secondary mt-1">After review we could not pay this claim. ${d.note ? 'Note from our team: ' + d.note : ''} You can contact support from the Help tab.</p></div>`;
+}
+function bagView(b) {
+  const d = b.decision;
+  const paid = d.status === 'paid', declined = d.status === 'declined';
+  return `<div class="pt-2"><h2 class="text-[20px] font-bold">Lost baggage claim</h2>
+    <p class="text-[12px] text-secondary">Flight ${S.flight.airline} <span class="mono font-semibold text-[#0F172A]">${S.flight.code}</span> &middot; Policy <span class="mono font-semibold text-[#0F172A]">${S.policy.id}</span></p></div>
+    <section class="bg-white rounded-xl border border-[#E2E8F0] p-3 text-[12px] flex flex-col gap-2">
+      <div class="text-[11px] font-semibold text-[#64748B] tracking-wide">VERIFIED EVIDENCE</div>
+      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Airline lost bag report</div><div class="text-secondary">bag tag <span class="mono font-semibold">${b.bag_tag}</span></div></div></div>
+      <div class="flex gap-2 items-start"><span class="material-symbols-outlined text-[16px] text-[#059669]">check_circle</span><div><div class="text-[13px] font-semibold">Item list, <span class="mono">${thb(b.total)}</span></div><div class="text-secondary">${b.items.length} items verified</div></div></div></section>
+    <section class="rounded-xl p-3 border ${paid ? 'bg-[#ECFDF5] border-[#A7F3D0]' : declined ? 'bg-[#FEF2F2] border-[#FECACA]' : 'bg-[#FFFBEB] border-[#FDE68A]'}">
+      <div class="flex justify-between items-center"><span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70">${paid ? 'Approved' : declined ? 'Not approved' : 'Under review'}</span><span class="mono font-bold text-[20px] ${paid ? 'text-[#059669]' : ''}">${thb(d.amount)}</span></div>
+      <p class="text-[12px] mt-2">${paid ? `Covered under baggage cover, clause 4.2. Paid to ${S.policy.payout_account.replace('ending ', 'ending <b class="mono">') + '</b>'}.` : declined ? 'We could not approve this claim.' : 'A person is checking your claim. We will pay you here once it is approved.'}</p></section>
+    <div class="bg-white rounded-xl border border-[#E2E8F0] px-3 py-2.5 text-[13px]">
+      <button id="bagToggle" class="w-full flex justify-between items-center text-left">What the airline also owes you <span class="material-symbols-outlined text-[18px]">${bagOpen ? 'expand_less' : 'expand_more'}</span></button>
+      ${bagOpen ? '<p class="text-[12px] text-secondary mt-2 leading-[18px]">Under the Montreal Convention the airline is liable first for lost checked bags. Keep your Property Irregularity Report. We top up what the airline does not pay.</p>' : ''}</div>`;
+}
+
+/* ---------------- Help tab ---------------- */
+function helpView() {
+  return `<h1 class="text-[20px] font-bold">Help</h1>
+    ${[['How do I get paid?', 'If your flight is late by 3 hours or more, we pay you to your PromptPay. You fill in nothing.'],
+       ['What if my bag is lost?', 'Open the Cover tab and tap "My bag is lost". Your airline report is the proof we need.'],
+       ['Why was my claim held?', 'Some claims are checked by a person. Most reviews take under 2 hours.']].map(([q, a]) =>
+      `<div class="bg-white rounded-xl border border-[#E2E8F0] p-3"><div class="text-[14px] font-semibold">${q}</div><p class="text-[12px] text-secondary mt-1">${a}</p></div>`).join('')}`;
+}
+
+/* ---------------- events ---------------- */
+function bind() {
+  document.querySelectorAll('[data-sel]').forEach(el => el.onclick = () => { sel[el.dataset.sel] = !sel[el.dataset.sel]; render(); });
+  const add = $('#addCover');
+  if (add) add.onclick = async () => { add.disabled = true; await api(`/api/traveler/${PID}/checkout`, 'POST', sel); await load(); };
+  const why = $('#why'); if (why) why.onclick = () => { showWhy = !showWhy; render(); };
+  const done = $('#done'); if (done) done.onclick = () => setTab('cover');
+  const tg = $('#bagToggle'); if (tg) tg.onclick = () => { bagOpen = !bagOpen; render(); };
+  const bs = $('#bagStart');
+  if (bs) bs.onclick = async () => { bs.disabled = true; try { await api(`/api/traveler/${PID}/baggage`, 'POST', {}); } catch (e) { alert(e); } await load(); tab = 'claims'; render(); };
+}
+
+// Demo controls
+$('#demoBtn').onclick = () => { $('#sheet').classList.replace('hidden', 'flex'); };
+$('#sheetClose').onclick = () => { $('#sheet').classList.replace('flex', 'hidden'); };
+document.querySelectorAll('.demoAct').forEach(b => b.onclick = async () => {
+  $('#sheet').classList.replace('flex', 'hidden');
+  await api('/api/demo/delay', 'POST', {flight: S.flight.code, minutes: +b.dataset.demo});
+  await load(); tab = 'claims'; render();
+});
+$('#resetBtn').onclick = async () => { await api('/api/demo/reset', 'POST'); sel = {delay: true, baggage: true}; tab = 'cover'; showWhy = false; $('#sheet').classList.replace('flex', 'hidden'); await load(); };
+
+// Poll so a payout triggered elsewhere (console, simulator) shows up here.
+setInterval(() => { if (document.hidden) return; load().catch(() => {}); }, 3000);
+load();
+</script>
+</body>
+</html>

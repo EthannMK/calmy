@@ -1,0 +1,4 @@
+__pycache__/
+*.db
+build/node_modules/
+.pytest_cache/
