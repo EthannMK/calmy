@@ -36,14 +36,14 @@ def _delay(m, flight="OA 108"):
     return client.post("/api/demo/delay", json={"flight": flight, "minutes": m}).json()
 
 
-def test_tier_upgrade_tops_up_to_3000():
+def test_tier_upgrade_tops_up_to_80():
     with client:
         _buy("CL-44910")
         assert _delay(192)["results"][0]["status"] == "paid"
         r = _delay(370)["results"][0]
-        assert r["status"] == "upgraded" and r["extra"] == 1500
+        assert r["status"] == "upgraded" and r["extra"] == 40
         d = client.get("/api/traveler/CL-44910").json()["delay_decision"]
-        assert d["amount"] == 3000 and d["delay_minutes"] == 370
+        assert d["amount"] == 80 and d["delay_minutes"] == 370
         assert _delay(380)["results"] == []  # no third payment
 
 
@@ -82,8 +82,8 @@ def test_rules_validation():
         bad = [{"delay_tier1_minutes": 500}, {"risk_threshold": 0}, {"nope": 1}, {"delay_tier2_payout": 10}, {"delay_premium": -1}]
         for v in bad:
             assert client.put("/api/console/rules", json={"values": v}).status_code == 400, v
-        ok = client.put("/api/console/rules", json={"values": {"delay_tier1_payout": 1800}})
-        assert ok.status_code == 200 and ok.json()["delay_tier1_payout"] == 1800
+        ok = client.put("/api/console/rules", json={"values": {"delay_tier1_payout": 50}})
+        assert ok.status_code == 200 and ok.json()["delay_tier1_payout"] == 50
 
 
 def test_decline_review_keeps_money_unpaid():
@@ -128,7 +128,7 @@ def test_live_replay_pays_and_labels_source(monkeypatch):
         r = client.post("/api/demo/live", json={"policy": "CL-44910", "flight": "TG102"}).json()
         assert r["paid"] and r["flight"]["delay_minutes"] == 210
         t = client.get("/api/traveler/CL-44910").json()
-        assert t["flight"]["source"] == "live" and t["delay_decision"]["amount"] == 1500
+        assert t["flight"]["source"] == "live" and t["delay_decision"]["amount"] == 40
         assert client.get("/api/live/status").json()["used"] == 1
         client.post("/api/demo/live", json={"policy": "CL-44910", "flight": "TG102"})
         assert len(calls) == 1  # second lookup came from the cache
@@ -173,7 +173,7 @@ def _quote(name, last4, flight, rail=None):
 def test_market_sets_currency_rails_and_rules():
     with client:
         r = _quote("Lena Fischer", "1234", "OA 420").json()  # Frankfurt to Madrid, EU
-        assert r["market"]["currency"] == "EUR"
+        assert r["market"]["currency"] == "USD"
         pid = r["policy"]
         t = client.get(f"/api/traveler/{pid}").json()
         assert t["policy"]["payout_account"] == "SEPA Instant ending 1234"
@@ -194,7 +194,7 @@ def test_checkout_needs_acknowledgement():
         r = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False})
         assert r.status_code == 400 and "key facts" in r.json()["detail"]
         ok = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True}).json()
-        assert ok["total"] == 4 and ok["currency"] == "GBP"  # UK price
+        assert ok["total"] == 5 and ok["currency"] == "USD"  # UK price, shown in demo dollars
         again = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True})
         assert again.status_code == 400
 
@@ -206,7 +206,7 @@ def test_payout_uses_market_currency_and_amounts():
         r = client.post("/api/demo/delay", json={"flight": "OA 970", "minutes": 200}).json()["results"][0]
         assert r["status"] == "paid"
         d = client.get(f"/api/traveler/{pid}").json()["delay_decision"]
-        assert d["amount"] == 250 and "BRL" in d["explanation"]
+        assert d["amount"] == 45 and "USD" in d["explanation"]
 
 
 def test_rules_are_per_market():
@@ -214,7 +214,7 @@ def test_rules_are_per_market():
         assert client.put("/api/console/rules", params={"market": "EU"}, json={"values": {"delay_tier1_payout": 55}}).status_code == 200
         eu = {r["key"]: r["value"] for r in client.get("/api/console/rules", params={"market": "EU"}).json()}
         th = {r["key"]: r["value"] for r in client.get("/api/console/rules", params={"market": "TH"}).json()}
-        assert eu["delay_tier1_payout"] == 55 and th["delay_tier1_payout"] == 1500
+        assert eu["delay_tier1_payout"] == 55 and th["delay_tier1_payout"] == 40
         assert client.get("/api/console/rules", params={"market": "XX"}).status_code == 404
 
 

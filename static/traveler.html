@@ -160,7 +160,7 @@ let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid'
 let S = null, MK = {}, tab = 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
 let SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
-const cur = () => (S && S.policy && S.policy.currency) || 'THB';
+const cur = () => (S && S.policy && S.policy.currency) || 'USD';
 const M = n => money(n, cur());
 const acct = a => esc(a).replace('ending ', 'ending <b class="mono">') + '</b>';
 const typing = () => document.activeElement && document.activeElement.matches('input,select,textarea');

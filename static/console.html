@@ -92,6 +92,7 @@
 <script src="/static/ui.js"></script>
 <script>
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
+let SIMSEL = '';
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
   ['Book of business', [['policies', 'verified_user', 'Policies']]],
@@ -124,7 +125,8 @@ async function refresh() {
 function vOverview() {
   const s = ov.stats, o = ov.outcomes;
   const share = s.paid_count ? Math.round(100 * s.auto_paid / s.paid_count) + '%' : 'n/a';
-  const tracked = ov.flights.filter(f => f.travelers > 0 || f.source === 'live');
+  const tracked = [...ov.flights].sort((a, b) => (b.travelers > 0) - (a.travelers > 0));
+  const covered = tracked.filter(f => f.travelers > 0).length;
   const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
   return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars at indicative demo rates.') + `
@@ -133,16 +135,16 @@ function vOverview() {
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
     ${kpi('Paid automatically', 'bolt', share, 'Payouts with no human step')}</div>
   <div class="cols"><div class="stack">
-    <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${tracked.length} ${tracked.length === 1 ? 'flight' : 'flights'} with cover</span></div>
-      ${tracked.length ? tracked.map(f => {
+    <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${covered} of ${tracked.length} flights have cover</span></div>
+      ${tracked.length ? tracked.slice(0, 5).map(f => {
         const m = mk(f.market), late = f.delay_minutes > 0, r = ov.rules_all[f.market] || ov.rules;
         return `<div class="brow"><div class="code">${esc(f.code)}</div>
           <div class="route">${esc(f.origin)} <span class="ms" style="color:var(--amber);font-size:16px">flight_takeoff</span> ${esc(f.dest)} <em>${esc(f.origin_city)} to ${esc(f.dest_city)}</em></div>
           <div class="st"><i style="background:${late ? 'var(--amber)' : '#34D399'}"></i>${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time'}</div>
           <div class="meta"><span>${esc(f.depart_label)}</span><span>${esc(m.name)}, ${esc(m.currency)}</span><span>${f.travelers} covered ${f.travelers === 1 ? 'traveler' : 'travelers'}</span><span>${f.source === 'live' ? 'Real flight, checked ' + ago(f.fetched_at) + ' <button class="chk" data-f="' + esc(f.code) + '">Check now</button>' : 'Sample flight'}</span></div>
           <div class="trk">${delayTrack(f.delay_minutes, r, m.currency, true).replace('class="dtrack tall', 'class="dtrack mini')}</div></div>`;
-      }).join('') : '<div class="boardempty">No flights yet. Flights appear here once a traveler picks one in the traveler app.</div>'}
-      <div class="tool"><span>Test a delay on</span><select id="simFlight" class="field" aria-label="Flight">${tracked.map(f => `<option value="${esc(f.code)}">${esc(f.code)} ${flightOf(f)}</option>`).join('')}</select>
+      }).join('') + (tracked.length > 5 ? `<div class="boardempty" style="padding:10px">${tracked.length - 5} more sample flights are available in the test box below.</div>` : '') : '<div class="boardempty">No flights loaded.</div>'}
+      <div class="tool"><span>Test a delay on</span><select id="simFlight" class="field" aria-label="Flight">${tracked.map(f => `<option value="${esc(f.code)}" ${f.code === SIMSEL ? 'selected' : ''}>${esc(f.code)} ${flightOf(f)}${f.travelers ? '' : ' (no cover yet)'}</option>`).join('')}</select>
         <input id="simMin" class="field min" type="number" min="0" max="2880" value="200" aria-label="Delay in minutes"><span>minutes</span><button id="simGo" class="btn" ${tracked.length ? '' : 'disabled'}>Run test</button></div></section>
     <section class="panel"><div class="ph"><h2>Recent decisions</h2><a class="push" href="#decisions">All decisions</a></div>
       ${recent.length ? `<div class="tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${recent.map(d => `<tr class="click" onclick="location.hash='${d.status === 'held' ? 'review/' + esc(d.id) : 'decisions/' + esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="pb mute">No decisions yet. A delay that reaches a payout rule creates one.</div>'}</section>
@@ -236,7 +238,7 @@ function vRules() {
       <div><label class="lbl" for="rmSel">Market</label><select id="rmSel" class="field">${ov.markets.map(x => `<option value="${x.code}" ${x.code === RM ? 'selected' : ''}>${esc(x.name)} (${esc(x.currency)})</option>`).join('')}</select></div>
       ${fields.map(([k, l]) => `<div style="display:grid;grid-template-columns:1fr 130px;gap:12px;align-items:center"><label for="r_${k}">${l}</label><input id="r_${k}" data-rule="${k}" type="number" min="0" value="${r[k]}" class="field mono" style="text-align:right"></div>`).join('')}
       <div style="display:flex;align-items:center;gap:12px;padding-top:6px;border-top:1px solid var(--line2)"><button id="saveRules" class="btn primary">Save rules</button><span id="saved" style="color:var(--green);font-size:13px"></span></div>
-      <p class="mute" style="font-size:12px">Prices and payouts are demo values in local currency. They are not actuarially priced.</p></div></section>
+      <p class="mute" style="font-size:12px">Prices and payouts are demo values in US dollars. They are not actuarially priced.</p></div></section>
     <div class="stack"><section class="panel"><div class="ph"><h2>What a traveler is paid</h2><span class="push mute">${esc(m.name)}</span></div><div class="pb">${payoutCurve(r, c)}</div></section>
     <section class="panel"><div class="ph"><h2>Cover price against the top payout</h2></div><div class="pb">${barList([{label: 'Delay cover', value: r.delay_premium, text: money(r.delay_premium, c)}, {label: 'Top delay payout', value: r.delay_tier2_payout, text: money(r.delay_tier2_payout, c)}, {label: 'Baggage cover', value: r.baggage_premium, text: money(r.baggage_premium, c)}, {label: 'Lost bag payout', value: r.lost_bag_payout, text: money(r.lost_bag_payout, c)}])}</div></section></div></div>`;
 }
@@ -261,6 +263,7 @@ async function vAudit() {
 
 /* ---------- events ---------- */
 function bindAll() {
+  const simSel = $('#simFlight'); if (simSel) simSel.onchange = () => { SIMSEL = simSel.value; };
   const simGo = $('#simGo');
   if (simGo) simGo.onclick = async () => {
     const m = parseInt($('#simMin').value, 10), code = $('#simFlight').value;
@@ -268,8 +271,10 @@ function bindAll() {
     if (!(m >= 0 && m <= 2880)) return fail('Enter minutes between 0 and 2880.');
     simGo.disabled = true;
     try {
+      const fl = ov.flights.find(x => x.code === code);
+      if (fl && !fl.travelers) { await api('/api/demo/cover-sample', 'POST', {flight: code}); toast('Added a sample traveler with cover on ' + code + ' for this test.', 'ok'); }
       const r = await api('/api/demo/delay', 'POST', {flight: code, minutes: m});
-      if (!r.covered) fail('Nobody is covered on this flight yet. Open the traveler app and add cover first.');
+      if (!r.covered) fail('Nobody is covered on this flight yet.');
       else if (!r.results.length) toast('Nothing new to pay. This flight already paid at this level. Try a longer delay.', 'ok');
       else toast(r.results.some(x => x.status === 'upgraded') ? 'The delay grew into the next level. Payouts were topped up.' : `${r.results.length} decision${r.results.length > 1 ? 's' : ''} made.`, 'ok');
     } catch (e) { fail(e); }

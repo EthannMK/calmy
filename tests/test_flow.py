@@ -11,8 +11,8 @@ from app.main import app  # noqa: E402
 client = TestClient(app)
 
 BAG = {"report_id": "PIR-BKK-90412", "bag_tag": "OA482103", "items": [
-    {"name": "Hard-shell suitcase", "amount": 600}, {"name": "Essential clothing", "amount": 350},
-    {"name": "Toiletries kit", "amount": 150}, {"name": "Chargers and accessories", "amount": 150}]}
+    {"name": "Hard-shell suitcase", "amount": 20}, {"name": "Essential clothing", "amount": 10},
+    {"name": "Toiletries kit", "amount": 3}, {"name": "Chargers and accessories", "amount": 2}]}
 
 
 
@@ -27,12 +27,12 @@ def _activate(pid, delay=True, baggage=True):
     return r.json()
 
 
-def test_checkout_total_is_208():
+def test_checkout_total_is_6():
     with client:
-        assert _activate("CL-44910")["total"] == 208
+        assert _activate("CL-44910")["total"] == 6
 
 
-def test_clean_profile_paid_1500_on_192_minutes():
+def test_clean_profile_paid_40_on_192_minutes():
     with client:
         _activate("CL-44910")
         _activate("CL-45102")
@@ -41,7 +41,7 @@ def test_clean_profile_paid_1500_on_192_minutes():
         assert by["CL-44910"]["status"] == "paid" and by["CL-44910"]["score"] == 12
         assert by["CL-45102"]["status"] == "held" and by["CL-45102"]["score"] == 91
         d = client.get("/api/traveler/CL-44910").json()["delay_decision"]
-        assert d["amount"] == 1500
+        assert d["amount"] == 40
 
 
 def test_under_threshold_pays_nothing():
@@ -51,11 +51,11 @@ def test_under_threshold_pays_nothing():
         assert res == []
 
 
-def test_six_hours_pays_3000():
+def test_six_hours_pays_80():
     with client:
         _activate("CL-44910")
         client.post("/api/demo/delay", json={"flight": "OA 108", "minutes": 370})
-        assert client.get("/api/traveler/CL-44910").json()["delay_decision"]["amount"] == 3000
+        assert client.get("/api/traveler/CL-44910").json()["delay_decision"]["amount"] == 80
 
 
 def test_no_double_claim():
@@ -80,19 +80,19 @@ def test_held_case_can_be_approved_once():
 
 def test_rules_change_applies_to_next_trigger():
     with client:
-        client.put("/api/console/rules", json={"values": {"delay_tier1_minutes": 120, "delay_tier1_payout": 800}})
+        client.put("/api/console/rules", json={"values": {"delay_tier1_minutes": 120, "delay_tier1_payout": 60}})
         _activate("CL-44910")
         client.post("/api/demo/delay", json={"flight": "OA 108", "minutes": 130})
-        assert client.get("/api/traveler/CL-44910").json()["delay_decision"]["amount"] == 800
+        assert client.get("/api/traveler/CL-44910").json()["delay_decision"]["amount"] == 60
 
 
-def test_lost_bag_claim_is_1250_with_score_18():
+def test_lost_bag_claim_is_35_with_score_18():
     with client:
         _activate("CL-44910")
         b = client.post("/api/traveler/CL-44910/baggage", json=BAG).json()
-        assert b["total"] == 1250
+        assert b["total"] == 35
         d = client.get("/api/console/baggage").json()[0]["decision"]
-        assert d["amount"] == 1250 and d["risk_score"] == 18 and d["status"] == "pending"
+        assert d["amount"] == 35 and d["risk_score"] == 18 and d["status"] == "pending"
         done = client.post(f"/api/console/baggage/{b['id']}", json={"action": "approve"}).json()
         assert done["status"] == "paid"
 

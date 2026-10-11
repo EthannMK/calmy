@@ -314,6 +314,37 @@ def demo_live(body: LiveReplay):
     return {"flight": f, "results": results, "paid": bool(results)}
 
 
+class SampleCover(BaseModel):
+    flight: str
+
+
+@app.post("/api/demo/cover-sample")
+def demo_cover_sample(body: SampleCover):
+    """Console test helper: put one sample traveler with full cover on a flight so a delay can be tested.
+
+    Skips the checkout screens on purpose and logs it, so the audit trail shows the traveler was added by the demo.
+    """
+    code = re.sub(r"\s+", " ", body.flight.strip().upper())
+    with db.conn() as c:
+        f = _flight(c, code)
+        if not f:
+            raise HTTPException(404, "Flight not found.")
+        if f["delay_minutes"] >= 30:
+            raise HTTPException(400, "This flight is already delayed, so cover cannot be added any more.")
+        market = f.get("market") or "GLOBAL"
+        info = markets.public(market)
+        rules = engine.get_rules(c, market)
+        total = int(rules["delay_premium"]) + int(rules["baggage_premium"])
+        pid = engine._new_id("CL")
+        c.execute(
+            "INSERT INTO policies (id,traveler,flight,payout_account,delay_cover,baggage_cover,premium,status,market,currency,"
+            "created_at,sched_at_purchase) VALUES (?,?,?,?,1,1,?,'active',?,?,?,?)",
+            (pid, "Sample traveler", f["code"], f"{info['rails'][0]} ending 0000", total, market, info["currency"], time.time(), f["scheduled"]),
+        )
+        db.log(c, pid, "policy_active", {"delay": True, "baggage": True, "total": total, "currency": info["currency"], "added_by": "console test"})
+        return {"policy": pid, "flight": f["code"]}
+
+
 @app.post("/api/demo/reset")
 def demo_reset():
     db.reset()

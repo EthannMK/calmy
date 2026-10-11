@@ -15,12 +15,12 @@ Open http://localhost:8000. Pages: `/traveler` (mobile app), `/console` (insurer
 
 ## Demo path (about 90 seconds)
 
-1. Traveler app: tap Add cover (208 THB).
+1. Traveler app: tap Add cover (6 USD).
 2. Console, Overview: tap Delay OA 108 by 3h 12m.
-3. Traveler app, Claims tab: paid 1,500 THB in 8 seconds.
+3. Traveler app, Claims tab: paid 40 USD in 8 seconds.
 4. Open the second traveler at `/traveler?p=CL-45102`, buy cover, run the delay again from a fresh reset.
    That claim scores 91, is held, and appears in the console Review queue. Approve it there.
-5. Traveler app, Cover tab: My bag is lost. Console, Baggage claims: approve 1,250 THB.
+5. Traveler app, Cover tab: My bag is lost. Console, Baggage claims: approve 35 USD.
 6. Console, Rules: change a payout, run another delay, and see the new rule apply.
 
 Reset demo data is in the console footer and in the traveler Demo controls.
@@ -36,8 +36,8 @@ Reset demo data is in the console footer and in the traveler Demo controls.
 | API | `app/main.py` | Traveler, console and demo endpoints |
 | Screens | `static/` | Built from the Stitch designs, fonts bundled |
 
-Default rules: 3 hours pays 1,500 THB, 6 hours pays 3,000 THB, lost bag pays 1,250 THB,
-auto pay below risk score 45. Prices: delay cover 149 THB, baggage cover 59 THB (placeholders).
+Default rules: 3 hours pays 40 USD, 6 hours pays 80 USD, lost bag pays 35 USD,
+auto pay below risk score 45. Prices: delay cover 4 USD, baggage cover 2 USD (placeholders).
 
 ## Tests
 
@@ -47,7 +47,7 @@ auto pay below risk score 45. Prices: delay cover 149 THB, baggage cover 59 THB 
 ## Markets and law
 
 The departure country of a flight sets the market. Each market has its own currency, payout rails,
-prices and payouts (simulated, in local currency), tax note and legal notes. Markets: Thailand, United States,
+prices and payouts (simulated, all shown in US dollars for the demo), tax note and legal notes. Markets: Thailand, United States,
 European Union, United Kingdom, India, Singapore, Japan, Australia, Brazil, Canada, and a global default.
 
 What the law changes in the product, not only in text:

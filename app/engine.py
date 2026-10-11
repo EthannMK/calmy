@@ -123,14 +123,14 @@ def clean_checks() -> list[str]:
 
 # ---------------------------------------------------------------- explain
 
-def template_explanation(kind: str, amount: int, minutes: int, rules: dict, currency: str = "THB") -> str:
+def template_explanation(kind: str, amount: int, minutes: int, rules: dict, currency: str = "USD") -> str:
     """Instant explanation that needs no network. Stored first, upgraded later."""
     if kind == "delay":
         return f"Delay {minutes} minutes, rule {int(rules['delay_tier1_minutes'])} minutes, payout {money(amount, currency)}."
     return f"Lost bag declared with an airline report. Covered under clause 4.2, payout {money(amount, currency)}."
 
 
-def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, currency: str = "THB") -> str:
+def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, currency: str = "USD") -> str:
     """Plain English reason for a decision, written by Gemini on Vertex AI.
 
     Called from a background thread, never while the database is locked, and

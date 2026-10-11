@@ -22,10 +22,10 @@ RULE_LABELS = {
 
 # (delay price, baggage price, tier 1 payout, tier 2 payout, lost bag payout)
 PRICES = {
-    "TH": (149, 59, 1500, 3000, 1250), "US": (5, 2, 45, 90, 40), "EU": (5, 2, 40, 80, 40),
-    "UK": (4, 2, 35, 70, 35), "IN": (349, 149, 3500, 7000, 3000), "SG": (6, 3, 60, 120, 50),
-    "JP": (700, 300, 7000, 14000, 6000), "AU": (7, 3, 70, 140, 60), "BR": (25, 10, 250, 500, 200),
-    "CA": (6, 3, 60, 120, 55), "GLOBAL": (5, 2, 45, 90, 40),
+    "TH": (4, 2, 40, 80, 35), "US": (5, 2, 45, 90, 40), "EU": (5, 2, 40, 80, 40),
+    "UK": (5, 2, 45, 90, 40), "IN": (4, 2, 40, 80, 35), "SG": (5, 2, 45, 90, 40),
+    "JP": (5, 2, 45, 90, 40), "AU": (5, 2, 45, 90, 40), "BR": (5, 2, 45, 90, 40),
+    "CA": (5, 2, 45, 90, 40), "GLOBAL": (5, 2, 45, 90, 40),
 }
 
 # Timezone to market. Europe is split by country because EU and UK rules differ.
@@ -62,8 +62,12 @@ def market_for_timezone(tz: str | None) -> str:
     return "GLOBAL"
 
 
+DEMO_CURRENCY = "USD"  # every amount in the demo is shown in US dollars, whatever the market's own currency
+
+
 def _m(name, currency, rails, **kw):
-    return {"name": name, "currency": currency, "rails": rails, **kw}
+    # `currency` stays on record as the market's real currency. All demo money is in USD.
+    return {"name": name, "currency": DEMO_CURRENCY, "local_currency": currency, "rails": rails, **kw}
 
 
 # Each note: area, the law or rule, what Calmy does about it.

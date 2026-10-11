@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS policies (
     f_schedule_changed INTEGER DEFAULT 0,  -- flight time changed shortly before purchase
     f_shared_account INTEGER DEFAULT 0,    -- payout account shared with other profiles
     f_prior_claims INTEGER DEFAULT 0,      -- prior claims in 12 months
-    market TEXT DEFAULT 'TH', currency TEXT DEFAULT 'THB',
+    market TEXT DEFAULT 'TH', currency TEXT DEFAULT 'USD',
     created_at REAL,                       -- when cover was bought
     sched_at_purchase TEXT                 -- scheduled time seen at purchase, to spot later changes
 );
@@ -90,7 +90,7 @@ def conn():
 # Columns added after the first release. Applied to an existing database file on start.
 MIGRATIONS = [
     ("flights", "flight_date", "TEXT"), ("flights", "sched_ts", "REAL"), ("flights", "market", "TEXT DEFAULT 'TH'"),
-    ("decisions", "breakdown", "TEXT"), ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'THB'"),
+    ("decisions", "breakdown", "TEXT"), ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'USD'"),
     ("policies", "created_at", "REAL"), ("policies", "sched_at_purchase", "TEXT"),
 ]
 
