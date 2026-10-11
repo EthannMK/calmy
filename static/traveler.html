@@ -110,6 +110,8 @@
   #sheet{position:absolute;inset:0;background:rgba(12,27,46,.45);z-index:50;display:flex;align-items:flex-end}
   #sheet .in{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:90%;overflow-y:auto}
   #toast{position:absolute;left:14px;right:14px;bottom:86px;transform:none;max-width:none;z-index:60}
+  .embed body{background:transparent;background-image:none}
+  .embed #app{margin:0;max-width:none;height:100dvh;max-height:none;border-radius:0;box-shadow:none}
 </style>
 </head>
 <body>
@@ -156,8 +158,9 @@
 
 <script src="/static/ui.js"></script>
 <script>
+const EMBED = new URLSearchParams(location.search).has('embed'); if (EMBED) document.documentElement.classList.add('embed');
 let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid');
-let S = null, MK = {}, tab = 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
+let S = null, MK = {}, tab = ['cover', 'claims', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
 let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
 const cur = () => (S && S.policy && S.policy.currency) || 'USD';
@@ -513,7 +516,7 @@ $('#liveList').onclick = async () => {
 };
 
 // Poll so a payout triggered elsewhere shows up here. Skipped while typing so forms are not wiped.
-setInterval(() => { if (!document.hidden && PID) load().catch(() => {}); }, 4000);
+setInterval(() => { if (!document.hidden && PID) load().catch(() => {}); }, EMBED ? 1500 : 4000);
 (async () => {
   try { SAMPLES = await api('/api/live/samples'); } catch (e) {}
   try { LIVE = await api('/api/live/status'); } catch (e) {}

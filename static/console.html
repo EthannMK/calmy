@@ -318,7 +318,7 @@ function bindAll() {
 $('#aiOn').innerHTML = aiChip('AI on');
 $('#reset').onclick = async () => { try { await api('/api/demo/reset', 'POST'); toast('Demo data reset.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); };
 // Poll so a claim made in the traveler app shows up. Skip while a form is in use so typing is never wiped.
-setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, 3000);
+setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 1500 : 3000);
 refresh();
 </script>
 </body>

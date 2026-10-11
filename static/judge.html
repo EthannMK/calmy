@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0C1B2E">
+<title>Calmy, both sides</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/ui.css">
+<style>
+  html,body{height:100%}
+  body{display:flex;flex-direction:column;background:var(--paper);overflow:hidden}
+  .bar{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--navy);color:#fff;flex-shrink:0}
+  .bar .mark{background:#18304F}.bar .wordmark{color:#fff;font-size:21px}
+  .bar .t{font-size:13px;color:var(--navy-mute);padding-left:16px;border-left:1px solid var(--navy-line)}
+  .bar .push{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .bar a,.bar button{color:#C9D6E8;font-size:13px;font-weight:600;padding:6px 12px;border:1px solid var(--navy-line);border-radius:6px}
+  .bar a:hover,.bar button:hover{background:#18304F;text-decoration:none}
+
+  /* the guided run: one strip, five cells */
+  .run{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-bottom:1px solid var(--line);flex-shrink:0}
+  .cell{padding:12px 18px 12px;border-right:1px solid var(--line2);position:relative;min-width:0}
+  .cell:last-child{border-right:0}
+  .cell .n{font-family:'Geist Mono',monospace;font-size:12px;color:var(--faint);display:flex;gap:8px;align-items:center}
+  .cell h3{font-size:15px;margin:3px 0 2px;font-family:'Geist',sans-serif;letter-spacing:0;font-weight:700}
+  .cell p{font-size:12.5px;color:var(--mute);line-height:1.35;min-height:34px}
+  .cell .do{margin-top:6px;font-size:12.5px;font-weight:700;color:var(--cobalt);display:none}
+  .cell .do:hover{text-decoration:underline}
+  .cell.now{background:#FFFBEF}.cell.now::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--amber)}
+  .cell.now .do{display:inline-block}.cell.now .n{color:var(--amber-d)}
+  .cell.done h3{color:var(--ink2)}.cell.done .n{color:var(--green)}
+  .cell.done .n::after{content:'Done';font-family:'Geist',sans-serif;font-weight:700}
+
+  /* the two sides and the wire between them */
+  .stage{flex:1;min-height:0;display:grid;grid-template-columns:auto 72px minmax(0,1fr);gap:0;padding:14px 24px 18px;align-items:stretch}
+  .side{display:flex;flex-direction:column;min-height:0;min-width:0}
+  .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute)}
+  .cap b{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;color:var(--ink);letter-spacing:-.01em}
+  .phone{flex:1;min-height:0;aspect-ratio:390/800;max-width:100%;background:var(--navy);padding:9px;border-radius:38px;box-shadow:0 18px 40px rgba(12,27,46,.22)}
+  .phone iframe{width:100%;height:100%;border:0;border-radius:30px;background:#fff;display:block}
+  .desk{flex:1;min-height:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(12,27,46,.1);display:flex;flex-direction:column}
+  .desk .url{height:30px;display:flex;align-items:center;gap:6px;padding:0 12px;background:#F8FAFC;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute);font-family:'Geist Mono',monospace}
+  .desk iframe{flex:1;border:0;width:100%;min-height:0}
+  .wire{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .wire::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:2px dashed #B7C2D1}
+  .wire .dot{position:absolute;top:calc(50% - 6px);left:0;width:12px;height:12px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px rgba(255,178,36,.25);opacity:0}
+  .wire.go .dot{animation:travel .9s cubic-bezier(.5,0,.3,1) forwards}
+  @keyframes travel{0%{opacity:1;transform:translateX(0)}100%{opacity:1;transform:translateX(60px)}}
+  .wire .lbl{position:relative;background:var(--paper);padding:4px 6px;font-size:11px;font-weight:700;color:var(--mute);text-align:center;line-height:1.2;max-width:70px}
+  .tabs{display:none}
+  @media(max-width:1180px){
+    .run{grid-template-columns:repeat(5,minmax(150px,1fr));overflow-x:auto}
+    .stage{grid-template-columns:1fr;padding:10px 12px 12px}
+    .wire{display:none}.tabs{display:flex;gap:6px;padding:10px 12px 0}
+    .tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
+    .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .side{display:none}.side.show{display:flex}.phone{max-width:400px;margin:0 auto;aspect-ratio:auto;flex:1}
+    .bar .t{display:none}
+  }
+</style>
+</head>
+<body>
+<header class="bar"><div class="mark" aria-hidden="true" style="width:28px;height:28px"></div><span class="wordmark">calmy</span><span class="t">Two views of one policy, live</span>
+  <div class="push"><button id="reset">Reset demo</button><a href="/">Exit</a></div></header>
+
+<section class="run" aria-label="Guided run">
+  <div class="cell" data-s="1"><div class="n">1 </div><h3>Buy cover</h3><p>On the phone, pick a flight, add your name and add cover.</p><button class="do" data-do="1">Do it for me</button></div>
+  <div class="cell" data-s="2"><div class="n">2 </div><h3>Delay the flight</h3><p>Phone: Test tools, then delay by 200 minutes.</p><button class="do" data-do="2">Do it for me</button></div>
+  <div class="cell" data-s="3"><div class="n">3 </div><h3>Read the reasoning</h3><p>Insurer: open Decisions and the new decision.</p><button class="do" data-do="3">Do it for me</button></div>
+  <div class="cell" data-s="4"><div class="n">4 </div><h3>Try a risky traveler</h3><p>Same delay, riskier profile. The AI asks a person.</p><button class="do" data-do="4">Do it for me</button></div>
+  <div class="cell" data-s="5"><div class="n">5 </div><h3>Decide as the insurer</h3><p>Approve or decline in the Review queue. The phone updates.</p><button class="do" data-do="5">Open the queue</button></div>
+</section>
+
+<div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
+<main class="stage">
+  <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><span>the phone in your pocket</span></div><div class="phone"><iframe id="phone" src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
+  <div class="wire" id="wire" aria-hidden="true"><span class="dot"></span><span class="lbl">live</span></div>
+  <section class="side" id="s-desk"><div class="cap"><b>Insurer</b><span>Orchid Insure, claims desk</span></div><div class="desk"><div class="url">orchid-insure / console</div><iframe id="desk" src="/console?embed=1" title="Insurer console"></iframe></div></section>
+</main>
+<div id="toast" class="hidden"></div>
+<script src="/static/ui.js"></script>
+<script>
+const phone = $('#phone'), desk = $('#desk'), cells = [...document.querySelectorAll('.cell')];
+const SAMPLE_FLIGHTS = ['OA 310', 'OA 530', 'OA 640', 'OA 750', 'OA 860', 'OA 970'];
+let st = {s1: false, s2: false, s3: false, s4: false, s5: false}, lastCount = 0, busy = false;
+
+const reloadPhone = (q = '') => { phone.src = '/traveler?embed=1' + q + '&t=' + Date.now(); };
+const goDesk = h => { try { desk.contentWindow.location.hash = h; } catch (e) {} };
+
+/* Which step is the judge on? Read it from real state, so doing it by hand and pressing the button both work. */
+async function poll() {
+  if (busy) return;
+  try {
+    const pid = store.get('calmy.pid');
+    let own = null; if (pid) { try { own = await api('/api/traveler/' + pid); } catch (e) {} }
+    let risky = null; try { risky = await api('/api/traveler/CL-45102'); } catch (e) {}
+    const hash = (() => { try { return desk.contentWindow.location.hash; } catch (e) { return ''; } })();
+    st.s1 = !!(own && own.policy.status === 'active') || !!(risky && risky.policy.status === 'active' && pid === 'CL-45102');
+    st.s2 = !!(own && own.delay_decision);
+    if (/^#(decisions\/|review\/)/.test(hash)) st.s3 = true;
+    st.s4 = !!(risky && risky.delay_decision);
+    st.s5 = !!(risky && risky.delay_decision && risky.delay_decision.status !== 'held');
+    if (!st.s2) st.s3 = false;
+    const ov = await api('/api/console/overview');
+    const count = ov.decisions.length;
+    if (count > lastCount && lastCount !== 0 || (count && !lastCount && document.readyState === 'complete' && st.s2)) pulse();
+    lastCount = count;
+  } catch (e) {}
+  paint();
+}
+function paint() {
+  const keys = ['s1', 's2', 's3', 's4', 's5']; const now = keys.find(k => !st[k]);
+  cells.forEach((c, i) => { const k = keys[i]; c.classList.toggle('done', !!st[k]); c.classList.toggle('now', k === now); });
+}
+function pulse() { const w = $('#wire'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); }
+
+async function buyCover(name, last4, flights) {
+  for (const f of flights) {
+    try {
+      const q = await api('/api/policies', 'POST', {name, last4, flight: f});
+      await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true});
+      return {pid: q.policy, flight: f};
+    } catch (e) { /* that flight is already delayed or has left, try the next one */ }
+  }
+  throw 'No sample flight is free. Use Reset demo and try again.';
+}
+const actions = {
+  async 1() { const r = await buyCover('Lena Fischer', '1234', SAMPLE_FLIGHTS); store.set('calmy.pid', r.pid); reloadPhone(); },
+  async 2() {
+    const pid = store.get('calmy.pid'); const t = pid && await api('/api/traveler/' + pid);
+    if (!t || t.policy.status !== 'active') throw 'Buy cover first (step 1).';
+    await api('/api/demo/delay', 'POST', {flight: t.flight.code, minutes: 200}); reloadPhone('&tab=claims');
+  },
+  async 3() { const pid = store.get('calmy.pid'); if (!pid) throw 'Buy cover first (step 1).'; goDesk('#decisions/' + pid); st.s3 = true; },
+  async 4() {
+    try { await api('/api/traveler/CL-45102/checkout', 'POST', {delay: true, baggage: true, ack: true}); } catch (e) { if (!/already active/i.test(e)) throw e; }
+    await api('/api/demo/delay', 'POST', {flight: 'OA 108', minutes: 200});
+    store.set('calmy.pid', 'CL-45102'); reloadPhone('&tab=claims'); goDesk('#review');
+  },
+  async 5() { goDesk('#review'); showTab('desk'); },
+};
+document.querySelectorAll('.do').forEach(b => b.onclick = async () => {
+  busy = true; b.disabled = true;
+  try { await actions[b.dataset.do](); if (b.dataset.do !== '5') pulse(); } catch (e) { fail(e); }
+  b.disabled = false; busy = false; poll();
+});
+$('#reset').onclick = async () => { try { await api('/api/demo/reset', 'POST'); } catch (e) { return fail(e); } store.set('calmy.pid', null); st = {s1: false, s2: false, s3: false, s4: false, s5: false}; lastCount = 0; reloadPhone(); goDesk('#overview'); desk.contentWindow.location.reload(); toast('Demo reset.', 'ok'); poll(); };
+
+/* Narrow screens show one side at a time. */
+function showTab(t) { document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('#s-phone').classList.toggle('show', t === 'phone'); $('#s-desk').classList.toggle('show', t === 'desk'); }
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
+setInterval(poll, 1500); poll();
+</script>
+</body>
+</html>

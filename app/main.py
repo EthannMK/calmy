@@ -532,6 +532,12 @@ def traveler_page():
     return FileResponse(os.path.join(STATIC, "traveler.html"))
 
 
+@app.get("/judge")
+def judge_page():
+    """Both views side by side with a guided run, for judges."""
+    return FileResponse(os.path.join(STATIC, "judge.html"))
+
+
 @app.get("/console")
 def console_page():
     return FileResponse(os.path.join(STATIC, "console.html"))

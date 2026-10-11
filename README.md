@@ -86,6 +86,10 @@ State lives in one SQLite file, so run a single instance.
 The service account needs the Vertex AI User role for Gemini. Without it the app still works
 and uses the template explanation.
 
+## Judge view
+
+Open `/judge` for the traveler phone and the insurer console side by side. A five step strip follows the real state, and each step has a Do it for me button.
+
 ## Design system
 
 No build step and no CDN. `static/ui.css` holds the tokens and components, `static/ui.js` holds the
