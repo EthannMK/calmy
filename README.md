@@ -1,4 +1,4 @@
-# Calmy, smart flight cover
+# KODA, smart flight cover
 
 Flight delay and lost bag cover that pays automatically. A traveler buys cover at checkout.
 When the flight is late, rules and a risk score decide, the payout is simulated, and the
@@ -56,7 +56,7 @@ What the law changes in the product, not only in text:
 - A claim is never denied by the system. It is paid, or held for a person. Only a person can decline, and the traveler can ask for a second review (GDPR Article 22 and fair claims handling).
 - The airline's own duties (EU261, UK261, Canada APPR and others) are shown, and the payout never replaces them.
 - Cover cannot be bought after a delay is known or after departure.
-- Rules and prices are edited per market in the insurer console. The "Markets and law" page lists the laws and what Calmy does about each.
+- Rules and prices are edited per market in the insurer console. The "Markets and law" page lists the laws and what KODA does about each.
 
 These notes are a design aid for the demo and not legal advice. A launch needs a licensed insurer and local counsel.
 Source file: `app/markets.py`.

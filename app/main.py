@@ -1,4 +1,4 @@
-"""Calmy API and static site.
+"""KODA API and static site.
 
 Run locally:  uvicorn app.main:app --reload
 Pages:        /            landing with the two demo entry points
@@ -29,7 +29,7 @@ async def lifespan(_app):
 
 
 app = FastAPI(
-    title="Calmy",
+    title="KODA",
     description="Smart flight cover. Demo data, flight data simulated.",
     lifespan=lifespan,
 )

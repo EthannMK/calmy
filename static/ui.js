@@ -1,4 +1,4 @@
-/* Shared helpers and charts for both Calmy apps. */
+/* Shared helpers and charts for both KODA apps. */
 const $ = s => document.querySelector(s);
 const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const msg = d => typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => (x.loc ? x.loc[x.loc.length - 1] + ': ' : '') + (x.msg || '')).join('. ') || 'Check the values and try again.' : 'Something went wrong. Please try again.';
@@ -51,7 +51,7 @@ function barList(rows) {
 
 /* Claim outcomes as one stacked bar. Status colors always travel with a label and a count. */
 function outcomeBar(o) {
-  const items = [['Paid automatically', o.auto, '#0B8A5C'], ['Approved by a person', o.reviewed, '#1F4FD1'], ['Held for review', o.held, '#E08A12'], ['Declined', o.declined, '#C0362C']];
+  const items = [['Paid automatically', o.auto, '#0B8A5C'], ['Approved by a person', o.reviewed, '#0A62EA'], ['Held for review', o.held, '#E08A12'], ['Declined', o.declined, '#C0362C']];
   const total = items.reduce((a, i) => a + i[1], 0);
   if (!total) return '<p class="mute">No claims yet. Delays that reach a payout rule appear here.</p>';
   return `<div class="ob" role="img" aria-label="${items.map(i => i[0] + ' ' + i[1]).join(', ')}">${items.filter(i => i[1]).map(i => `<i style="flex:${i[1]};background:${i[2]}" title="${i[0]}: ${i[1]}"></i>`).join('')}</div>
@@ -67,10 +67,10 @@ function payoutCurve(r, cur) {
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Payout steps from 0 to ${num(p1)} ${cur} at ${hm(t1)} and ${num(p2)} ${cur} at ${hm(t2)}" style="width:100%;height:auto;display:block">
     <line x1="${L}" x2="${W - R}" y1="${y(p1)}" y2="${y(p1)}" stroke="#EBEFF4"/><line x1="${L}" x2="${W - R}" y1="${y(p2)}" y2="${y(p2)}" stroke="#EBEFF4"/>
     <line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="#97A3B4"/>
-    <path d="${path} V${y(0)} H${x(0)} Z" fill="#1F4FD1" opacity=".08"/><path d="${path}" fill="none" stroke="#1F4FD1" stroke-width="2.5" stroke-linejoin="round"/>
-    <circle cx="${x(t1)}" cy="${y(p1)}" r="5" fill="#fff" stroke="#1F4FD1" stroke-width="2.5"><title>${hm(t1)} delay pays ${num(p1)} ${cur}</title></circle>
-    <circle cx="${x(t2)}" cy="${y(p2)}" r="5" fill="#fff" stroke="#1F4FD1" stroke-width="2.5"><title>${hm(t2)} delay pays ${num(p2)} ${cur}</title></circle>
-    <g font-size="11" fill="#66758B" font-family="Geist">
+    <path d="${path} V${y(0)} H${x(0)} Z" fill="#0A62EA" opacity=".08"/><path d="${path}" fill="none" stroke="#0A62EA" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="${x(t1)}" cy="${y(p1)}" r="5" fill="#fff" stroke="#0A62EA" stroke-width="2.5"><title>${hm(t1)} delay pays ${num(p1)} ${cur}</title></circle>
+    <circle cx="${x(t2)}" cy="${y(p2)}" r="5" fill="#fff" stroke="#0A62EA" stroke-width="2.5"><title>${hm(t2)} delay pays ${num(p2)} ${cur}</title></circle>
+    <g font-size="11" fill="#66758B" font-family="Figtree">
       <text x="${L - 8}" y="${y(p1) + 4}" text-anchor="end">${num(p1)}</text><text x="${L - 8}" y="${y(p2) + 4}" text-anchor="end">${num(p2)}</text><text x="${L - 8}" y="${y(0) + 4}" text-anchor="end">0</text>
       <text x="${x(0)}" y="${H - 14}">0</text><text x="${x(t1)}" y="${H - 14}" text-anchor="middle">${hm(t1)}</text><text x="${x(t2)}" y="${H - 14}" text-anchor="middle">${hm(t2)}</text>
       <text x="${W - R}" y="${H - 2}" text-anchor="end">Delay, hours and minutes. Payout in ${cur}.</text></g></svg>`;
@@ -81,14 +81,14 @@ function routeArt() {
   const pts = [[40, 118], [118, 70], [196, 96], [262, 52], [330, 104]];
   const arc = (a, b) => `M${a[0]},${a[1]} Q${(a[0] + b[0]) / 2},${Math.min(a[1], b[1]) - 46} ${b[0]},${b[1]}`;
   return `<svg viewBox="0 0 370 150" aria-hidden="true" style="width:100%;height:auto;display:block">
-    ${[30, 60, 90, 120].map(v => `<line x1="0" x2="370" y1="${v}" y2="${v}" stroke="#25405F" stroke-width="1"/>`).join('')}
-    ${[60, 120, 180, 240, 300].map(v => `<line y1="0" y2="150" x1="${v}" x2="${v}" stroke="#25405F" stroke-width="1"/>`).join('')}
-    ${pts.slice(0, -1).map((p, i) => `<path d="${arc(p, pts[i + 1])}" fill="none" stroke="#FFB224" stroke-width="1.6" stroke-dasharray="3 4"/>`).join('')}
-    ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === 3 ? 5 : 3.5}" fill="${i === 3 ? '#FFB224' : '#0C1B2E'}" stroke="#FFB224" stroke-width="1.6"/>`).join('')}</svg>`;
+    ${[30, 60, 90, 120].map(v => `<line x1="0" x2="370" y1="${v}" y2="${v}" stroke="#1B4079" stroke-width="1"/>`).join('')}
+    ${[60, 120, 180, 240, 300].map(v => `<line y1="0" y2="150" x1="${v}" x2="${v}" stroke="#1B4079" stroke-width="1"/>`).join('')}
+    ${pts.slice(0, -1).map((p, i) => `<path d="${arc(p, pts[i + 1])}" fill="none" stroke="#0DC5FB" stroke-width="1.6" stroke-dasharray="3 4"/>`).join('')}
+    ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === 3 ? 5 : 3.5}" fill="${i === 3 ? '#0DC5FB' : '#071C3F'}" stroke="#0DC5FB" stroke-width="1.6"/>`).join('')}</svg>`;
 }
 
 /* ---- AI identity helpers ---- */
-const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="aig" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B8CFF"/><stop offset="1" stop-color="#A78BFA"/></linearGradient></defs><path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z" fill="url(#aig)"/></svg>';
+const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="aig" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0DC5FB"/><stop offset="1" stop-color="#0A62EA"/></linearGradient></defs><path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z" fill="url(#aig)"/></svg>';
 const aiChip = (t = 'AI', dark = false) => `<span class="ai ${dark ? 'dark' : ''}">${STAR}${esc(t)}</span>`;
 
 /* Text the AI wrote. It types in once; after that it renders whole so polling never replays it. */
@@ -115,14 +115,14 @@ function gauge(score, th) {
   const [nx, ny] = pt(Math.min(score, 100), r - 14), hold = score >= th;
   return `<svg class="gauge" viewBox="0 0 240 168" role="img" aria-label="Risk score ${score} of 100. Auto pay below ${th}.">
     <path d="${arc(0, th)}" stroke="#0B8A5C" stroke-width="16" fill="none" opacity=".9"/><path d="${arc(th + .8, 100)}" stroke="#E08A12" stroke-width="16" fill="none"/>
-    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#0C1B2E" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="7" fill="#0C1B2E"/>
-    <text x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="26" font-weight="800" fill="#0C1B2E">${score}</text>
-    <text x="22" y="${cy + 18}" font-size="11" fill="#66758B" font-family="Geist">0</text><text x="218" y="${cy + 18}" text-anchor="end" font-size="11" fill="#66758B" font-family="Geist">100</text>
-    <text x="${cx}" y="${cy + 50}" text-anchor="middle" font-size="12" font-weight="700" fill="${hold ? '#8A5300' : '#0B6B49'}" font-family="Geist">${hold ? 'Sent to a person' : 'Safe to pay automatically'}</text></svg>`;
+    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#071C3F" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="7" fill="#071C3F"/>
+    <text x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="26" font-weight="800" fill="#071C3F">${score}</text>
+    <text x="22" y="${cy + 18}" font-size="11" fill="#66758B" font-family="Figtree">0</text><text x="218" y="${cy + 18}" text-anchor="end" font-size="11" fill="#66758B" font-family="Figtree">100</text>
+    <text x="${cx}" y="${cy + 50}" text-anchor="middle" font-size="12" font-weight="700" fill="${hold ? '#8A5300' : '#0B6B49'}" font-family="Figtree">${hold ? 'Sent to a person' : 'Safe to pay automatically'}</text></svg>`;
 }
 
-/* Calmy's decision time next to a manual claim. The manual bar is illustrative, drawn hatched on purpose. */
+/* KODA's decision time next to a manual claim. The manual bar is illustrative, drawn hatched on purpose. */
 function speedCompare(sec) {
-  return `<div class="spd"><div class="r"><b>Calmy AI</b><div class="b calmy"><i style="width:7%">${sec}s</i></div></div>
+  return `<div class="spd"><div class="r"><b>KODA AI</b><div class="b calmy"><i style="width:7%">${sec}s</i></div></div>
     <div class="r"><span class="mute">Manual claim</span><div class="b manual"><i>days, illustrative</i></div></div></div>`;
 }

@@ -1,4 +1,4 @@
-"""SQLite storage and demo seed data for Calmy.
+"""SQLite storage and demo seed data for KODA.
 
 The demo keeps all state in one SQLite file so that a reset is a single call.
 On Google Cloud the same tables map to Cloud SQL, and the `events` table is

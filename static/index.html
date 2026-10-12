@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0C1B2E">
-<title>Calmy, smart flight cover</title>
+<meta name="theme-color" content="#071C3F">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<title>KODA, smart flight cover</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/ui.css">
 <style>
@@ -14,7 +15,7 @@
   .L::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--navy-line) 1px,transparent 1px),linear-gradient(90deg,var(--navy-line) 1px,transparent 1px);background-size:60px 60px;opacity:.28;mask-image:radial-gradient(ellipse at 30% 80%,#000,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at 30% 80%,#000,transparent 70%)}
   .L>*{position:relative;width:100%;max-width:800px}.L .lead{padding-right:15%}
   .brand{display:flex;align-items:center;gap:12px}
-  .brand .mark{background:#18304F}.brand .wordmark{color:#fff;font-size:24px}
+  .brand .wordmark{color:#fff;font-size:24px}
   .L h1{font-size:clamp(34px,min(4.4vw,6.4vh),60px);line-height:1;}
   .L h1 em{font-style:normal;color:var(--amber)}
   .L .lead{font-size:clamp(14px,2vh,17px);line-height:1.55;color:#B9C7DB;}
@@ -27,18 +28,18 @@
   .board .row b{color:var(--amber);font-weight:700}
   .board .dly{font-weight:700;min-width:84px;text-align:right}
   .board .dly.ok{color:#7FE3B8}.board .dly.late{color:var(--amber)}
-  .hero-row{background:#0C1B2E}
+  .hero-row{background:#071C3F}
   .payline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:clamp(9px,1.5vh,14px) 16px;background:#0B2A22;color:#7FE3B8;font-size:14px;font-weight:600;transition:opacity .4s,transform .4s;border-top:1px solid #14503D}
-  .payline.off{background:#0F1E32;color:#8EA2BD;border-top-color:var(--navy-line)}.payline.off .amt{color:#8EA2BD}
+  .payline.off{background:#0F1E32;color:#8FB0DE;border-top-color:var(--navy-line)}.payline.off .amt{color:#8FB0DE}
   .payline .amt{font-family:'Geist Mono',monospace;font-weight:700;font-size:16px;color:#fff}
-  .board .trk{padding:0 16px 0;background:#0C1B2E}
+  .board .trk{padding:0 16px 0;background:#071C3F}
   
   .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .facts>div{display:flex;flex-direction:column;gap:3px;padding:14px;border:1px solid var(--navy-line);border-radius:12px;background:rgba(20,43,77,.45);backdrop-filter:blur(4px)}
-  .facts b{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(15px,2.1vh,18px);color:#fff;letter-spacing:-.01em;line-height:1.15}
-  .facts small{font-size:12.5px;color:#8EA2BD;line-height:1.35}
-  .fi{width:34px;height:34px;border-radius:9px;background:#18304F;color:var(--amber);display:flex;align-items:center;justify-content:center;margin-bottom:8px}
-  .fi .ms{font-size:20px}.fi.ai{background:linear-gradient(120deg,#1F4FD1,#8B5CF6)}.fi svg{width:18px;height:18px}
+  .facts b{font-family:'Figtree',sans-serif;font-size:clamp(15px,2.1vh,18px);color:#fff;letter-spacing:-.01em;line-height:1.15}
+  .facts small{font-size:12.5px;color:#8FB0DE;line-height:1.35}
+  .fi{width:34px;height:34px;border-radius:9px;background:#0F3470;color:var(--amber);display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+  .fi .ms{font-size:20px}.fi.ai{background:linear-gradient(120deg,#0A62EA,#0560EB)}.fi svg{width:18px;height:18px}
   .R{display:flex;align-items:center;justify-content:center;padding:40px 32px;background:var(--paper)}
   .login{width:100%;max-width:410px}
   .login h2{font-size:28px}
@@ -80,7 +81,7 @@
 <body>
 <div class="split">
   <section class="L">
-    <div class="brand"><span class="mark" aria-hidden="true"></span><span class="wordmark">calmy</span></div>
+    <div class="brand"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span></div>
     <h1>Your flight is late.<br><em>Your money isn't.</em></h1>
     <p class="lead">Delay and lost bag cover that pays you by itself. You fill in nothing. The insurer sees every decision and the reason behind it.</p>
 
@@ -105,9 +106,9 @@
     <g class="trailg"><rect x="-300" y="-5" width="270" height="2.4" rx="1.2" fill="url(#trail)"/><rect x="-300" y="3" width="270" height="2.4" rx="1.2" fill="url(#trail)"/></g>
     <g transform="scale(1.7)">
       <path d="M-8,2 L-26,22 L-14,22 L10,2Z" fill="#B9C6D8"/>
-      <path d="M-30,-1 L-40,-20 L-30,-20 L-14,-1Z" fill="#FFB224"/>
+      <path d="M-30,-1 L-40,-20 L-30,-20 L-14,-1Z" fill="#0DC5FB"/>
       <path d="M-38,1 C-38,-8 -16,-9 18,-8.5 C34,-8 44,-3 47,1 C44,5 34,8 18,8.5 C-16,9 -38,9 -38,1Z" fill="url(#body)"/>
-      <path d="M-36,4 H42" stroke="#FFB224" stroke-width="2.2"/>
+      <path d="M-36,4 H42" stroke="#0DC5FB" stroke-width="2.2"/>
       <path d="M30,-6 C38,-6 43,-3 45,0 H30Z" fill="#6E86A8" opacity=".55"/>
       <rect x="-24" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="-18" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="-12" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="-6" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="0" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="6" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="12" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="18" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="24" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/>
       <path d="M-6,-1 L-24,-24 L-13,-24 L10,-1Z" fill="#fff"/>
@@ -132,7 +133,7 @@
 
   <section class="R">
     <main class="login">
-      <h2>See Calmy from both sides</h2>
+      <h2>See KODA from both sides</h2>
       <p class="sub">One policy, two people. The traveler gets paid, the insurer sees every decision and why.</p>
       <a class="role feature" href="/judge"><span class="ic"><span class="ms" aria-hidden="true">dashboard</span></span><span><b>Watch both sides at once</b><span class="d">The traveler's phone and the insurer's desk, side by side, with a guided run.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
       <div class="or">or take one side</div>

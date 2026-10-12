@@ -2,7 +2,7 @@
 
 The market of a policy is set by where its flight departs. Money is simulated in the market's own
 currency. The legal notes summarise the main laws that shape the product in each market and how
-Calmy handles them. They are a design aid for the demo and are not legal advice. A real launch
+KODA handles them. They are a design aid for the demo and are not legal advice. A real launch
 needs a licensed insurer and local counsel to confirm the current text of each law.
 """
 
@@ -70,7 +70,7 @@ def _m(name, currency, rails, **kw):
     return {"name": name, "currency": DEMO_CURRENCY, "local_currency": currency, "rails": rails, **kw}
 
 
-# Each note: area, the law or rule, what Calmy does about it.
+# Each note: area, the law or rule, what KODA does about it.
 MARKETS = {
     "TH": _m("Thailand", "THB", ["PromptPay", "Bank transfer"],
              regulator="Office of Insurance Commission (OIC)", tax="Taxes included where they apply.",
@@ -79,7 +79,7 @@ MARKETS = {
                  ("Insurance", "Non-life Insurance Act B.E. 2535, supervised by the OIC", "Cover must be underwritten by a licensed non-life insurer. The agency only sells it."),
                  ("Distribution", "Insurance broker and agent licensing under OIC rules", "The selling agency needs the right OIC licence or must act for the insurer."),
                  ("Data", "Personal Data Protection Act B.E. 2562 (PDPA)", "Explicit consent is shown and recorded before purchase."),
-                 ("Air passengers", "CAAT passenger rights notification", "Airline assistance duties stay with the airline. Calmy pays on top."),
+                 ("Air passengers", "CAAT passenger rights notification", "Airline assistance duties stay with the airline. KODA pays on top."),
              ]),
     "US": _m("United States", "USD", ["ACH bank transfer", "Zelle", "Debit card push"],
              regulator="State insurance departments (NAIC model laws)", tax="State premium tax varies by state.",
@@ -87,7 +87,7 @@ MARKETS = {
              notes=[
                  ("Insurance", "Insurance is regulated state by state", "Needs a licensed insurer and a licensed producer in the traveler's state. Rates and forms may need state filing."),
                  ("Claims handling", "State unfair claims settlement practices acts", "Claims are acknowledged and decided promptly. Time limits differ by state, so the strictest target is used."),
-                 ("Air passengers", "DOT automatic refund rule (cancellations and significant changes)", "Calmy never replaces a refund. The traveler is told to claim it from the airline."),
+                 ("Air passengers", "DOT automatic refund rule (cancellations and significant changes)", "KODA never replaces a refund. The traveler is told to claim it from the airline."),
                  ("Data", "State privacy laws such as the California CCPA and CPRA", "A privacy notice and consent are shown before purchase."),
              ]),
     "EU": _m("European Union", "EUR", ["SEPA Instant", "SEPA transfer"],
@@ -96,7 +96,7 @@ MARKETS = {
              notes=[
                  ("Distribution", "Insurance Distribution Directive (EU) 2016/97", "A short Insurance Product Information Document (IPID) is shown before purchase. The seller must check demands and needs."),
                  ("Air passengers", "Regulation (EC) 261/2004", "The cover pays on top of airline compensation. Travelers are told to claim from the airline too."),
-                 ("Data", "GDPR (EU) 2016/679", "Consent and purpose are shown. Article 22: a person can always review a claim, and Calmy never denies a claim automatically."),
+                 ("Data", "GDPR (EU) 2016/679", "Consent and purpose are shown. Article 22: a person can always review a claim, and KODA never denies a claim automatically."),
                  ("Baggage", "Montreal Convention", "The airline is liable first for lost bags. The cover tops up what the airline does not pay."),
              ]),
     "UK": _m("United Kingdom", "GBP", ["Faster Payments", "Bank transfer"],
@@ -114,7 +114,7 @@ MARKETS = {
              statutory="DGCA rules require airlines to give meals and refreshments by delay length and to offer a refund or another flight for long delays. Cash compensation rules apply mainly to cancellations and denied boarding.",
              notes=[
                  ("Insurance", "Insurance Act 1938 and IRDAI regulations on protection of policyholders", "Needs a licensed insurer. Policy wording and claims timelines follow IRDAI rules."),
-                 ("Air passengers", "DGCA Civil Aviation Requirements on passenger facilitation", "Airline duties stay with the airline. Calmy pays on top."),
+                 ("Air passengers", "DGCA Civil Aviation Requirements on passenger facilitation", "Airline duties stay with the airline. KODA pays on top."),
                  ("Data", "Digital Personal Data Protection Act 2023", "Clear consent notice shown and recorded before purchase."),
                  ("Payments", "UPI payout rail", "Payouts are sent to the traveler's own account only."),
              ]),
@@ -138,7 +138,7 @@ MARKETS = {
              statutory="No statutory delay compensation. Australian Consumer Law guarantees apply to the airline service.",
              notes=[
                  ("Distribution", "Corporations Act design and distribution obligations (DDO)", "A Target Market Determination is published. Product Disclosure Statement and Financial Services Guide are made available before purchase."),
-                 ("Claims handling", "General Insurance Code of Practice", "A claim decision is given within 10 business days of getting all the information. Calmy aims for hours."),
+                 ("Claims handling", "General Insurance Code of Practice", "A claim decision is given within 10 business days of getting all the information. KODA aims for hours."),
                  ("Contracts", "Insurance Contracts Act 1984 (duty of utmost good faith)", "Terms are plain and claims are decided fairly."),
                  ("Data", "Privacy Act 1988", "Privacy notice and consent shown before purchase."),
              ]),
@@ -147,7 +147,7 @@ MARKETS = {
              statutory="ANAC Resolution 400 sets airline assistance by delay length (communication, food, accommodation). Compensation for damage is decided under consumer law.",
              notes=[
                  ("Insurance", "SUSEP rules and consumer protection code (CDC)", "Needs a licensed insurer. Terms must be clear and not misleading."),
-                 ("Air passengers", "ANAC Resolution 400", "Airline duties stay with the airline. Calmy pays on top."),
+                 ("Air passengers", "ANAC Resolution 400", "Airline duties stay with the airline. KODA pays on top."),
                  ("Data", "General Data Protection Law (LGPD)", "Consent and purpose shown and recorded."),
                  ("Payments", "Pix payout rail (Central Bank of Brazil)", "Payouts go to the traveler's own Pix key only."),
              ]),
@@ -169,9 +169,9 @@ MARKETS = {
                  ]),
 }
 
-# Shown at checkout in every market: how Calmy protects the traveler.
+# Shown at checkout in every market: how KODA protects the traveler.
 PRINCIPLES = [
-    "Calmy never denies a claim automatically. Only a person can decline, and you can ask for a person to look at any decision.",
+    "KODA never denies a claim automatically. Only a person can decline, and you can ask for a person to look at any decision.",
     "A delay that is already known cannot be insured. Cover must be bought before it.",
     "The payout is a fixed amount for a fixed delay. It does not depend on your actual costs.",
     "Payouts go only to the account you gave us. Your data is used only to run this cover.",

@@ -3,39 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0C1B2E">
-<title>Calmy, both sides</title>
+<meta name="theme-color" content="#071C3F">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<title>KODA, both sides</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/ui.css">
 <style>
   html,body{height:100%}
   body{display:flex;flex-direction:column;background:var(--paper);overflow:hidden}
   .bar{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--navy);color:#fff;flex-shrink:0}
-  .bar .mark{background:#18304F}.bar .wordmark{color:#fff;font-size:21px}
+  .bar .wordmark{color:#fff;font-size:21px}
   .bar .t{font-size:13px;color:var(--navy-mute);padding-left:16px;border-left:1px solid var(--navy-line)}
   .bar .push{margin-left:auto;display:flex;gap:10px;align-items:center}
   .bar a,.bar button{color:#C9D6E8;font-size:13px;font-weight:600;padding:6px 12px;border:1px solid var(--navy-line);border-radius:6px}
-  .bar a:hover,.bar button:hover{background:#18304F;text-decoration:none}
+  .bar a:hover,.bar button:hover{background:#0F3470;text-decoration:none}
 
   /* the guided run: one strip, five cells */
   .run{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-bottom:1px solid var(--line);flex-shrink:0}
   .cell{padding:12px 18px 12px;border-right:1px solid var(--line2);position:relative;min-width:0}
   .cell:last-child{border-right:0}
   .cell .n{font-family:'Geist Mono',monospace;font-size:12px;color:var(--faint);display:flex;gap:8px;align-items:center}
-  .cell h3{font-size:15px;margin:3px 0 2px;font-family:'Geist',sans-serif;letter-spacing:0;font-weight:700}
+  .cell h3{font-size:15px;margin:3px 0 2px;font-family:'Figtree',sans-serif;letter-spacing:0;font-weight:700}
   .cell p{font-size:12.5px;color:var(--mute);line-height:1.35;min-height:34px}
   .cell .do{margin-top:6px;font-size:12.5px;font-weight:700;color:var(--cobalt);display:none}
   .cell .do:hover{text-decoration:underline}
   .cell.now{background:#FFFBEF}.cell.now::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--amber)}
   .cell.now .do{display:inline-block}.cell.now .n{color:var(--amber-d)}
   .cell.done h3{color:var(--ink2)}.cell.done .n{color:var(--green)}
-  .cell.done .n::after{content:'Done';font-family:'Geist',sans-serif;font-weight:700}
+  .cell.done .n::after{content:'Done';font-family:'Figtree',sans-serif;font-weight:700}
 
   /* the two sides and the wire between them */
   .stage{flex:1;min-height:0;display:grid;grid-template-columns:auto 72px minmax(0,1fr);gap:0;padding:14px 24px 18px;align-items:stretch}
   .side{display:flex;flex-direction:column;min-height:0;min-width:0}
   .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute)}
-  .cap b{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;color:var(--ink);letter-spacing:-.01em}
+  .cap b{font-family:'Figtree',sans-serif;font-size:17px;color:var(--ink);letter-spacing:-.01em}
   .phone{flex:1;min-height:0;aspect-ratio:390/800;max-width:100%;background:var(--navy);padding:9px;border-radius:38px;box-shadow:0 18px 40px rgba(12,27,46,.22)}
   .phone iframe{width:100%;height:100%;border:0;border-radius:30px;background:#fff;display:block}
   .desk{flex:1;min-height:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(12,27,46,.1);display:flex;flex-direction:column}
@@ -43,7 +44,7 @@
   .desk iframe{flex:1;border:0;width:100%;min-height:0}
   .wire{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .wire::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:2px dashed #B7C2D1}
-  .wire .dot{position:absolute;top:calc(50% - 6px);left:0;width:12px;height:12px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px rgba(255,178,36,.25);opacity:0}
+  .wire .dot{position:absolute;top:calc(50% - 6px);left:0;width:12px;height:12px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px rgba(13,197,251,.28);opacity:0}
   .wire.go .dot{animation:travel .9s cubic-bezier(.5,0,.3,1) forwards}
   @keyframes travel{0%{opacity:1;transform:translateX(0)}100%{opacity:1;transform:translateX(60px)}}
   .wire .lbl{position:relative;background:var(--paper);padding:4px 6px;font-size:11px;font-weight:700;color:var(--mute);text-align:center;line-height:1.2;max-width:70px}
@@ -60,7 +61,7 @@
 </style>
 </head>
 <body>
-<header class="bar"><div class="mark" aria-hidden="true" style="width:28px;height:28px"></div><span class="wordmark">calmy</span><span class="t">Two views of one policy, live</span>
+<header class="bar"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><span class="t">Two views of one policy, live</span>
   <div class="push"><button id="reset">Reset demo</button><a href="/">Exit</a></div></header>
 
 <section class="run" aria-label="Guided run">

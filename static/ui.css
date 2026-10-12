@@ -1,19 +1,19 @@
-/* Calmy design system. One file for both apps.
+/* KODA design system. One file for both apps.
    Idea: an airline operations room. Quiet paper surfaces, thin rules, square-ish corners,
    and one loud element, the navy and amber departure board, used only for flights. */
 :root{
-  --ink:#0C1B2E; --ink2:#34445A; --mute:#66758B; --faint:#97A3B4;
-  --line:#DCE2EA; --line2:#EBEFF4; --paper:#F0F3F7; --panel:#FFFFFF;
-  --navy:#0C1B2E; --navy2:#142B4D; --navy-line:#25405F; --navy-mute:#8EA2BD;
-  --cobalt:#1F4FD1; --cobalt-d:#173DA6; --cobalt-t:#E7EDFC;
-  --amber:#FFB224; --amber-d:#8A5300; --amber-t:#FFF2D3;
+  --ink:#071C3F; --ink2:#34445A; --mute:#66758B; --faint:#97A3B4;
+  --line:#DCE2EA; --line2:#EBEFF4; --paper:#F1F6FC; --panel:#FFFFFF;
+  --navy:#071C3F; --navy2:#0B2C60; --navy-line:#1B4079; --navy-mute:#8FB0DE;
+  --cobalt:#0A62EA; --cobalt-d:#054BC0; --cobalt-t:#E3F1FE;
+  --amber:#0DC5FB; --amber-d:#8A5300; --amber-t:#FFF2D3;
   --green:#0B8A5C; --green-t:#E2F4EC; --red:#C0362C; --red-t:#FCE8E6;
   --r:6px;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;font:14px/1.45 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
-h1,h2,h3,.disp{font-family:'Bricolage Grotesque','Geist',sans-serif;letter-spacing:-.02em;margin:0;line-height:1.12;font-weight:700}
+body{margin:0;font:14px/1.45 'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+h1,h2,h3,.disp{font-family:'Figtree',sans-serif;letter-spacing:-.02em;margin:0;line-height:1.12;font-weight:700}
 p{margin:0}
 a{color:var(--cobalt);text-decoration:none}a:hover{text-decoration:underline}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -65,7 +65,7 @@ th.r,td.r{text-align:right}
 .dtrack{position:relative;padding:26px 0 34px}
 .dt-bar{position:relative;display:flex;height:10px;border-radius:5px;overflow:visible;gap:2px}
 .dt-bar i{display:block;height:100%}
-.dt-off{background:#E3E8EF;border-radius:5px 0 0 5px}.dt-t1{background:#F6C768}.dt-t2{background:#2AA37A;border-radius:0 5px 5px 0}
+.dt-off{background:#E3E8EF;border-radius:5px 0 0 5px}.dt-t1{background:#5CCFF8}.dt-t2{background:#0560EB;border-radius:0 5px 5px 0}
 .dt-mark{position:absolute;top:-8px;width:0;height:26px;border-left:2px solid var(--ink)}
 .dt-mark::before{content:'';position:absolute;left:-6px;top:-1px;border:5px solid transparent;border-top:7px solid var(--ink);border-bottom:0}
 .dt-mark span{position:absolute;bottom:30px;left:0;transform:translateX(-50%);font-size:11px;font-weight:700;background:var(--ink);color:#fff;border-radius:4px;padding:1px 6px;white-space:nowrap}
@@ -98,10 +98,8 @@ th.r,td.r{text-align:right}
 .leg span{display:inline-flex;align-items:center;gap:8px}.leg u{width:10px;height:10px;border-radius:3px;display:block}.leg b{font-weight:700}
 
 /* brand */
-.mark{width:30px;height:30px;border-radius:8px;background:var(--navy);position:relative;overflow:hidden;flex-shrink:0}
-.mark::before{content:'';position:absolute;left:50%;bottom:-9px;width:26px;height:26px;margin-left:-13px;border-radius:50%;background:var(--amber)}
-.mark::after{content:'';position:absolute;left:5px;right:5px;bottom:10px;height:2px;background:#fff;opacity:.9}
-.wordmark{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.03em}
+.wordmark{display:inline-flex;gap:.16em;align-items:center;font-size:20px;line-height:1}
+.wordmark i{font-style:normal;font-weight:800;color:#fff;width:1.55em;height:1.55em;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.62em;background:linear-gradient(180deg,#0DC5FB,#0560EB);letter-spacing:0}
 
 /* toast */
 #toast{position:fixed;z-index:90;left:50%;bottom:28px;transform:translateX(-50%);max-width:min(520px,92vw);background:var(--ink);color:#fff;border-radius:var(--r);padding:11px 16px;font-size:13px;box-shadow:0 8px 30px rgba(12,27,46,.25)}
@@ -111,11 +109,11 @@ th.r,td.r{text-align:right}
 .dtrack.mini{padding:26px 0 4px}.dtrack.mini .dt-scale,.dtrack.mini .dt-pay{display:none}
 
 /* AI identity: one violet-blue gradient used only where the system decides or explains, so it reads at a glance */
-:root{--ai1:#1F4FD1;--ai2:#8B5CF6;--ai-t:#F1EDFE}
-.ai{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 7px;border-radius:99px;font-size:12px;font-weight:700;color:#3B2A9A;border:1px solid transparent;background:linear-gradient(var(--ai-t),var(--ai-t)) padding-box,linear-gradient(120deg,var(--ai1),var(--ai2)) border-box;white-space:nowrap}
+:root{--ai1:#0A62EA;--ai2:#0560EB;--ai-t:#E6F6FE}
+.ai{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 7px;border-radius:99px;font-size:12px;font-weight:700;color:#05479F;border:1px solid transparent;background:linear-gradient(var(--ai-t),var(--ai-t)) padding-box,linear-gradient(120deg,var(--ai1),var(--ai2)) border-box;white-space:nowrap}
 .ai svg{width:14px;height:14px;display:block}
-.ai.dark{color:#E4DCFF;background:linear-gradient(#1B1740,#1B1740) padding-box,linear-gradient(120deg,#5B8CFF,#A78BFA) border-box}
-.aicard{position:relative;border-radius:12px;padding:14px 16px;background:linear-gradient(var(--ai-t),#fff) padding-box;border:1px solid #D9CFFB;overflow:hidden}
+.ai.dark{color:#D6F3FF;background:linear-gradient(#0B2C60,#0B2C60) padding-box,linear-gradient(120deg,#0DC5FB,#0A62EA) border-box}
+.aicard{position:relative;border-radius:12px;padding:14px 16px;background:linear-gradient(var(--ai-t),#fff) padding-box;border:1px solid #B8E3F8;overflow:hidden}
 .aicard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(var(--ai1),var(--ai2))}
 .aicard .aitext{margin-top:8px;font-size:14px;line-height:1.5;color:var(--ink);min-height:21px}
 .aitext.typing::after{content:'';display:inline-block;width:2px;height:1em;background:var(--ai2);margin-left:2px;vertical-align:-2px;animation:caret .8s steps(1) infinite}
@@ -136,7 +134,7 @@ th.r,td.r{text-align:right}
 
 /* gauge */
 .gauge{display:block;width:100%;max-width:240px;margin:0 auto}
-.gauge text{font-family:'Bricolage Grotesque',sans-serif}
+.gauge text{font-family:'Figtree',sans-serif}
 
 /* speed comparison */
 .spd{display:grid;gap:12px}
