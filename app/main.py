@@ -48,12 +48,13 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)  # the pages are large tex
 
 @app.middleware("http")
 async def cache_static(request, call_next):
-    """Fonts, styles and scripts rarely change. Let the browser keep them for a day instead of refetching."""
+    """Fonts rarely change, so the browser keeps them for a day. Pages, styles and scripts are revalidated on every
+    load (a cheap 304 when unchanged), so a new deploy shows up at once instead of after a day."""
     resp = await call_next(request)
-    if request.url.path.startswith("/static/") and resp.status_code == 200:
-        resp.headers["Cache-Control"] = "public, max-age=86400"
+    path = request.url.path
+    if resp.status_code == 200 and not path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "public, max-age=86400" if path.startswith("/static/fonts/") else "no-cache"
     return resp
-
 
 
 # ----------------------------------------------------------- helpers
