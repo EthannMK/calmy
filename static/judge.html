@@ -59,7 +59,9 @@
   .two{--ph:max(520px,calc(100vh - 302px));--pw:calc(var(--ph) * 390 / 800);flex:1;min-height:0;display:grid;grid-template-columns:var(--pw) minmax(0,1fr);gap:20px;align-items:start}
   .side{display:flex;flex-direction:column;min-height:0;min-width:0}
   .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute);height:36px;overflow:hidden}
-  .cap em{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;border-radius:10px}
+  .cap{align-items:center}
+  .cap b{flex:none}
+  .cap em{min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cap em{font-style:normal;font-weight:700;color:var(--cobalt);background:var(--cobalt-t);border-radius:99px;padding:2px 10px;font-size:12.5px}
   .cap b{font-family:'Figtree',sans-serif;font-size:17px;color:var(--ink);letter-spacing:-.01em}
   .phone{flex:none;width:var(--pw);height:var(--ph);background:var(--navy);padding:9px;border-radius:38px;box-shadow:0 18px 40px rgba(7,28,63,.22)}
@@ -91,7 +93,7 @@
 
 <section class="coach" aria-label="What to do now">
   <div class="dots" id="dots"><button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button><button data-d="4">4</button></div>
-  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a real upcoming flight and adds cover. A second, suspicious traveler joins the same flight.</span>
+  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a real upcoming flight, enters the booking reference from the ticket and adds cover. A second, suspicious traveler joins the same flight.</span>
     <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button><button class="btn sm" data-do="1p">Take payout as points</button></div>
     <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Cover a flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
   <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The phone gets a notification at the delay limit, then the payout. The traveler can also claim extra costs and draft a letter to the airline.</span>
@@ -159,11 +161,12 @@ async function poll() {
     if (d && d.id !== shown) { shown = d.id; playPipeline(d); }
   } catch (e) {}
 }
+// Phone captions stay short: the phone column is narrow and a caption must fit on one line.
 const WHERE = {
-  1: ['Pick a flight, add your name, add cover', 'The new policy appears on the overview'],
-  2: ['Storm gives an early alert. A delay sends a notification and pays by itself. Then try Claim extra costs', 'Exposure rises, then the AI scores the risk and decides'],
-  3: ['This traveler is told a person is checking', 'The AI holds the claim and shows why'],
-  4: ['The traveler sees the result straight away', 'Approve or decline in the review queue or in Extra costs'],
+  1: ['Pick a flight and add cover', 'The new policy appears on the overview'],
+  2: ['Alert, notification, payout', 'Exposure rises, then the AI scores the risk and decides'],
+  3: ['Told a person is checking', 'The AI holds the claim and shows why'],
+  4: ['Sees the result at once', 'Approve or decline in the review queue or in Extra costs'],
 };
 let picked = 0, canEv = false;
 function paintSteps(canEvent) {

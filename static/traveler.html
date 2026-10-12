@@ -120,7 +120,7 @@
   .fcbar{height:8px;border-radius:99px;background:var(--line2,#E8ECF2);overflow:hidden;margin:6px 0 8px}
   .fcbar i{display:block;height:100%;border-radius:99px;background:var(--cobalt)}
   .fc.high .fcbar i{background:#E08A00}.fc.medium .fcbar i{background:var(--cyan,#0DC5FB)}
-  .pushbn{position:fixed;z-index:80;left:10px;right:10px;top:10px;display:flex;gap:10px;align-items:flex-start;background:rgba(10,20,36,.96);color:#fff;border-radius:16px;padding:11px 13px;font-size:13px;line-height:1.4;box-shadow:0 10px 30px rgba(7,28,63,.35);transform:translateY(-140%);transition:transform .45s cubic-bezier(.2,.8,.2,1);cursor:pointer;text-align:left;width:calc(100% - 20px)}
+  .pushbn{position:fixed;z-index:80;left:10px;right:10px;top:68px;display:flex;gap:10px;align-items:flex-start;background:rgba(10,20,36,.96);color:#fff;border-radius:16px;padding:11px 13px;font-size:13px;line-height:1.4;box-shadow:0 10px 30px rgba(7,28,63,.35);transform:translateY(-220%);transition:transform .45s cubic-bezier(.2,.8,.2,1);cursor:pointer;text-align:left;width:calc(100% - 20px)}
   .pushbn.in{transform:none}.pushbn b{display:block;font-size:12px;color:#FFC93C;margin-bottom:1px}.pushbn .ms{font-size:20px;color:#FFC93C;flex-shrink:0}
   .exform{display:grid;gap:8px;margin-top:10px}.exform select,.exform input[type=text]{height:40px}
   .letter{width:100%;min-height:210px;font-size:13px;line-height:1.5;resize:vertical}
@@ -552,16 +552,17 @@ function pushBanner(d) {
   try { seen = sessionStorage.getItem(key); sessionStorage.setItem(key, '1'); } catch (e) {}
   if (seen) return;
   let b = $('#pushbn'); if (!b) { b = document.createElement('button'); b.id = 'pushbn'; b.className = 'pushbn'; document.body.appendChild(b); }
-  b.innerHTML = `${ico('bolt')}<span><b>KODA, now</b>${esc(d.message)}</span>`;
+  const brief = d.message.split(/(?<=\.)\s+/).slice(0, 2).join(' ');  // the first two sentences fit a banner; the full text is in Claims
+  b.innerHTML = `${ico('bolt')}<span><b>KODA, now</b>${esc(brief)}</span>`;
   b.onclick = () => { b.classList.remove('in'); setTab('claims'); };
-  requestAnimationFrame(() => b.classList.add('in')); setTimeout(() => b.classList.remove('in'), 9000);
+  requestAnimationFrame(() => b.classList.add('in')); setTimeout(() => b.classList.remove('in'), 6000);
 }
 
 /* ---------------- Help tab ---------------- */
 function helpView() {
   return `<h1>Help</h1>
     ${[['How do I get paid?', 'If your flight is late by the delay in your cover, we pay you to your payout account. You fill in nothing.'],
-       ['What if my bag is lost?', 'Report it to the airline. Then open the Cover tab, tap "My bag is lost" and enter the airline report number and your items.'],
+       ['What if my bag is lost?', 'Report it to the airline. Once your flight has left, open the Cover tab, tap "My bag is lost" and enter the airline report number and your items.'],
        ['Can a claim be denied automatically?', 'No. The system can only pay or send a claim to a person. Only a person can decline, and you can ask for a second review.'],
        ['Does this replace what the airline owes me?', 'No. In some countries the airline owes you compensation for long delays. This cover pays on top. Claim from the airline too.'],
        ['Why was my claim held?', 'Some claims are checked by a person to prevent fraud. Most reviews are quick.']].map(([q, a]) =>
