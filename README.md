@@ -100,3 +100,11 @@ status colors always carry a label, one axis only, values labeled directly.
 | Data | Saved real schedule and BigQuery sync | `tools/sync_flights.py` pulls real departures from AviationStack, loads BigQuery table `koda.flights_snapshot` and writes `data/flights_snapshot.json`, which ships in the image as the offline fallback. Run it before the demo: `AVIATIONSTACK_KEY=... python3 tools/sync_flights.py --project <project>` (about 6 requests). `--from-bq` rebuilds the JSON from BigQuery. |
 
 The forecast is a transparent score, not a trained model. In production the same inputs feed BigQuery ML.
+
+
+## Customers, points wallet and bookings
+
+- Travelers are paid in KODA points by default (100 points = $1 to spend, 25% bonus). They can save a card or bank, cash out, or switch on auto top-up.
+- Four demo booking references show the cover states: BOTH42, DLY731, BAG518 and NONE26. Use Check my cover with the last name (Wongsakul, Tan, Nakamura, Okafor).
+- The console has Customers and Points and partners tabs and a working staff profile. The seed adds 50 demo customers with mixed cover and claims.
+- Full cover rules and workflows: docs/COVERAGE_AND_WORKFLOW.md

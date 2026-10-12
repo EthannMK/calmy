@@ -90,6 +90,36 @@ CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts REAL, policy_id TEXT, type TEXT, detail TEXT
 );
+CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT, email TEXT, phone TEXT, market TEXT DEFAULT 'TH',
+    auto_topup INTEGER DEFAULT 0,          -- 1: payouts go straight to the default saved card or bank, 0: payouts arrive as points
+    notify INTEGER DEFAULT 1,
+    created_at REAL
+);
+CREATE TABLE IF NOT EXISTS payment_methods (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT, kind TEXT,           -- card | bank
+    label TEXT,                            -- shown to the traveler, for example "Visa ending 4242"
+    holder TEXT, last4 TEXT, is_default INTEGER DEFAULT 0, created_at REAL
+);
+CREATE TABLE IF NOT EXISTS wallet_tx (
+    id TEXT PRIMARY KEY,                   -- earn:<decision id>, spend:<redemption id>, cash:<cashout id>
+    customer_id TEXT, kind TEXT,           -- earn | spend | cashout
+    points INTEGER,                        -- signed: earn is positive, spend and cash-out are negative
+    usd REAL, label TEXT, created_at REAL
+);
+CREATE TABLE IF NOT EXISTS bookings (
+    ref TEXT, leg INTEGER DEFAULT 1,
+    passenger TEXT, flight TEXT, trip TEXT DEFAULT 'One way',   -- One way | Round trip
+    channel TEXT,                          -- where the ticket was bought
+    customer_id TEXT,
+    PRIMARY KEY (ref, leg)
+);
+CREATE TABLE IF NOT EXISTS staff (
+    id TEXT PRIMARY KEY,
+    name TEXT, title TEXT, email TEXT, initials TEXT, notify INTEGER DEFAULT 1
+);
 """
 
 @contextmanager
@@ -113,6 +143,10 @@ MIGRATIONS = [
     ("decisions", "trigger", "TEXT DEFAULT 'delay'"), ("decisions", "elapsed_ms", "INTEGER"), ("decisions", "message", "TEXT"), ("decisions", "context", "TEXT"), ("policies", "sched_at_purchase", "TEXT"),
     ("flights", "stress", "INTEGER DEFAULT 0"), ("policies", "f_adverse", "INTEGER DEFAULT 0"),
     ("policies", "risk_at_purchase", "REAL"), ("decisions", "points", "INTEGER DEFAULT 0"), ("flights", "sim", "INTEGER DEFAULT 0"), ("policies", "channel", "TEXT"),
+    ("policies", "customer_id", "TEXT"), ("policies", "payout_follow", "INTEGER DEFAULT 0"), ("policies", "ref_verified", "INTEGER DEFAULT 0"),
+    ("decisions", "payout", "TEXT"),
+    ("partners", "category", "TEXT DEFAULT 'food'"), ("partners", "offer", "TEXT"), ("partners", "price_usd", "INTEGER DEFAULT 0"),
+    ("redemptions", "customer_id", "TEXT"),
 ]
 
 
@@ -137,6 +171,9 @@ def seed(c):
     partners.seed(c)
     if os.environ.get("KODA_SAMPLE_DATA"):  # test fixtures only: the product uses live flights
         seed_samples(c)
+    else:
+        from . import demo_data  # imported late: it needs the engine, which needs this module
+        demo_data.seed_all(c)
 
 
 def seed_samples(c):
@@ -191,15 +228,16 @@ def seed_rules(c):
 def reset():
     """Wipe everything and reseed. Backs the Reset demo data button."""
     with conn() as c:
-        for t in ("decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules"):  # api_usage is kept
+        for t in ("decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules",
+                  "customers", "payment_methods", "wallet_tx", "bookings", "staff"):  # api_usage is kept
             c.execute(f"DELETE FROM {t}")
         seed(c)
 
 
-def log(c, policy_id, type_, detail):
+def log(c, policy_id, type_, detail, ts=None):
     c.execute(
         "INSERT INTO events (ts,policy_id,type,detail) VALUES (?,?,?,?)",
-        (time.time(), policy_id, type_, json.dumps(detail)),
+        (ts or time.time(), policy_id, type_, json.dumps(detail)),
     )
 
 

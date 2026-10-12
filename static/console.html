@@ -20,7 +20,7 @@
   .rail .foot{margin-top:auto;padding:0 8px;font-size:12px;color:var(--navy-mute);display:grid;gap:8px}
   .rail .foot button{color:#C9D4E3;text-align:left;font-size:13px;font-weight:500;display:flex;gap:8px;align-items:center}.rail .foot button:hover{color:#fff}
   .main{display:flex;flex-direction:column;min-width:0}
-  .top{height:56px;background:var(--panel);border-bottom:1px solid var(--line);padding:0 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
+  .top{position:sticky;height:56px;background:var(--panel);border-bottom:1px solid var(--line);padding:0 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
   .top .crumb{font-size:13px;color:var(--mute)}.top .env{margin-left:auto;display:flex;align-items:center;gap:14px}
   .avatar{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:12px;display:grid;place-items:center}
   .page{padding:28px;max-width:1360px;width:100%;margin:0 auto;flex:1}
@@ -73,6 +73,21 @@
   .empty{text-align:center;padding:56px 20px;color:var(--mute)}.empty .ms{font-size:36px;color:var(--faint)}.empty h2{font-size:18px;color:var(--ink);margin:8px 0 4px}
   .rulescols{grid-template-columns:minmax(0,420px) minmax(0,1fr)}
   .menu{display:none}
+  .who{display:flex;align-items:center;gap:10px;border-radius:999px;padding:3px 4px 3px 12px;cursor:pointer;background:none;border:1px solid transparent;text-align:right;font:inherit;color:inherit}
+  .who:hover,.who[aria-expanded=true]{border-color:var(--line);background:var(--line2)}
+  .pop{position:absolute;right:20px;top:54px;width:300px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(7,28,63,.18);padding:8px;z-index:50;display:none}
+  .pop.open{display:block}.pop h4{margin:8px 10px 4px;font-size:12px;color:var(--mute);font-weight:600}
+  .pop button,.pop a{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:8px;font-size:14px;text-align:left;color:var(--ink)}
+  .pop button:hover,.pop a:hover{background:var(--line2);text-decoration:none}.pop .me{background:var(--cobalt-t)}
+  .pop .avatar{width:28px;height:28px;font-size:11px}
+  .tabsx{display:flex;gap:6px;flex-wrap:wrap}.tabsx button{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600}
+  .tabsx button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .form{display:grid;gap:12px}.form label{display:grid;gap:5px;font-size:13px;font-weight:600}.form label small{font-weight:400;color:var(--mute)}
+  .sw{display:flex;align-items:center;gap:10px;font-size:14px}.sw input{width:18px;height:18px}
+  .mini{display:grid;gap:2px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:#fff}.mini b{font:700 24px Figtree,sans-serif;letter-spacing:-.02em}.mini span{font-size:12px;color:var(--mute)}
+  @media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
+  @media(max-width:520px){.pop{right:8px;left:8px;width:auto}}
   @media(max-width:1100px){.cols,.split,.rulescols{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kpis>div:nth-child(3){border-left:0}.kpis>div:nth-child(n+3){border-top:1px solid var(--line)}}
   @media(max-width:860px){.app{grid-template-columns:1fr}.rail{position:static;height:auto;flex-direction:row;align-items:center;gap:8px;padding:10px 12px;overflow-x:auto}
     .rail .grp h4,.rail .foot{display:none}.rail nav{display:flex;gap:2px}.rail .grp{display:flex}.nav a{white-space:nowrap;padding:0 12px}.nav a .ms{display:none}.nav a.on::before{display:none}
@@ -88,7 +103,8 @@
   </aside>
   <div class="main">
     <header class="top"><span class="crumb" id="crumb"></span>
-      <div class="env"><span id="aiOn"></span><div style="text-align:right;line-height:1.2"><div style="font-weight:600;font-size:13px">Nok P.</div><div class="mute" style="font-size:12px">Claims reviewer</div></div><span class="avatar">NP</span></div></header>
+      <div class="env"><span id="aiOn"></span><button class="who" id="who" aria-haspopup="true" aria-expanded="false" aria-label="Account menu"></button></div>
+      <div class="pop" id="pop" role="menu"></div></header>
     <main id="view" class="page"></main>
   </div>
 </div>
@@ -96,14 +112,15 @@
 <script>
 const usd2 = n => '$' + Number(n).toFixed(2);
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
+let ME = null, STAFFL = [], CU = {cover: '', payout: ''}, PTAB = 'partners', PAIR = '';
 let refreshing = false, liveAt = 0, LIVE = {}, EXP = null, COP = {}, CHAT = {}, DRAFT = {};
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims'], ['extra', 'receipt_long', 'Extra costs']]],
-  ['Book of business', [['exposure', 'bolt', 'Exposure forecast'], ['policies', 'verified_user', 'Policies']]],
+  ['Book of business', [['customers', 'support_agent', 'Customers'], ['policies', 'verified_user', 'Policies'], ['points', 'paid', 'Points and partners'], ['exposure', 'bolt', 'Exposure forecast']]],
   ['Governance', [['rules', 'tune', 'Rules'], ['compliance', 'balance', 'Markets and law'], ['audit', 'history', 'Audit log']]],
   ['Evidence', [['performance', 'monitoring', 'Performance']]],
 ];
-const TITLES = {exposure: 'Exposure forecast', overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', extra: 'Extra costs', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log', performance: 'Performance'};
+const TITLES = {customers: 'Customers', points: 'Points and partners', profile: 'My profile', exposure: 'Exposure forecast', overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', extra: 'Extra costs', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log', performance: 'Performance'};
 window.onhashchange = () => { route = location.hash.slice(1) || 'overview'; last = ''; FQ = ''; refresh(); };
 const flightOf = f => `${esc(f.origin)} to ${esc(f.dest)}`;
 const mk = code => (ov.markets.find(m => m.code === code) || {name: code, currency: ''});
@@ -120,18 +137,20 @@ async function refresh() {
 async function paint() {
   const base = route.split('/')[0], needExp = base === 'overview' || base === 'exposure';
   // One round trip for everything the page needs, instead of one after another.
-  const [o, lv, ex] = await Promise.all([
+  const [o, lv, ex, me, sl] = await Promise.all([
     api('/api/console/overview?market=' + RM),
     Date.now() - liveAt > 20000 ? api('/api/live/status').catch(() => LIVE) : LIVE,
     needExp ? api('/api/console/exposure').catch(() => null) : EXP,
+    api('/api/console/staff/me'), api('/api/console/staff'),
   ]);
+  ME = me; STAFFL = sl; if (!store.get('koda.staff')) store.set('koda.staff', me.id); drawWho();
   ov = o; LIVE = lv; EXP = ex; if (Date.now() - liveAt > 20000) liveAt = Date.now();
   const held = ov.stats.held, bags = ov.stats.bag_waiting;
   $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : k === 'extra' ? ov.stats.extra_waiting : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
   $('#crumb').textContent = 'Flightwise Insurance  /  ' + (TITLES[page] || 'Overview');
   let html;
-  try { html = await ({overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, extra: vExtra, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
+  try { html = await ({overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, customers: vCustomers, points: vPoints, profile: vProfile, review: vReview, baggage: vBaggage, extra: vExtra, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
   catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
   if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); typeAll($('#view')); }
 }
@@ -151,6 +170,7 @@ function vOverview() {
     ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts'))}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
     ${kpi('Auto-paid claims', 'bolt', share, avg == null ? 'Decision time appears with the first claim' : 'Average decision ' + avg + ' seconds, ' + fastPct + '% of decisions paid with no human step')}</div>
+  ${bookStrip()}
   ${exposureStrip()}
   <div class="cols"><div class="stack">
     <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${covered} ${covered === 1 ? 'flight has' : 'flights have'} cover</span></div>
@@ -169,6 +189,13 @@ function vOverview() {
     <section class="panel"><div class="ph"><h2>Claim outcomes</h2></div><div class="pb">${outcomeBar(o)}</div></section>
     <section class="panel"><div class="ph"><h2>Paid out by market</h2></div><div class="pb">${ov.by_market.length ? barList(ov.by_market.map(m => ({label: mk(m.market).name, value: m.usd, text: usd(m.usd)}))) : '<p class="mute">No payouts yet.</p>'}</div></section>
   </div></div>`;
+}
+function bookStrip() {
+  const s = ov.stats; if (s.customers == null) return '';
+  return `<div class="panel" style="padding:14px 20px;margin-bottom:20px;display:flex;gap:28px;flex-wrap:wrap;align-items:center">
+    <span><b>${num(s.customers)}</b> <a href="#customers">customers</a></span><span><b>${num(s.bookings)}</b> bookings</span>
+    <span><b>${num(s.uncovered_bookings)}</b> bookings with no cover</span>
+    <span>${s.delayed_no_cover ? `<b>${s.delayed_no_cover}</b> delayed flights where the traveler had no delay cover` : 'No delayed traveler is missing cover'}</span></div>`;
 }
 function exposureStrip() {
   if (!EXP) return '';
@@ -228,11 +255,11 @@ function outcomeChip(d) {
 
 /* ---------- Policies ---------- */
 async function vPolicies() {
-  const rows = (await api('/api/console/policies')).filter(p => matchQ(p.id, p.pnr, p.traveler, p.flight, p.market));
+  const rows = (await api('/api/console/policies')).filter(p => matchQ(p.id, p.pnr, p.traveler, p.flight, p.market, p.customer_id, p.site));
   return head('Policies', 'Every policy with active cover. Amounts are in each policy\'s own currency.', searchBox('Search policies')) +
-    (rows.length ? `<div class="panel tbl"><table><thead><tr><th>Policy</th><th>Booking ref</th><th>Traveler</th><th>Flight</th><th>Booked with</th><th>Market</th><th>Cover</th><th>Delay claim</th><th>Bag claim</th></tr></thead><tbody>
+    (rows.length ? `<div class="panel tbl"><table><thead><tr><th>Policy</th><th>Booking ref</th><th>Traveler</th><th>Flight</th><th>Booked with</th><th>Customer</th><th>Cover</th><th>Delay claim</th><th>Bag claim</th></tr></thead><tbody>
     ${rows.map(p => { const d = p.decision, b = p.bag, c = p.currency;
-      return `<tr class="${d ? 'click' : ''}" ${d ? `onclick="location.hash='decisions/${esc(p.id)}'"` : ''}><td class="mono">${esc(p.id)}${p.status === 'archived' ? ' <span class="chip">Archived</span>' : ''}</td><td class="mono">${esc(p.pnr || '')}</td><td>${esc(p.traveler)}</td><td class="mono">${esc(p.flight)}</td><td>${esc(p.channel || 'Direct')}</td><td>${esc(p.market)}, ${esc(c)}</td><td>${[p.delay_cover && 'Delay', p.baggage_cover && 'Baggage'].filter(Boolean).join(' and ') || 'None'}</td>
+      return `<tr class="${d ? 'click' : ''}" ${d ? `onclick="location.hash='decisions/${esc(p.id)}'"` : ''}><td class="mono">${esc(p.id)}${p.status === 'archived' ? ' <span class="chip">Archived</span>' : ''}</td><td class="mono">${esc(p.pnr || '')}</td><td>${esc(p.traveler)}</td><td class="mono nowrap">${esc(p.flight)}</td><td>${esc(p.site || p.channel || 'Direct')}</td><td class="nowrap">${p.customer_id ? `<a href="#customers/${esc(p.customer_id)}" onclick="event.stopPropagation()">${esc(p.customer_id)}</a>` : '<span class="faint">Guest</span>'}</td><td>${coverChip(p.cover)}</td>
         <td>${d ? outcomeChip({status: d.status, decided_by: d.status === 'paid' ? 'x' : null}).replace('Approved by a person', 'Paid') + ' <span class="mono">' + money(d.amount, c) + '</span>' : '<span class="faint">None</span>'}</td><td>${b ? esc(b.status) + ' <span class="mono">' + money(b.amount, c) + '</span>' : '<span class="faint">None</span>'}</td></tr>`; }).join('')}</tbody></table></div>`
       : empty('inbox', FQ ? 'No policies match' : 'No policies yet', FQ ? 'Try a different search.' : 'Open the traveler app, pick a flight and add cover.'));
 }
@@ -382,10 +409,95 @@ function vPerformance() {
 
 /* ---------- Audit ---------- */
 async function vAudit() {
-  const rows = await api('/api/console/audit');
-  if (!rows.length) return head('Audit log', 'Every action by the system and by reviewers.') + empty('history', 'Nothing logged yet', 'Actions appear here as they happen.');
-  return head('Audit log', 'The latest 50 actions by the system and by reviewers.') + `<div class="panel tbl"><table><thead><tr><th>Time</th><th>Policy</th><th>Event</th><th>Detail</th></tr></thead><tbody>
+  const rows = await api('/api/console/audit?limit=200&q=' + encodeURIComponent(FQ));
+  if (!rows.length) return head('Audit log', 'Every action by the system and by reviewers.', searchBox('Search the log')) + empty('history', FQ ? 'No entries match' : 'Nothing logged yet', FQ ? 'Try a policy id, a booking ref or an event name.' : 'Actions appear here as they happen.');
+  return head('Audit log', 'The latest ' + rows.length + ' actions by the system and by reviewers.', searchBox('Search the log')) + `<div class="panel tbl"><table><thead><tr><th>Time</th><th>Policy</th><th>Event</th><th>Detail</th></tr></thead><tbody>
     ${rows.map(e => `<tr style="vertical-align:top"><td class="nowrap">${esc(new Date(e.ts * 1000).toLocaleString())}</td><td class="mono">${esc(e.policy_id || '')}</td><td><b>${esc(e.type)}</b></td><td class="mono" style="font-size:12px;word-break:break-all">${esc(e.detail)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+
+/* ---------- Staff menu ---------- */
+const COVER_LABEL = {both: 'Delay and baggage', delay: 'Delay only', baggage: 'Baggage only', none: 'No cover'};
+const coverChip = k => `<span class="chip ${k === 'both' ? 'paid' : k === 'none' ? '' : 'blue'}">${COVER_LABEL[k] || 'No cover'}</span>`;
+function drawWho() {
+  if (!ME) return;
+  $('#who').innerHTML = `<span style="line-height:1.2"><span style="display:block;font-weight:600;font-size:13px">${esc(ME.name)}</span><span class="mute" style="display:block;font-size:12px">${esc(ME.title)}</span></span><span class="avatar">${esc(ME.initials)}</span>`;
+  $('#pop').innerHTML = `<h4>Signed in as</h4><a href="#profile" class="me" data-close><span class="avatar">${esc(ME.initials)}</span><span><b>${esc(ME.name)}</b><br><small class="mute">${esc(ME.email || ME.title)}</small></span></a>
+    <h4>Switch reviewer</h4>${STAFFL.filter(x => x.id !== ME.id).map(x => `<button data-switch="${esc(x.id)}"><span class="avatar">${esc(x.initials)}</span><span>${esc(x.name)}<br><small class="mute">${esc(x.title)}</small></span></button>`).join('')}
+    <h4>Account</h4><a href="#profile" data-close>${ico('tune')}<span>Edit my profile</span></a><button data-signout>${ico('close')}<span>Sign out</span></button>`;
+  $('#pop').querySelectorAll('[data-close]').forEach(a => a.addEventListener('click', closeMenu));
+  $('#pop').querySelectorAll('[data-switch]').forEach(b => b.onclick = () => { store.set('koda.staff', b.dataset.switch); closeMenu(); last = ''; toast('Switched reviewer. Decisions you make are now signed with this name.', 'ok'); refresh(); });
+  const so = $('#pop').querySelector('[data-signout]'); if (so) so.onclick = () => { store.set('koda.staff', null); closeMenu(); last = ''; toast('Signed out. Choose who you are from the menu.', 'ok'); refresh(); };
+}
+function closeMenu() { $('#pop').classList.remove('open'); $('#who').setAttribute('aria-expanded', 'false'); }
+$('#who').onclick = e => { e.stopPropagation(); const o = $('#pop').classList.toggle('open'); $('#who').setAttribute('aria-expanded', o); };
+document.addEventListener('click', e => { if (!e.target.closest('#pop')) closeMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+
+/* ---------- Customers ---------- */
+async function vCustomers(id) {
+  if (id) return vCustomer(id);
+  const qs = new URLSearchParams({q: FQ, cover: CU.cover, payout: CU.payout}).toString();
+  const rows = await api('/api/console/customers?' + qs);
+  const all = CU.cover || CU.payout || FQ ? null : rows;
+  const tab = (k, v, t) => `<button data-cu="${k}:${v}" class="${CU[k] === v ? 'on' : ''}">${t}</button>`;
+  return head('Customers', 'Everyone who has a booking or cover with Flightwise. Open a customer to see their trips, claims, points and saved payment methods.', searchBox('Search customers')) +
+    `<div class="panel" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+      <div class="tabsx" role="group" aria-label="Cover">${tab('cover', '', 'All')}${tab('cover', 'both', 'Both covers')}${tab('cover', 'delay', 'Delay only')}${tab('cover', 'baggage', 'Baggage only')}${tab('cover', 'none', 'No cover')}</div>
+      <div class="tabsx" role="group" aria-label="Payout">${tab('payout', '', 'Any payout')}${tab('payout', 'points', 'Points')}${tab('payout', 'cash', 'Cash to card or bank')}</div>
+      <span class="mute" style="margin-left:auto">${rows.length} ${rows.length === 1 ? 'customer' : 'customers'}</span></div>` +
+    (rows.length ? `<div class="panel tbl"><table><thead><tr><th>Customer</th><th>Cover</th><th class="r">Trips</th><th class="r">Claims</th><th class="r">Paid out</th><th>Payout goes to</th><th class="r">Points</th></tr></thead><tbody>
+      ${rows.map(c => `<tr class="click" onclick="location.hash='customers/${esc(c.id)}'"><td><b>${esc(c.name)}</b> ${c.open_claims ? '<span class="chip held">Claim waiting</span>' : ''}<br><span class="mono mute" style="font-size:12px">${esc(c.id)}</span></td><td>${coverChip(c.cover)}</td><td class="r">${c.trips}</td><td class="r">${c.claims}</td><td class="r mono">${usd2(c.paid_usd)}</td><td>${c.payout === 'cash' ? 'Saved card or bank' : 'Points wallet'}</td><td class="r mono">${num(c.points)}</td></tr>`).join('')}</tbody></table></div>`
+      : empty('support_agent', 'No customers match', 'Clear a filter or try a different search.'));
+}
+async function vCustomer(id) {
+  let d; try { d = await api('/api/console/customers/' + encodeURIComponent(id)); } catch (e) { return head('Customers') + empty('support_agent', 'Customer not found', '<a href="#customers">Back to all customers</a>.'); }
+  const cu = d.customer, b = d.balance, kinds = d.policies.map(p => p.cover);
+  const top = kinds.includes('both') || (kinds.includes('delay') && kinds.includes('baggage')) ? 'both' : kinds.includes('delay') ? 'delay' : kinds.includes('baggage') ? 'baggage' : 'none';
+  const dec = (p, k) => { const x = p.decisions.find(z => z.kind === k); return x ? `${outcomeChip({status: x.status, decided_by: x.status === 'paid' ? 'x' : null}).replace('Approved by a person', 'Paid')} <span class="mono">${usd2(x.amount)}</span>` : '<span class="faint">None</span>'; };
+  return head(esc(cu.name), `<span class="mono">${esc(cu.id)}</span>, ${esc(cu.email || 'no email')}, ${esc(cu.phone || 'no phone')}`, `<a class="btn" href="#customers">Back to customers</a>`) + `
+  <div class="grid3" style="margin-bottom:20px">
+    <div class="mini"><span>Cover held</span><b style="font-size:18px;padding-top:4px">${COVER_LABEL[top]}</b></div>
+    <div class="mini"><span>Points balance</span><b>${num(b.points)}</b><span>Worth ${usd2(b.spend_usd)} to spend, ${usd2(b.cash_usd)} as cash</span></div>
+    <div class="mini"><span>Payouts go to</span><b style="font-size:18px;padding-top:4px">${esc(d.payout_to)}</b><span>${cu.auto_topup ? 'Auto top-up is on' : 'Auto top-up is off, payouts arrive as points'}</span></div></div>
+  ${d.flags.length ? `<div class="panel" style="padding:14px 18px;margin-bottom:20px;border-color:#E7C98A;background:var(--amber-t)">${ico('warning')} <b>Worth a look</b><ul style="margin:6px 0 0 18px;padding:0">${d.flags.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div>` : ''}
+  <div class="panel tbl" style="margin-bottom:20px"><div class="ph"><h2>Trips and cover</h2></div><table><thead><tr><th>Booking ref</th><th>Flight</th><th>Cover</th><th>Delay claim</th><th>Bag claim</th><th>Payout</th></tr></thead><tbody>
+    ${d.policies.map(p => { const x = p.decisions.find(z => z.kind === 'delay'); return `<tr class="${x ? 'click' : ''}" ${x ? `onclick="location.hash='decisions/${esc(p.id)}'"` : ''}><td class="mono">${esc(p.pnr || '')}</td><td><span class="mono">${esc(p.flight)}</span><br><small class="mute">${esc(p.origin || '')} to ${esc(p.dest || '')}, ${esc(p.depart_label || '')}</small></td><td>${coverChip(p.cover)}</td><td>${p.delay_cover ? dec(p, 'delay') : '<span class="faint">Not covered</span>'}</td><td>${p.baggage_cover ? dec(p, 'baggage') : '<span class="faint">Not covered</span>'}</td><td>${esc((x && x.payout) || p.payout_account)}</td></tr>`; }).join('') || '<tr><td colspan="6" class="mute">No cover bought yet.</td></tr>'}</tbody></table></div>
+  ${d.bookings.some(k => !d.policies.some(p => p.pnr === k.ref && p.flight === k.flight)) ? `<div class="panel tbl" style="margin-bottom:20px"><div class="ph"><h2>Booked flights with no cover</h2><span class="mute" style="margin-left:auto">These trips were not protected</span></div><table><thead><tr><th>Booking ref</th><th>Flight</th><th>Booked with</th></tr></thead><tbody>${d.bookings.filter(k => !d.policies.some(p => p.pnr === k.ref && p.flight === k.flight)).map(k => `<tr><td class="mono">${esc(k.ref)}</td><td class="mono">${esc(k.flight)}</td><td>${esc(k.channel)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+  <div class="grid2"><div class="panel"><div class="ph"><h2>Saved payment methods</h2></div><div class="pb">${d.methods.length ? d.methods.map(m => `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2)">${ico(m.kind === 'bank' ? 'payments' : 'paid')}<span>${esc(m.label)}${m.is_default ? ' <span class="chip blue">Default</span>' : ''}<br><small class="mute">${esc(m.holder || '')}</small></span></div>`).join('') : '<p class="mute">None saved. Every payout is paid as points.</p>'}</div></div>
+  <div class="panel"><div class="ph"><h2>Points activity</h2></div><div class="pb">${d.ledger.length ? d.ledger.slice(0, 8).map(t => `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><span style="flex:1">${esc(t.label)}<br><small class="mute">${esc(new Date(t.created_at * 1000).toLocaleDateString())}</small></span><b class="mono" style="color:${t.points > 0 ? 'var(--green)' : 'var(--ink)'}">${t.points > 0 ? '+' : ''}${num(t.points)}</b></div>`).join('') : '<p class="mute">No points yet.</p>'}</div></div></div>`;
+}
+
+/* ---------- Points and partners ---------- */
+async function vPoints() {
+  const d = await api('/api/console/points');
+  const airports = [...new Set(d.partners.map(p => p.airport))].sort();
+  if (!PAIR || !airports.includes(PAIR)) PAIR = airports.includes('BKK') ? 'BKK' : airports[0];
+  const ps = d.partners.filter(p => p.airport === PAIR);
+  const kind = {food: 'Food and drink', lounge: 'Lounge', transport: 'Taxi and car rental', hotel: 'Hotel', connect: 'SIM, calls and messages', extras: 'Extras'};
+  const tab = (k, t) => `<button data-ptab="${k}" class="${PTAB === k ? 'on' : ''}">${t}</button>`;
+  const kp = (t, v, s) => `<div class="mini"><span>${t}</span><b>${v}</b><span>${s}</span></div>`;
+  const list = PTAB === 'partners'
+    ? `<div class="panel tbl"><div class="ph"><h2>Partners at</h2><select id="pair" class="field" style="width:auto;height:34px">${airports.map(a => `<option ${a === PAIR ? 'selected' : ''}>${a}</option>`).join('')}</select><span class="mute" style="margin-left:auto">${ps.filter(p => p.accepts).length} of ${ps.length} accept KODA points</span></div><table><thead><tr><th>Outlet</th><th>Type</th><th>Terminal</th><th>Opens</th><th class="r">Used</th><th>Accepts points</th></tr></thead><tbody>
+      ${ps.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(kind[p.category] || p.kind)}</td><td>${esc(p.terminal || '')}</td><td class="mono">${esc(p.opens)} to ${esc(p.closes)}</td><td class="r">${p.used}</td><td><label class="sw"><input type="checkbox" data-accept="${esc(p.id)}" ${p.accepts ? 'checked' : ''} aria-label="${esc(p.name)} accepts points"> ${p.accepts ? 'Yes' : 'No'}</label></td></tr>`).join('')}</tbody></table></div>`
+    : `<div class="panel tbl"><div class="ph"><h2>Recent spending and cash-outs</h2></div>${d.activity.length ? `<table><thead><tr><th>When</th><th>Customer</th><th>What</th><th class="r">Points</th></tr></thead><tbody>${d.activity.map(t => `<tr><td class="nowrap">${esc(new Date(t.created_at * 1000).toLocaleString())}</td><td><a href="#customers/${esc(t.customer_id)}">${esc(t.name)}</a></td><td>${esc(t.label)}</td><td class="r mono">${num(t.points)}</td></tr>`).join('')}</tbody></table>` : '<div class="pb mute">Nothing spent yet.</div>'}</div>`;
+  return head('Points and partners', `Payouts arrive as KODA points by default. Each customer can spend points at airport partners or cash them out to a saved card or bank. ${num(d.per_usd)} points are worth 1 US dollar to spend, and a 25% bonus is added when a payout is paid as points.`) + `
+  <div class="grid3" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:20px">${kp('Points owed to customers', num(d.liability_points), 'About ' + usd2(d.liability_usd) + ' if all were cashed out')}${kp('Customers holding points', d.holders, 'of ' + ov.stats.customers)}${kp('Spent at partners', num(d.spent), 'points')}${kp('Cashed out', num(d.cashed), 'points, at ' + Math.round(d.cashout_rate * 100) + '% of spend value')}</div>
+  <div class="tabsx" style="margin-bottom:14px">${tab('partners', 'Partner directory')}${tab('activity', 'Spending and cash-outs')}</div>${list}`;
+}
+
+/* ---------- My profile ---------- */
+function vProfile() {
+  const m = ME;
+  return head('My profile', 'Your name is signed on every claim you approve or decline, and appears in the audit log.') + `
+  <div class="grid2"><div class="panel"><div class="ph"><h2>Details</h2></div><div class="pb form">
+    <label>Name<input class="field" id="pfName" value="${esc(m.name)}" maxlength="40" autocomplete="off"></label>
+    <label>Job title<input class="field" id="pfTitle" value="${esc(m.title)}" maxlength="60"></label>
+    <label>Work email<input class="field" id="pfEmail" type="email" value="${esc(m.email || '')}" placeholder="name@flightwise.example"></label>
+    <label class="sw"><input type="checkbox" id="pfNotify" ${m.notify ? 'checked' : ''}> Email me when a claim needs a person<small>${m.waiting} waiting now</small></label>
+    <div><button class="btn primary" id="pfSave">Save profile</button> <span class="mute" id="pfMsg" role="status"></span></div></div></div>
+  <div class="panel"><div class="ph"><h2>Your work</h2></div><div class="pb"><div class="grid3" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="mini"><b>${m.decisions}</b><span>Claims decided by you</span></div><div class="mini"><b>${m.waiting}</b><span>Waiting for a person</span></div></div>
+    <h3 style="margin:18px 0 8px;font-size:14px">Your team</h3>${STAFFL.map(x => `<div style="display:flex;gap:10px;align-items:center;padding:6px 0"><span class="avatar">${esc(x.initials)}</span><span style="flex:1">${esc(x.name)}<br><small class="mute">${esc(x.title)}</small></span><span class="mute">${x.decisions} decided</span></div>`).join('')}</div></div></div>`;
 }
 
 /* ---------- events ---------- */
@@ -409,6 +521,13 @@ function bindAll() {
   document.querySelectorAll('.act').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note: ($('#note') || {}).value || ''}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
   document.querySelectorAll('.eact').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/extra/' + b.dataset.id, 'POST', {action: b.dataset.a}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
   document.querySelectorAll('.bact').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/baggage/' + b.dataset.id, 'POST', {action: b.dataset.a}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
+  document.querySelectorAll('[data-cu]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.cu.split(':'); CU[k] = v; last = ''; refresh(); });
+  document.querySelectorAll('[data-ptab]').forEach(b => b.onclick = () => { PTAB = b.dataset.ptab; last = ''; refresh(); });
+  const pa = $('#pair'); if (pa) pa.onchange = () => { PAIR = pa.value; last = ''; refresh(); };
+  document.querySelectorAll('[data-accept]').forEach(i => i.onchange = async () => { try { await api('/api/console/partners/' + i.dataset.accept, 'PUT', {accepts: i.checked}); toast(i.checked ? 'This outlet now accepts KODA points.' : 'This outlet no longer accepts KODA points.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
+  const ps = $('#pfSave'); if (ps) ps.onclick = async () => {
+    try { ME = await api('/api/console/staff/' + ME.id, 'PUT', {name: $('#pfName').value, title: $('#pfTitle').value, email: $('#pfEmail').value, notify: $('#pfNotify').checked}); $('#pfMsg').textContent = 'Saved.'; toast('Profile saved.', 'ok'); last = ''; await refresh(); } catch (e) { fail(e); }
+  };
   const sv = $('#saveRules');
   if (sv) sv.onclick = async () => {
     const values = {}; document.querySelectorAll('[data-rule]').forEach(i => values[i.dataset.rule] = +i.value);
@@ -419,7 +538,7 @@ function bindAll() {
 }
 $('#aiOn').innerHTML = aiChip('AI on');
 // Poll so a claim made in the traveler app shows up. Skip while a form is in use so typing is never wiped.
-setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
+setInterval(() => { if (!document.hidden && !['rules', 'profile'].includes(route.split('/')[0]) && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
 refresh();
 </script>
 </body>

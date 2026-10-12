@@ -9,7 +9,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Header, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,7 +22,7 @@ from typing import Literal
 import re
 import time
 
-from . import context, copilot, db, engine, forecast, live, markets, partners, rights, schedule, track
+from . import bookings, context, copilot, db, engine, forecast, live, markets, partners, rights, schedule, track, wallet
 
 STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 @asynccontextmanager
@@ -128,12 +128,20 @@ def traveler_state(pid: str):
             if rt:
                 rights.enrich(rt)
                 rt = {k: v for k, v in rt.items() if not k.startswith("_")}
+        wallet.refresh(c, p)
         partners.sync(c, pid)
         if p["payout_account"].startswith(markets.POINTS_RAIL):
             pts = partners.balance(c, pid)
             pts["redemptions"] = db.rows(c, "SELECT r.*, t.name partner FROM redemptions r JOIN partners t ON t.id=r.partner_id "
                                             "WHERE r.policy_id=? ORDER BY r.created_at DESC", (pid,))
+        cust = None
+        if p.get("customer_id"):
+            cu = wallet.get(c, p["customer_id"])
+            cust = {"id": cu["id"], "name": cu["name"], "balance": wallet.balance(c, cu["id"]), "payout_to": wallet.account_for(c, cu["id"])}
+        trip = db.rows(c, "SELECT b.leg, b.trip, b.flight, f.origin, f.dest, f.depart_label FROM bookings b LEFT JOIN flights f ON f.code=b.flight "
+                          "WHERE b.ref=? ORDER BY b.leg", (p["pnr"],)) if p.get("pnr") else []
         return {
+            "customer": cust, "trip": trip,
             "forecast": fc, "alert": al, "rights": rt, "points": pts,
             "weather": context.for_event(flight["code"], flight["origin"], bool(flight.get("cancelled")), flight["delay_minutes"]) if flight else None,
             "policy": p,
@@ -149,12 +157,15 @@ def traveler_state(pid: str):
 
 class NewPolicy(BaseModel):
     name: str = Field(..., min_length=2, max_length=40)
-    last4: str = Field(..., pattern=r"^\d{4}$")
     flight: str = Field(..., min_length=3, max_length=8)
-    rail: str | None = None  # payout rail, must be one of the market's rails
-    date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")  # day of the flight, up to a month ahead
-    channel: str | None = Field(None, max_length=30)  # where the ticket was bought, for the sales story
     booking_ref: str | None = Field(None, pattern=r"^[A-Za-z0-9]{5,10}$")  # the airline or booking site's own reference on the ticket
+    date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")  # day of the flight, up to a month ahead
+    customer: str | None = None  # the signed in traveler, so the trip joins their wallet
+    channel: str | None = Field(None, max_length=30)  # where the ticket was bought, when the traveler tells us
+    # Older callers pick a payout rail and give the last 4 digits at purchase. New travelers are paid in points
+    # and can save a card or bank account later, so both stay optional.
+    last4: str | None = Field(None, pattern=r"^\d{4}$")
+    rail: str | None = None
 
 
 @app.post("/api/policies")
@@ -162,12 +173,21 @@ def create_policy(body: NewPolicy):
     """Start a quote for a flight. A sample flight is used as is. Any other number is looked up live.
 
     The departure country sets the market: currency, payout rails, rules and legal notes.
+    The booking reference ties the cover to the ticket. A reference that matches a booking record, with the same
+    passenger and flight, is marked verified.
     """
     code = re.sub(r"\s+", " ", body.flight.strip().upper())
+    ref = bookings.clean_ref(body.booking_ref or "")
     with db.conn() as c:
         sample = db.one(c, "SELECT * FROM flights WHERE source='sim' AND REPLACE(code,' ','')=?", (code.replace(" ", ""),))
+        booked = bookings.match_for_policy(c, ref, body.name, code) if ref else None
+        demo_flight = db.one(c, "SELECT * FROM flights WHERE source='demo' AND REPLACE(code,' ','')=?", (code.replace(" ", ""),)) if booked else None
+        if booked and db.one(c, "SELECT 1 FROM policies WHERE pnr=? AND flight=? AND status IN ('active','archived')", (ref, booked["flight"])):
+            raise HTTPException(400, "This trip already has cover. Open it from Check my cover.")
     today = time.strftime("%Y-%m-%d")
-    if sample:
+    if demo_flight:
+        f = demo_flight  # a booking on record carries its own flight, so it works without a live data call
+    elif sample:
         f = sample
     elif body.date and body.date > today:
         # A later day: live data cannot answer yet, so the saved real schedule is used. Status is checked closer to the day.
@@ -191,25 +211,37 @@ def create_policy(body: NewPolicy):
                 raise HTTPException(502, str(err))
         elif f["sched_ts"] and f["sched_ts"] < time.time():
             raise HTTPException(400, f"{f['code']} has already left. Pick a flight that has not departed yet.")
+    if f.get("sched_ts") and f["sched_ts"] < time.time():
+        raise HTTPException(400, f"{f['code']} has already left, so cover cannot be added.")
     context.warm(f["origin"])  # weather is fetched now, in the background, so the later event never waits on it
     market = f.get("market") or "GLOBAL"
     info = markets.public(market)
+    legacy = bool(body.last4 or body.rail) and not body.customer
     rail = body.rail or info["rails"][0]
-    if rail not in info["rails"]:
+    if legacy and rail not in info["rails"]:
         raise HTTPException(400, f"Pick one of the payout options for {info['name']}: " + ", ".join(info["rails"]) + ".")
     with db.conn() as c:
-        if not sample:
+        if not (demo_flight or sample):
             live.upsert_flight(c, f)
         pid = engine._new_id("CL")
         # The booking reference belongs to the ticket, so the traveler's own is stored. A random one is only a
         # fallback for callers that send none (the presenter panel and seed data).
-        pnr = (body.booking_ref or "").upper() or "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
+        pnr = ref or "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
+        channel = (body.channel or "").strip() or (booked or {}).get("channel")
+        cid, follow = None, 0
+        if legacy:
+            account = f"{rail} wallet" if rail == markets.POINTS_RAIL else f"{rail} ending {body.last4}"
+        else:
+            pref = body.customer or (booked or {}).get("customer_id")
+            cid = pref if wallet.get(c, pref) else wallet.create(c, body.name, market=market if market in ("TH", "SG", "UK") else "TH")
+            account, follow = wallet.account_for(c, cid), 1
         c.execute(
-            "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr,channel) VALUES (?,?,?,?,'quote',?,?,?,?)",
-            (pid, body.name.strip(), f["code"], (f"{rail} wallet" if rail == markets.POINTS_RAIL else f"{rail} ending {body.last4}"), market, info["currency"], pnr, (body.channel or "").strip() or None),
+            "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr,channel,customer_id,payout_follow,ref_verified) "
+            "VALUES (?,?,?,?,'quote',?,?,?,?,?,?,?)",
+            (pid, body.name.strip(), f["code"], account, market, info["currency"], pnr, channel, cid, follow, int(bool(booked))),
         )
-        db.log(c, pid, "quote_created", {"flight": f["code"], "market": market})
-    return {"policy": pid, "flight": f, "market": info}
+        db.log(c, pid, "quote_created", {"flight": f["code"], "market": market, "booking_verified": bool(booked)})
+    return {"policy": pid, "flight": f, "market": info, "customer": cid, "verified": bool(booked)}
 
 
 @app.get("/api/demo/sources")
@@ -313,6 +345,194 @@ def checkout(pid: str, body: Checkout):
 class Redeem(BaseModel):
     partner: str
     points: int = Field(..., ge=100, le=1000000)
+
+
+class AddCover(BaseModel):
+    delay: bool = False
+    baggage: bool = False
+
+
+@app.post("/api/traveler/{pid}/add-cover")
+def add_cover(pid: str, body: AddCover):
+    """Add the cover a trip is missing, any time before the flight leaves. Delay cover cannot be added once a delay is known."""
+    if not (body.delay or body.baggage):
+        raise HTTPException(400, "Choose the cover to add.")
+    with db.conn() as c:
+        p = _policy(c, pid)
+        f = _flight(c, p["flight"])
+        if p["status"] != "active":
+            raise HTTPException(400, "Cover can only be added to an active trip.")
+        if f and (f.get("cancelled") or (f.get("sched_ts") and f["sched_ts"] < time.time())):
+            raise HTTPException(400, "This flight has already left or been cancelled, so cover cannot be added.")
+        if body.delay and p["delay_cover"] or body.baggage and p["baggage_cover"]:
+            raise HTTPException(400, "That cover is already on this trip.")
+        if body.delay and f and f["delay_minutes"] >= 30:
+            raise HTTPException(400, "This flight is already delayed, so delay cover cannot be added any more.")
+        rules = engine.get_rules(c, p["market"])
+        add = int(rules["delay_premium"]) * body.delay + int(rules["baggage_premium"]) * body.baggage
+        c.execute("UPDATE policies SET delay_cover=?, baggage_cover=?, premium=premium+? WHERE id=?",
+                  (int(body.delay or p["delay_cover"]), int(body.baggage or p["baggage_cover"]), add, pid))
+        db.log(c, pid, "cover_added", {"delay": body.delay, "baggage": body.baggage, "added": add, "currency": p["currency"]})
+        return {"policy": pid, "added": add, "currency": p["currency"]}
+
+
+# ----------------------------------------------------------- bookings and customer accounts
+
+@app.get("/api/booking/{ref}")
+def check_booking(ref: str, surname: str = Query(..., min_length=2, max_length=40)):
+    """Check my cover: what a booking has and what it does not, found by reference and last name."""
+    with db.conn() as c:
+        b = bookings.lookup(c, ref, surname)
+    if not b:
+        raise HTTPException(404, "We could not find that booking. Check the reference and the last name on the ticket.")
+    return b
+
+
+@app.get("/api/demo/bookings")
+def demo_bookings():
+    """The four demo booking references and what each one shows. Used by the presenter panel."""
+    out = []
+    with db.conn() as c:
+        for ref, (name, what) in bookings.DEMO_REFS.items():
+            b = bookings.lookup(c, ref, name.split(" ")[-1])
+            if b:
+                out.append({"ref": ref, "surname": name.split(" ")[-1], "passenger": name, "what": what, "customer": b["customer_id"],
+                            "legs": [{"flight": g["flight"]["code"], "route": f"{g['flight']['origin']} to {g['flight']['dest']}", "when": g["flight"]["depart_label"], "cover": g["cover"]} for g in b["legs"]]})
+    return out
+
+
+def _customer(c, cid):
+    if not wallet.get(c, cid):
+        raise HTTPException(404, "Account not found.")
+
+
+class ProfileUpdate(BaseModel):
+    name: str | None = Field(None, max_length=40)
+    email: str | None = Field(None, max_length=80)
+    phone: str | None = Field(None, max_length=24)
+    notify: bool | None = None
+    auto_topup: bool | None = None
+
+
+@app.get("/api/customer/{cid}")
+def customer_get(cid: str):
+    with db.conn() as c:
+        _customer(c, cid)
+        return wallet.summary(c, cid)
+
+
+@app.put("/api/customer/{cid}")
+def customer_update(cid: str, body: ProfileUpdate):
+    with db.conn() as c:
+        _customer(c, cid)
+        try:
+            wallet.update(c, cid, body.name, body.email, body.phone, body.notify, body.auto_topup)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        wallet.refresh_policies(c, cid)
+        db.log(c, None, "profile_updated", {"customer": cid})
+        return wallet.summary(c, cid)
+
+
+class NewMethod(BaseModel):
+    kind: Literal["card", "bank"]
+    number: str = Field(..., min_length=6, max_length=24)
+    holder: str = Field(..., min_length=2, max_length=40)
+    bank: str | None = None
+    expiry: str | None = Field(None, max_length=7)
+
+
+@app.post("/api/customer/{cid}/methods")
+def method_add(cid: str, body: NewMethod):
+    with db.conn() as c:
+        _customer(c, cid)
+        try:
+            m = wallet.add_method(c, cid, body.kind, body.number, body.holder, body.bank, body.expiry)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        db.log(c, None, "payment_method_added", {"customer": cid, "kind": body.kind, "label": m["label"]})
+        return {"method": m, "summary": wallet.summary(c, cid)}
+
+
+@app.delete("/api/customer/{cid}/methods/{mid}")
+def method_remove(cid: str, mid: str):
+    with db.conn() as c:
+        _customer(c, cid)
+        try:
+            wallet.remove_method(c, cid, mid)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        return wallet.summary(c, cid)
+
+
+@app.post("/api/customer/{cid}/methods/{mid}/default")
+def method_default(cid: str, mid: str):
+    with db.conn() as c:
+        _customer(c, cid)
+        try:
+            wallet.set_default(c, cid, mid)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        return wallet.summary(c, cid)
+
+
+class CashOut(BaseModel):
+    points: int = Field(..., ge=1, le=10_000_000)
+    method: str
+
+
+@app.post("/api/customer/{cid}/cashout")
+def cash_out(cid: str, body: CashOut):
+    """Turn points into cash on a saved card or bank account. It lands at once in this prototype."""
+    with db.conn() as c:
+        _customer(c, cid)
+        try:
+            r = wallet.cash_out(c, cid, body.points, body.method)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        db.log(c, None, "points_cashed_out", {"customer": cid, "points": r["points"], "usd": r["usd"], "to": r["to"]})
+        return {**r, "summary": wallet.summary(c, cid)}
+
+
+@app.post("/api/customer/{cid}/vouchers/{rid}/refund")
+def voucher_refund(cid: str, rid: str):
+    with db.conn() as c:
+        _customer(c, cid)
+        try:
+            r = wallet.refund_voucher(c, cid, rid)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        db.log(c, None, "points_refunded", {"customer": cid, "voucher": rid, "points": r["points"]})
+        return {**r, "summary": wallet.summary(c, cid)}
+
+
+@app.get("/api/customer/{cid}/services")
+def customer_services(cid: str, airport: str = Query("BKK", min_length=3, max_length=3)):
+    """Everything the wallet can be spent on at one airport: food, lounges, taxis, hotels, SIM and message packs."""
+    iata = airport.upper()
+    with db.conn() as c:
+        _customer(c, cid)
+        trip = db.one(c, "SELECT f.scheduled, f.delay_minutes FROM policies p JOIN flights f ON f.code=p.flight WHERE p.customer_id=? AND f.origin=? "
+                         "AND p.status='active' AND f.sched_ts>? ORDER BY f.sched_ts LIMIT 1", (cid, iata, time.time() - 3600))
+        bal = wallet.balance(c, cid)["points"]
+        out = partners.list_for(c, iata, (trip or {}).get("scheduled"), (trip or {}).get("delay_minutes") or 0, bal)
+        out["balance"] = bal
+        out["airports"] = [r["origin"] for r in db.rows(c, "SELECT DISTINCT f.origin FROM policies p JOIN flights f ON f.code=p.flight WHERE p.customer_id=? ORDER BY f.sched_ts", (cid,))]
+        return out
+
+
+@app.post("/api/customer/{cid}/redeem")
+def customer_redeem(cid: str, body: Redeem):
+    with db.conn() as c:
+        _customer(c, cid)
+        try:
+            r = partners.redeem_customer(c, cid, body.partner, body.points)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        db.log(c, None, "points_redeemed", {"customer": cid, "partner": r["partner"], "points": r["points"]})
+        return {**r, "summary": wallet.summary(c, cid)}
+
+
 
 
 @app.get("/api/airport/{iata}/partners")
@@ -626,7 +846,8 @@ def overview(market: str = "TH"):
         flights = db.rows(
             c,
             "SELECT f.*, (SELECT COUNT(*) FROM policies p WHERE p.flight=f.code AND p.status='active') AS covered "
-            "FROM flights f ORDER BY f.sched_ts IS NULL, f.sched_ts, f.code",
+            "FROM flights f WHERE f.source<>'demo' OR f.sched_ts>? ORDER BY f.sched_ts IS NULL, f.sched_ts, f.code",
+            (time.time(),),
         )
         decisions = db.rows(
             c, "SELECT d.id, d.policy_id, d.kind, d.status, d.amount, d.decided_by, d.delay_minutes, d.risk_score, d.timeline, d.trigger, d.elapsed_ms, "
@@ -648,6 +869,7 @@ def overview(market: str = "TH"):
         for r in db.rows(c, "SELECT p.market, p.currency, d.amount FROM decisions d JOIN policies p ON p.id=d.policy_id WHERE d.status='paid'"):
             by_market[r["market"]] = by_market.get(r["market"], 0) + markets.to_usd(r["amount"], r["currency"])
     with db.conn() as c:
+        crm_stats = bookings.stats(c)
         ms = [r["elapsed_ms"] for r in db.rows(c, "SELECT elapsed_ms FROM decisions WHERE elapsed_ms IS NOT NULL AND kind='delay'")]
         covered_total = db.one(c, "SELECT COUNT(*) n FROM policies WHERE status IN ('active','archived')")["n"]
         cancels = db.one(c, "SELECT COUNT(*) n FROM decisions WHERE trigger='cancel'")["n"]
@@ -672,6 +894,7 @@ def overview(market: str = "TH"):
             "held": held,
             "bag_waiting": bag_waiting,
             "extra_waiting": extra_waiting,
+            **crm_stats,
         },
         "flights": flights,
         "outcomes": outcomes,
@@ -691,6 +914,9 @@ def console_policies():
         for p in rows:
             p["decision"] = db.one(c, "SELECT id, status, amount, trigger FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],))
             p["bag"] = db.one(c, "SELECT status, amount FROM decisions WHERE policy_id=? AND kind='baggage'", (p["id"],))
+            p["cover"] = bookings.cover_kind(bool(p["delay_cover"]), bool(p["baggage_cover"]))
+            b = db.one(c, "SELECT channel FROM bookings WHERE ref=? AND flight=?", (p["pnr"], p["flight"])) if p.get("pnr") else None
+            p["site"] = b["channel"] if b else None
         return rows
 
 
@@ -708,7 +934,7 @@ def exposure():
     """Expected payouts on the book today, a reserve to hold, and a suggested delay price per flight."""
     out, total, var = [], 0.0, 0.0
     with db.conn() as c:
-        flights = db.rows(c, "SELECT * FROM flights ORDER BY sched_ts IS NULL, sched_ts, code")
+        flights = db.rows(c, "SELECT * FROM flights WHERE sched_ts IS NULL OR sched_ts>? ORDER BY sched_ts IS NULL, sched_ts, code", (time.time() - 3600,))
         for f in flights:
             fc = forecast.compute(f)
             pols = db.rows(c, "SELECT market, currency FROM policies WHERE flight=? AND status='active' AND delay_cover=1 "
@@ -735,8 +961,11 @@ def _copilot_ctx(c, decision_id):
     if not d:
         raise HTTPException(404, "claim not found")
     p = _policy(c, d["policy_id"])
-    others = db.one(c, "SELECT COUNT(*) n FROM policies WHERE status IN ('active','archived') AND payout_account=? AND LOWER(TRIM(traveler))<>?",
-                    (p["payout_account"], (p["traveler"] or "").strip().lower()))["n"]
+    if p.get("customer_id") and (p.get("payout_account") or "").startswith(markets.POINTS_RAIL):
+        others = 0  # the points wallet belongs to one customer, so it can never be shared
+    else:
+        others = db.one(c, "SELECT COUNT(*) n FROM policies WHERE status IN ('active','archived') AND payout_account=? AND COALESCE(customer_id,LOWER(TRIM(traveler)))<>COALESCE(?,?)",
+                        (p["payout_account"], p.get("customer_id"), (p["traveler"] or "").strip().lower()))["n"]
     rec = copilot.recommend(d, p, p["traveler"], p["currency"], others)
     rec["draft"] = rec["draft"].replace("{flight}", p["flight"])
     return d, p, rec
@@ -785,13 +1014,19 @@ class Review(BaseModel):
     note: str = ""
 
 
+def _reviewer(c, staff_id):
+    """Name of the signed-in insurer staff member, so every decision is signed by a real person."""
+    st = db.one(c, "SELECT name FROM staff WHERE id=?", (staff_id,)) if staff_id else None
+    return st["name"] if st else "Nok P."
+
+
 @app.post("/api/console/review/{decision_id}")
-def review(decision_id: str, body: Review):
+def review(decision_id: str, body: Review, x_staff: str | None = Header(None)):
     if body.action not in ("approve", "decline"):
         raise HTTPException(400, "action must be approve or decline")
     with db.conn() as c:
         try:
-            d = engine.decide_held(c, decision_id, body.action == "approve", "Nok P.", body.note)
+            d = engine.decide_held(c, decision_id, body.action == "approve", _reviewer(c, x_staff), body.note)
         except ValueError as e:
             raise HTTPException(400, str(e))
         return _decision(d)
@@ -810,12 +1045,12 @@ def baggage_list():
 
 
 @app.post("/api/console/baggage/{claim_id}")
-def baggage_decide(claim_id: str, body: Review):
+def baggage_decide(claim_id: str, body: Review, x_staff: str | None = Header(None)):
     if body.action not in ("approve", "decline"):
         raise HTTPException(400, "action must be approve or decline")
     with db.conn() as c:
         try:
-            return _decision(engine.decide_baggage(c, claim_id, body.action == "approve", "Nok P."))
+            return _decision(engine.decide_baggage(c, claim_id, body.action == "approve", _reviewer(c, x_staff)))
         except ValueError as e:
             raise HTTPException(400, str(e))
 
@@ -833,12 +1068,12 @@ def extra_list():
 
 
 @app.post("/api/console/extra/{claim_id}")
-def extra_decide(claim_id: str, body: Review):
+def extra_decide(claim_id: str, body: Review, x_staff: str | None = Header(None)):
     if body.action not in ("approve", "decline"):
         raise HTTPException(400, "action must be approve or decline")
     with db.conn() as c:
         try:
-            return _decision(engine.decide_extra(c, claim_id, body.action == "approve", "Nok P."))
+            return _decision(engine.decide_extra(c, claim_id, body.action == "approve", _reviewer(c, x_staff)))
         except ValueError as e:
             raise HTTPException(400, str(e))
 
@@ -882,9 +1117,13 @@ def put_rules(body: RuleUpdate, market: str = "TH"):
 
 
 @app.get("/api/console/audit")
-def audit():
+def audit(q: str = "", limit: int = 200):
+    limit = max(1, min(limit, 500))
     with db.conn() as c:
-        return db.rows(c, "SELECT * FROM events ORDER BY id DESC LIMIT 50")
+        if q.strip():
+            like = f"%{q.strip()}%"
+            return db.rows(c, "SELECT * FROM events WHERE type LIKE ? OR policy_id LIKE ? OR detail LIKE ? ORDER BY id DESC LIMIT ?", (like, like, like, limit))
+        return db.rows(c, "SELECT * FROM events ORDER BY id DESC LIMIT ?", (limit,))
 
 
 # ----------------------------------------------------------- pages
@@ -909,5 +1148,8 @@ def judge_page():
 def console_page():
     return FileResponse(os.path.join(STATIC, "console.html"))
 
+
+from . import crm  # noqa: E402
+app.include_router(crm.router)
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

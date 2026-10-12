@@ -93,8 +93,8 @@
 
 <section class="coach" aria-label="What to do now">
   <div class="dots" id="dots"><button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button><button data-d="4">4</button></div>
-  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a real upcoming flight, enters the booking reference from the ticket and adds cover. A second, suspicious traveler joins the same flight.</span>
-    <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button><button class="btn sm" data-do="1p">Take payout as points</button></div>
+  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a real upcoming flight, enters the booking reference from the ticket and adds cover. A second, suspicious traveler joins the same flight. Or try a demo booking to see how cover is looked up by reference.</span>
+    <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button><button class="btn sm" data-do="1p">Try a demo booking</button></div>
     <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Cover a flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
   <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The phone gets a notification at the delay limit, then the payout. The traveler can also claim extra costs and draft a letter to the airline.</span>
     <div class="acts"><button class="btn sm" data-ev="storm">Storm builds</button><button class="btn sm" data-ev="clear">Weather clears</button><button class="btn primary sm" data-ev="delayed" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delayed" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
@@ -213,12 +213,12 @@ async function liveCandidates() {
 }
 /* Cover one real flight as the traveler, then add a second, suspicious traveler on the same flight in the background. */
 const refCode = () => Array.from({length: 6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
-async function coverTrip(name, last4, flights, rail) {
+async function coverTrip(name, flights) {
   let err = null;
   for (const f of flights) {
     try {
       const [code, date] = f.split('@');
-      const q = await api('/api/policies', 'POST', {name, last4, flight: code, rail: rail || null, date: date || null, channel: 'Airline website or app', booking_ref: refCode()});
+      const q = await api('/api/policies', 'POST', {name, flight: code, date: date || null, booking_ref: refCode()});
       await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true});
       store.set('koda.own', q.policy); store.set('calmy.pid', q.policy);
       try { const r = await api('/api/demo/cover-sample', 'POST', {flight: q.flight.code, risky: true}); store.set('koda.risky', r.policy); } catch (e) { store.set('koda.risky', null); }
@@ -228,14 +228,14 @@ async function coverTrip(name, last4, flights, rail) {
   }
   throw err || 'No flight could be covered.';
 }
-const start = async (rail, flights) => {
+const start = async (flights) => {
   if (LIVEOK === false) throw 'Live flight data is not connected. Open More for details.';
-  const r = await coverTrip(rail ? 'Pim Wong' : 'Lena Fischer', rail ? '0000' : '1234', flights || await liveCandidates(), rail);
+  const r = await coverTrip('Lena Fischer', flights || await liveCandidates());
   toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); return r;
 };
 const actions = {
   async 1() { await start(); },
-  async '1p'() { await start('KODA points'); },
+  async '1p'() { toPhone({check: {ref: 'BOTH42', surname: 'Wongsakul', auto: true}}); },
   async 3() {
     const rp = riskyPid();
     if (!rp) throw 'Cover a trip first (step 1).';
@@ -292,7 +292,7 @@ $('#reset').onclick = async () => {
 $('#rfGo').onclick = async () => {
   const v = $('#rfNo').value.trim(); if (!v) return fail('Enter a flight number.');
   busy = true;
-  try { await start(null, [v]); $('#menu').classList.remove('open'); } catch (e) { fail(e); }
+  try { await start([v]); $('#menu').classList.remove('open'); } catch (e) { fail(e); }
   busy = false; picked = 0; poll();
 };
 

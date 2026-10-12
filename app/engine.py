@@ -10,7 +10,7 @@ import os
 import time
 import uuid
 
-from . import context, db, markets, partners
+from . import wallet, context, db, markets, partners
 
 CLAUSE_DELAY = "Clause 3.1, delay over 3 hours"
 CLAUSE_CANCEL = "Clause 3.2, flight cancelled"
@@ -66,25 +66,30 @@ def features(c, p: dict) -> dict:
 
     Seeded sample profiles carry preset signals. For every policy the live value is
     also computed from the data, and the higher of the two is used.
+
+    A points wallet belongs to one traveler, so it says nothing about shared accounts. For those policies the
+    checks group by traveler account. A real card or bank account that several travelers use is a signal.
     """
     acct, name = p["payout_account"], (p["traveler"] or "").strip().lower()
+    cid = p.get("customer_id")
     t0 = p.get("created_at") or time.time()
+    wallet_only = (acct or "").startswith(markets.POINTS_RAIL)
     same_person = db.rows(
         c,
         "SELECT id FROM policies WHERE status='active' AND ABS(COALESCE(created_at, ?) - ?) <= 7200 "
-        "AND (payout_account=? OR LOWER(TRIM(traveler))=?)",
-        (t0, t0, acct, name),
+        "AND ((payout_account=? AND payout_account NOT LIKE ?) OR LOWER(TRIM(traveler))=? OR (customer_id IS NOT NULL AND customer_id=?))",
+        (t0, t0, acct, markets.POINTS_RAIL + "%", name, cid),
     )
-    others_on_account = db.one(
+    others_on_account = 0 if wallet_only else db.one(
         c,
-        "SELECT COUNT(*) n FROM policies WHERE status='active' AND payout_account=? AND LOWER(TRIM(traveler))<>?",
+        "SELECT COUNT(*) n FROM policies WHERE status IN ('active','archived') AND payout_account=? AND LOWER(TRIM(traveler))<>?",
         (acct, name),
     )["n"]
     prior_paid = db.one(
         c,
         "SELECT COUNT(*) n FROM decisions d JOIN policies q ON q.id=d.policy_id "
-        "WHERE d.status='paid' AND q.payout_account=? AND q.id<>? AND d.created_at > ?",
-        (acct, p["id"], time.time() - 365 * DAY),
+        "WHERE d.status='paid' AND q.id<>? AND d.created_at > ? AND ((q.payout_account=? AND q.payout_account NOT LIKE ?) OR (q.customer_id IS NOT NULL AND q.customer_id=?))",
+        (p["id"], time.time() - 365 * DAY, acct, markets.POINTS_RAIL + "%", cid),
     )["n"]
     f = db.one(c, "SELECT scheduled FROM flights WHERE code=?", (p["flight"],)) or {}
     changed = bool(p.get("sched_at_purchase") and f.get("scheduled") and p["sched_at_purchase"] != f["scheduled"])
@@ -218,8 +223,9 @@ def caring_message(flight: str, cancelled: bool, minutes: int, amount: int, stat
     what = "was cancelled" if cancelled else f"is delayed by {_hm(minutes)}"
     if status == "paid" and account.startswith(markets.POINTS_RAIL):
         pts = round(amount * markets.POINTS_PER_USD * (1 + markets.POINTS_BONUS))
-        return (f"Your flight {flight} {what}. We have added {pts:,} points to your KODA wallet, "
-                f"{int(markets.POINTS_BONUS * 100)}% more than the cash value. Spend them at partner restaurants in your airport. No forms, no waiting.")
+        return (f"Your flight {flight} {what}. We have added {pts:,} points to your KODA wallet. They are worth {pts / markets.POINTS_PER_USD:,.2f} USD "
+                f"at airport partners, {int(markets.POINTS_BONUS * 100)}% more than the {money(amount, cur)} payout. Spend them on food, lounges, taxis and more, "
+                "or cash them out to a saved card or bank account. No forms, no waiting.")
     if status == "paid":
         return (f"Your flight {flight} {what}. We have sent {money(amount, cur)} to {account}. "
                 "Have a drink or a meal at the airport on us. No forms, no waiting.")
@@ -247,6 +253,7 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
         c, "SELECT * FROM policies WHERE flight=? AND status='active' AND delay_cover=1", (flight_code,)
     )
     for p in policies:
+        wallet.refresh(c, p)  # the traveler's current choice of points or saved card decides where this goes
         # Money and rules follow the policy's own market (where the traveler bought cover).
         market = p["market"] or "TH"
         cur = currency_of(market)
@@ -290,6 +297,7 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
         c.execute("UPDATE decisions SET elapsed_ms=? WHERE id=?", (max(1, int((time.perf_counter() - t0) * 1000)), did))
         c.execute("UPDATE decisions SET breakdown=? WHERE id=?", (json.dumps(risk_parts(feats)), did))
         db.log(c, p["id"], f"decision_{status}", {"decision": did, "score": score, "amount": amount})
+        wallet.stamp(c, did)
         partners.sync(c, p["id"])
         results.append({"policy": p["id"], "decision": did, "status": status, "score": score})
     return results
@@ -322,6 +330,7 @@ def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) ->
     if approve:
         tl = [{"label": "Paid", "sec": 8}, {"label": "Traveler notified", "sec": 9}] if len(tl) < 5 else tl
         tl = tl[:3] + [{"label": "Paid", "sec": 8}, {"label": "Traveler notified", "sec": 9}]
+        wallet.refresh(c, db.one(c, "SELECT * FROM policies WHERE id=?", (d["policy_id"],)))
         pol = db.one(c, "SELECT payout_account, currency FROM policies WHERE id=?", (d["policy_id"],)) or {}
         msg = caring_message(db.one(c, "SELECT flight FROM policies WHERE id=?", (d["policy_id"],))["flight"],
                              d.get("trigger") == "cancel", d["delay_minutes"], d["amount"], "paid",
@@ -334,6 +343,7 @@ def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) ->
         (status, reviewer, note, json.dumps(tl), msg, decision_id),
     )
     db.log(c, d["policy_id"], f"review_{status}", {"decision": decision_id, "by": reviewer, "note": note})
+    wallet.stamp(c, decision_id)
     partners.sync(c, d["policy_id"])
     return db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,))
 
@@ -348,9 +358,10 @@ def submit_bag_claim(c, policy_id: str, report_id: str, bag_tag: str, items: lis
         raise ValueError("a baggage claim already exists for this policy")
     total = sum(int(i["amount"]) for i in items)
     bid = _new_id("BC")
+    dest = (db.one(c, "SELECT dest FROM flights WHERE code=?", (p["flight"],)) or {}).get("dest") or "the destination"
     c.execute(
         "INSERT INTO baggage VALUES (?,?,?,?,?,?,?,?)",
-        (bid, policy_id, report_id, bag_tag, "Bag not found at CNX", json.dumps(items), total, time.time()),
+        (bid, policy_id, report_id, bag_tag, f"Bag not found at {dest}", json.dumps(items), total, time.time()),
     )
     market = p.get("market") or "TH"
     cur = currency_of(market)
@@ -385,8 +396,10 @@ def _decide_simple(c, claim_id: str, approve: bool, reviewer: str, tag: str) -> 
     if not d or d["status"] not in ("pending", "held"):
         raise ValueError("claim is not waiting for a decision")
     status = "paid" if approve else "declined"
+    wallet.refresh(c, db.one(c, "SELECT * FROM policies WHERE id=?", (d["policy_id"],)))
     c.execute("UPDATE decisions SET status=?, decided_by=? WHERE id=?", (status, reviewer, claim_id + "-D"))
     db.log(c, d["policy_id"], f"{tag}_{status}", {"claim": claim_id, "by": reviewer})
+    wallet.stamp(c, claim_id + "-D")
     partners.sync(c, d["policy_id"])
     return db.one(c, "SELECT * FROM decisions WHERE id=?", (claim_id + "-D",))
 
@@ -410,6 +423,7 @@ def submit_extra_claim(c, policy_id: str, what: str, amount: int, receipt: str |
         raise ValueError("an extra costs claim already exists for this policy")
     if receipt and (not receipt.startswith("data:image/") or len(receipt) > 400_000):
         raise ValueError("the receipt photo is not valid or is too large")
+    wallet.refresh(c, p)
     market = p.get("market") or "TH"
     cur = currency_of(market)
     rules = get_rules(c, market)
@@ -426,7 +440,8 @@ def submit_extra_claim(c, policy_id: str, what: str, amount: int, receipt: str |
     auto = score < rules["risk_threshold"] and payable <= fast
     status = "paid" if auto else "pending"
     acct = p["payout_account"] or "your account"
-    msg = (f"We paid {money(payable, cur)} for your {what.lower()}. It went to {acct}. No forms, no waiting."
+    where = (f"as {wallet.points_for(payable):,} points in your KODA wallet" if acct.startswith(markets.POINTS_RAIL) else f"to {acct}")
+    msg = (f"We paid {money(payable, cur)} for your {what.lower()} {where}. No forms, no waiting."
            if auto else f"We have your {what.lower()} receipt. A person is checking it and will pay you here once it is approved.")
     expl = (f"Extra cost of {money(int(amount), cur)} for {what.lower()}. Fast track limit {money(fast, cur)}, total cap {money(cap, cur)}. "
             + ("Paid at once because it was under the fast track limit and nothing looked unusual." if auto
@@ -440,6 +455,7 @@ def submit_extra_claim(c, policy_id: str, what: str, amount: int, receipt: str |
     c.execute("UPDATE decisions SET breakdown=? WHERE id=?",
               (json.dumps(risk_parts(feats) + [("Loading for self declared amounts", 6)]), eid + "-D"))
     db.log(c, policy_id, "extra_claim", {"claim": eid, "amount": int(amount), "status": status})
+    wallet.stamp(c, eid + "-D")
     partners.sync(c, policy_id)
     return db.one(c, "SELECT * FROM expenses WHERE id=?", (eid,))
 
@@ -449,8 +465,10 @@ def decide_extra(c, claim_id: str, approve: bool, reviewer: str) -> dict:
     if approve:
         pol = db.one(c, "SELECT payout_account, currency FROM policies WHERE id=?", (d["policy_id"],)) or {}
         e = db.one(c, "SELECT what FROM expenses WHERE id=?", (claim_id,)) or {"what": "costs"}
+        acct = pol.get("payout_account") or "your account"
+        where = (f"as {wallet.points_for(d['amount']):,} points in your KODA wallet" if acct.startswith(markets.POINTS_RAIL) else f"to {acct}")
         c.execute("UPDATE decisions SET message=? WHERE id=?",
-                  (f"A person approved your {e['what'].lower()} claim. {money(d['amount'], pol.get('currency', 'USD'))} went to {pol.get('payout_account', 'your account')}.", d["id"]))
+                  (f"A person approved your {e['what'].lower()} claim. {money(d['amount'], pol.get('currency', 'USD'))} was paid {where}.", d["id"]))
     else:
         c.execute("UPDATE decisions SET message=? WHERE id=?",
                   ("After review, this receipt could not be approved. Your delay payout is not affected.", d["id"]))

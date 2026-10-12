@@ -3,7 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const msg = d => typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => (x.loc ? x.loc[x.loc.length - 1] + ': ' : '') + (x.msg || '')).join('. ') || 'Check the values and try again.' : 'Something went wrong. Please try again.';
 const api = (url, method = 'GET', body) =>
-  fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined})
+  fetch(url, {method, headers: {'Content-Type': 'application/json', ...(store.get('koda.staff') ? {'X-Staff': store.get('koda.staff')} : {})}, body: body ? JSON.stringify(body) : undefined})
     .then(r => r.ok ? r.json() : r.json().catch(() => ({})).then(e => Promise.reject(msg(e.detail))));
 let _tt;
 function toast(t, bad = false) {
