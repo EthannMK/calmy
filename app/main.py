@@ -14,12 +14,14 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+import secrets
 import threading
+from typing import Literal
 
 import re
 import time
 
-from . import db, engine, live, markets, track
+from . import context, db, engine, live, markets, track
 
 STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 @asynccontextmanager
@@ -43,6 +45,7 @@ def _decision(d):
         return None
     for k in ("reasons", "timeline", "breakdown"):
         d[k] = json.loads(d[k]) if d.get(k) else []
+    d["context"] = json.loads(d["context"]) if d.get("context") else None
     return d
 
 
@@ -87,7 +90,10 @@ def traveler_state(pid: str):
         delay = _decision(db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (pid,)))
         flight = _flight(c, p["flight"])
         track.maybe_refresh(flight)  # starts a background refresh if the real status is stale
+        if flight:
+            context.warm(flight["origin"])
         return {
+            "weather": context.for_event(flight["code"], flight["origin"], bool(flight.get("cancelled")), flight["delay_minutes"]) if flight else None,
             "policy": p,
             "flight": flight,
             "market": markets.public(p["market"]),
@@ -133,9 +139,10 @@ def create_policy(body: NewPolicy):
         if not sample:
             live.upsert_flight(c, f)
         pid = engine._new_id("CL")
+        pnr = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))  # booking reference
         c.execute(
-            "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency) VALUES (?,?,?,?,'quote',?,?)",
-            (pid, body.name.strip(), f["code"], f"{rail} ending {body.last4}", market, info["currency"]),
+            "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr) VALUES (?,?,?,?,'quote',?,?,?)",
+            (pid, body.name.strip(), f["code"], f"{rail} ending {body.last4}", market, info["currency"], pnr),
         )
         db.log(c, pid, "quote_created", {"flight": f["code"], "market": market})
     return {"policy": pid, "flight": f, "market": info}
@@ -176,6 +183,8 @@ def checkout(pid: str, body: Checkout):
         f = _flight(c, p["flight"])
         if p["status"] == "active":
             raise HTTPException(400, "Cover is already active on this trip.")
+        if f and f.get("cancelled"):
+            raise HTTPException(400, "This flight is cancelled, so cover cannot be added any more.")
         if f and f["delay_minutes"] >= 30:
             # A delay is already known, so cover would insure a loss that has already happened.
             raise HTTPException(400, "This flight is already delayed, so cover cannot be added any more.")
@@ -240,6 +249,15 @@ def bag_claim(pid: str, body: BagClaim):
 class Delay(BaseModel):
     flight: str = "OA 108"
     minutes: int = Field(192, ge=0, le=2880)
+    cancelled: bool = False
+
+
+def _weather_for(code):
+    """Read the weather at the departure airport before the database lock is taken."""
+    with db.conn() as c:
+        f = _flight(c, code)
+    if f:
+        context.prefetch(f["origin"])
 
 
 def _enrich_later(results):
@@ -251,15 +269,47 @@ def _enrich_later(results):
 @app.post("/api/demo/delay")
 def demo_delay(body: Delay):
     """Simulate flight data: set a delay and run the trigger."""
+    _weather_for(body.flight)
     with db.conn() as c:
         if not _flight(c, body.flight):
             raise HTTPException(404, "flight not found")
         covered = db.one(
             c, "SELECT COUNT(*) n FROM policies WHERE flight=? AND status='active' AND delay_cover=1", (body.flight,)
         )["n"]
-        results = engine.run_delay(c, body.flight, body.minutes)
+        results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.cancelled)
     _enrich_later(results)
     return {"results": results, "covered": covered}
+
+
+class FlightEvent(BaseModel):
+    flight: str
+    event: Literal["delayed", "cancelled", "on_time", "landed"]
+    minutes: int = Field(0, ge=0, le=2880)
+
+
+@app.post("/api/webhook/flight-event")
+def flight_event(body: FlightEvent):
+    """The flight status feed posts here. In production this is the Cloud Run webhook of the architecture.
+
+    delayed and cancelled run the policy check and payout. on_time and landed quietly archive the
+    trips that had no problem: no payout, no message to the traveler.
+    """
+    _weather_for(body.flight)
+    with db.conn() as c:
+        if not _flight(c, body.flight):
+            raise HTTPException(404, "flight not found")
+        db.log(c, None, "webhook_received", {"flight": body.flight, "event": body.event, "minutes": body.minutes})
+        if body.event in ("delayed", "cancelled"):
+            results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.event == "cancelled")
+            _enrich_later(results)
+            return {"event": body.event, "results": results, "archived": 0}
+        c.execute("UPDATE flights SET delay_minutes=?, cancelled=0 WHERE code=?", (body.minutes, body.flight))
+        quiet = db.rows(c, "SELECT id FROM policies WHERE flight=? AND status='active' AND id NOT IN "
+                           "(SELECT policy_id FROM decisions)", (body.flight,))
+        for p in quiet:
+            c.execute("UPDATE policies SET status='archived' WHERE id=?", (p["id"],))
+            db.log(c, p["id"], "trip_archived", {"flight": body.flight, "reason": "no covered event"})
+        return {"event": body.event, "results": [], "archived": len(quiet)}
 
 
 class LiveReplay(BaseModel):
@@ -338,8 +388,9 @@ def demo_cover_sample(body: SampleCover):
         pid = engine._new_id("CL")
         c.execute(
             "INSERT INTO policies (id,traveler,flight,payout_account,delay_cover,baggage_cover,premium,status,market,currency,"
-            "created_at,sched_at_purchase) VALUES (?,?,?,?,1,1,?,'active',?,?,?,?)",
-            (pid, "Sample traveler", f["code"], f"{info['rails'][0]} ending 0000", total, market, info["currency"], time.time(), f["scheduled"]),
+            "created_at,sched_at_purchase,pnr) VALUES (?,?,?,?,1,1,?,'active',?,?,?,?,?)",
+            (pid, "Sample traveler", f["code"], f"{info['rails'][0]} ending 0000", total, market, info["currency"], time.time(), f["scheduled"],
+             "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))),
         )
         db.log(c, pid, "policy_active", {"delay": True, "baggage": True, "total": total, "currency": info["currency"], "added_by": "console test"})
         return {"policy": pid, "flight": f["code"]}
@@ -371,12 +422,12 @@ def overview(market: str = "TH"):
             "FROM flights f ORDER BY f.sched_ts IS NULL, f.sched_ts, f.code",
         )
         decisions = db.rows(
-            c, "SELECT d.id, d.policy_id, d.kind, d.status, d.amount, d.decided_by, d.delay_minutes, d.risk_score, d.timeline, "
+            c, "SELECT d.id, d.policy_id, d.kind, d.status, d.amount, d.decided_by, d.delay_minutes, d.risk_score, d.timeline, d.trigger, d.elapsed_ms, "
                "p.currency, p.flight, p.traveler FROM decisions d JOIN policies p ON p.id=d.policy_id ORDER BY d.created_at DESC"
         )
         for d in decisions:
             tl = json.loads(d["timeline"]) if d.get("timeline") else []
-            d["seconds"] = tl[-1]["sec"] if tl else None
+            d["seconds"] = next((s["sec"] for s in tl if s["label"] in ("Paid", "Held for review")), None)
             del d["timeline"]
     for f in flights:
         track.maybe_refresh(f)
@@ -389,7 +440,21 @@ def overview(market: str = "TH"):
         outcomes["declined"] = db.one(c, "SELECT COUNT(*) n FROM decisions WHERE status='declined'")["n"]
         for r in db.rows(c, "SELECT p.market, p.currency, d.amount FROM decisions d JOIN policies p ON p.id=d.policy_id WHERE d.status='paid'"):
             by_market[r["market"]] = by_market.get(r["market"], 0) + markets.to_usd(r["amount"], r["currency"])
+    with db.conn() as c:
+        ms = [r["elapsed_ms"] for r in db.rows(c, "SELECT elapsed_ms FROM decisions WHERE elapsed_ms IS NOT NULL AND kind='delay'")]
+        covered_total = db.one(c, "SELECT COUNT(*) n FROM policies WHERE status IN ('active','archived')")["n"]
+        cancels = db.one(c, "SELECT COUNT(*) n FROM decisions WHERE trigger='cancel'")["n"]
+        archived = db.one(c, "SELECT COUNT(*) n FROM policies WHERE status='archived'")["n"]
+    reviewed = len(paid) - auto
+    performance = {
+        "decisions": len(ms), "avg_decision_ms": round(sum(ms) / len(ms)) if ms else None,
+        "seconds_to_payout": 8, "manual_days": 14, "documents_asked": 0, "manual_cost_usd": 41,
+        # Only claims a person had to review carry handling cost. Auto paid claims carry none.
+        "admin_cost_usd": round(reviewed * 41 / covered_total, 2) if covered_total else 0,
+        "auto_paid": auto, "reviewed": reviewed, "cancellations": cancels, "archived": archived, "covered_total": covered_total,
+    }
     return {
+        "performance": performance,
         "stats": {
             "active": active,
             "premium_usd": round(premium),
@@ -413,9 +478,9 @@ def overview(market: str = "TH"):
 @app.get("/api/console/policies")
 def console_policies():
     with db.conn() as c:
-        rows = db.rows(c, "SELECT * FROM policies WHERE status='active' ORDER BY created_at DESC, id")
+        rows = db.rows(c, "SELECT * FROM policies WHERE status IN ('active','archived') ORDER BY created_at DESC, id")
         for p in rows:
-            p["decision"] = db.one(c, "SELECT id, status, amount FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],))
+            p["decision"] = db.one(c, "SELECT id, status, amount, trigger FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],))
             p["bag"] = db.one(c, "SELECT status, amount FROM decisions WHERE policy_id=? AND kind='baggage'", (p["id"],))
         return rows
 

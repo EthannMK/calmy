@@ -91,7 +91,8 @@ def conn():
 MIGRATIONS = [
     ("flights", "flight_date", "TEXT"), ("flights", "sched_ts", "REAL"), ("flights", "market", "TEXT DEFAULT 'TH'"),
     ("decisions", "breakdown", "TEXT"), ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'USD'"),
-    ("policies", "created_at", "REAL"), ("policies", "sched_at_purchase", "TEXT"),
+    ("policies", "created_at", "REAL"), ("policies", "pnr", "TEXT"), ("flights", "cancelled", "INTEGER DEFAULT 0"),
+    ("decisions", "trigger", "TEXT DEFAULT 'delay'"), ("decisions", "elapsed_ms", "INTEGER"), ("decisions", "message", "TEXT"), ("decisions", "context", "TEXT"), ("policies", "sched_at_purchase", "TEXT"),
 ]
 
 
@@ -146,6 +147,8 @@ def seed(c):
             ("CL-45102", "Anan T.", "OA 108", "PromptPay ending 7730", 0, 0, 0, "quote", 4, 1, 1, 1),
         ],
     )
+    c.execute("UPDATE policies SET pnr='K7M2QD' WHERE id='CL-44910'")
+    c.execute("UPDATE policies SET pnr='R4T9XE' WHERE id='CL-45102'")
 
 
 def seed_rules(c):

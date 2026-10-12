@@ -7,7 +7,7 @@ allows only 100 requests a month. The cache and monthly budget live in live.py.
 import threading
 import time
 
-from . import db, engine, live
+from . import context, db, engine, live
 
 STALE_SECONDS = 30 * 60          # refresh at most this often for passive viewing
 WINDOW_BEFORE, WINDOW_AFTER = 12 * 3600, 36 * 3600  # only track flights near their departure
@@ -29,9 +29,10 @@ def refresh_flight(code: str) -> dict:
     if f["source"] != "live":
         raise live.LiveError("This is a sample flight, so there is no real status to check.")
     fresh = live.lookup(code, f["flight_date"])
+    context.prefetch(fresh["origin"])  # network call, before the database lock
     with db.conn() as c:
         live.upsert_flight(c, fresh)
-        results = engine.run_delay(c, code, fresh["delay_minutes"])
+        results = engine.run_delay(c, code, fresh["delay_minutes"], cancelled=(fresh.get("status") == "cancelled"))
         db.log(c, None, "flight_checked", {"flight": code, "delay": fresh["delay_minutes"], "status": fresh["status"]})
     ids = [r["decision"] for r in results if r.get("decision")]
     if ids:

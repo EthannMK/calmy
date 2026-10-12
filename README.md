@@ -86,6 +86,25 @@ State lives in one SQLite file, so run a single instance.
 The service account needs the Vertex AI User role for Gemini. Without it the app still works
 and uses the template explanation.
 
+## How this prototype maps to the submission deck
+
+| Deck item | In this prototype | Status |
+|---|---|---|
+| Four steps: event, AI checks policy, money sent, traveler notified | Five step timeline on every decision: Event detected, Policy matched, Risk checked, Paid, Traveler notified | Built |
+| Delay and cancellation payout | Delay tiers plus a Cancelled flight payout rule (Clause 3.2), editable on the Rules page | Built |
+| Cloud Run webhook for flight events | `POST /api/webhook/flight-event` with `delayed`, `cancelled`, `on_time`, `landed` | Built |
+| Flight status API (AviationStack) | Real flights, 100 request monthly budget, cancelled status triggers a payout | Built, needs `AVIATIONSTACK_KEY` |
+| Gemini checks the event against the policy | Gemini on Vertex AI writes the reason; rules and risk score decide | Built |
+| Weather and airport data | Live weather from Open-Meteo shown on the traveler flight card and in each decision. Airport operations are simulated and labelled. Weather never changes the payout | Weather live, airport simulated |
+| PNR tracked per booking | Every policy gets a 6 character PNR, shown to traveler and insurer | Built |
+| No problem: trip quietly archived | `on_time` or `landed` archives the trip: no payout, no message | Built |
+| Caring message | Stored on each decision and shown as a message card in the traveler app and in the console | Built (in app; email delivery is a Gmail API step, not connected) |
+| Payout to card, bank or wallet | Payout options per market plus Card refund and Digital wallet. Money is simulated | Simulated |
+| Zero paperwork | No form, receipt or letter asked. Performance page counts documents asked | Built |
+| Cloud Firestore, Cloud Functions, Gmail API, payment gateway, Firebase rules | SQLite stands in for Firestore, the engine runs inside the Cloud Run service, and only the last four digits of the payout account are stored, never a full number | Next step |
+| Prototype performance report | Console, Performance page: manual baselines against measured prototype results | Built |
+| Baggage and fraud checks (Later) | Lost bag cover and an additive risk score already included | Built ahead of plan |
+
 ## Judge view
 
 Open `/judge` for the traveler phone and the insurer console side by side. A five step strip follows the real state, and each step has a Do it for me button.

@@ -57,6 +57,7 @@
   .bp-foot small{display:block;font-size:12px;color:var(--navy-mute)}
   .bp-foot b{font-size:14px;font-weight:600}
   .bp-track{padding:0 16px 8px}
+  .bp-wx{display:flex;align-items:center;gap:8px;padding:0 16px 10px;font-size:12px;color:var(--navy-mute)}.bp-wx .ms{font-size:16px}.bp-wx b{color:#fff;font-weight:600}
   .bp-status{display:flex;justify-content:space-between;align-items:center;padding:0 16px 14px;font-size:12px;color:var(--navy-mute)}
   .bp-status button{color:var(--amber);font-weight:600;text-decoration:underline}
   .tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;background:#0F3470;color:#C9D6E8}
@@ -140,6 +141,7 @@
       <div id="demoHint" class="note hidden"></div>
       <div class="row2"><input id="simMin" type="number" min="0" max="2880" value="200" class="field mono" style="width:96px"><button id="simGo" class="btn primary" style="flex:1">Delay my flight by these minutes</button></div>
       <div class="row2"><button data-min="192" class="simQuick btn sm" style="flex:1">3h 12m</button><button data-min="370" class="simQuick btn sm" style="flex:1">6h 10m</button></div>
+      <div class="row2"><button id="simCancel" class="btn" style="flex:1">Cancel my flight</button><button id="simOk" class="btn" style="flex:1">Flight lands on time</button></div>
       <div id="liveBox" class="hidden" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px">
         <div class="cap" style="margin:0">Replay a flight that is really late <span id="liveUsage" class="mute" style="font-weight:400"></span></div>
         <div class="row2"><input id="liveAp" maxlength="3" value="BKK" class="field mono" style="width:80px;text-transform:uppercase;text-align:center"><button id="liveList" class="btn" style="flex:1">Show delayed flights</button></div>
@@ -198,7 +200,7 @@ function render(force) {
 
 /* ---------------- shared pieces ---------------- */
 function flightCard(withTrack) {
-  const f = S.flight, live = f.source === 'live', late = f.delay_minutes > 0;
+  const f = S.flight, live = f.source === 'live', late = f.delay_minutes > 0 || !!f.cancelled;
   return `<section class="bp" aria-label="Flight ${esc(f.code)}">
     <div class="bp-top"><span>${esc(f.airline)}</span><span style="display:flex;gap:8px;align-items:center"><span class="tag ${live ? 'live' : ''}">${live ? 'Real flight' : 'Sample'}</span><span class="bp-code">${esc(f.code)}</span></span></div>
     <div class="bp-route">
@@ -207,9 +209,10 @@ function flightCard(withTrack) {
       <div style="text-align:right"><div class="bp-ap">${esc(f.dest)}</div><div class="bp-city" style="margin-left:auto">${esc(f.dest_city)}</div></div>
     </div>
     <div class="perf"></div>
-    <div class="bp-foot"><div><small>Departs</small><b>${esc(f.depart_label)}</b></div><div style="text-align:right"><small>Passenger</small><b>${esc(S.policy.traveler)}</b></div></div>
+    <div class="bp-foot"><div><small>Departs</small><b>${esc(f.depart_label)}</b></div><div style="text-align:right"><small>Passenger</small><b>${esc(S.policy.traveler)}</b></div>${S.policy.pnr ? `<div style="text-align:right"><small>PNR</small><b class="mono">${esc(S.policy.pnr)}</b></div>` : ''}</div>
+    ${S.weather ? `<div class="bp-wx">${ico('info')}<span><b>${esc(S.flight.origin)} now:</b> ${esc(S.weather.text)}${S.weather.source.startsWith('Live') ? '' : ' (simulated)'}</span></div>` : ''}
     ${withTrack ? `<div class="bp-track">${delayTrack(f.delay_minutes, S.rules, cur(), true)}</div>` : ''}
-    <div class="bp-status"><span style="display:flex;align-items:center;gap:10px"><span class="tag ${late ? 'late' : 'ok'}">${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time so far'}</span>${S.policy.status === 'active' && S.policy.delay_cover ? `<span class="radar" title="KODA AI is watching this flight"></span>${aiChip('Watching', true)}` : ''}</span>
+    <div class="bp-status"><span style="display:flex;align-items:center;gap:10px"><span class="tag ${late ? 'late' : 'ok'}">${f.cancelled ? 'Cancelled' : late ? 'Delayed ' + hm(f.delay_minutes) : 'On time so far'}</span>${S.policy.status === 'active' && S.policy.delay_cover ? `<span class="radar" title="KODA AI is watching this flight"></span>${aiChip('Watching', true)}` : ''}</span>
       ${live ? `<span>Checked ${ago(f.fetched_at)} <button id="checkNow">Check now</button></span>` : '<span>Use Test tools to simulate a delay</span>'}</div>
   </section>`;
 }
@@ -267,9 +270,13 @@ function startView() {
 function coverView() {
   const r = S.rules, p = S.policy;
   if (bagForm) return bagFormView();
+  if (p.status === 'archived') {
+    return `<div><span class="chip"><i></i>Trip complete</span><h1 style="margin-top:10px">Smooth trip</h1>
+      <p class="sub">Your flight had no problem, so there was nothing to pay. We closed the trip quietly. No promo, no spam.</p></div>${flightCard(false)}`;
+  }
   if (p.status === 'active') {
-    return `<div><span class="chip paid"><i></i>Covered</span><h1 style="margin-top:10px">You are covered</h1>
-      <p class="sub">Policy <span class="mono" style="font-weight:600;color:var(--ink)">${esc(p.id)}</span>. We watch your flight and pay you if it is late.</p></div>
+    return `<div><span class="chip paid"><i></i>Covered</span><h1 style="margin-top:10px">Your trip is covered</h1>
+      <p class="sub">Policy <span class="mono" style="font-weight:600;color:var(--ink)">${esc(p.id)}</span>. We watch your flight and pay you if it is delayed or cancelled.</p></div>
       ${flightCard(p.delay_cover)}
       <div class="aistrip" aria-label="What KODA AI does for you">
         <div>${ico('flight')}Watches your flight</div><div>${ico('shield')}Checks the risk</div><div>${ico('paid')}Pays you</div></div>
@@ -278,7 +285,7 @@ function coverView() {
         <div class="kv"><span>Baggage cover</span><b class="mono">${p.baggage_cover ? 'Active' : 'Not added'}</b></div>
         <div class="kv" style="border-top:1px solid var(--line2);margin-top:6px;padding-top:12px"><span>Paid so far</span><b class="mono" style="font-size:16px">${M(paidTotal())}</b></div>
       </section>
-      <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>${p.delay_cover ? `${Math.round(r.delay_tier1_minutes / 60)}h late pays ${M(r.delay_tier1_payout)}. ${Math.round(r.delay_tier2_minutes / 60)}h late pays ${M(r.delay_tier2_payout)}.` : 'Delay cover was not added to this trip.'}</span></div>
+      <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>${p.delay_cover ? `${Math.round(r.delay_tier1_minutes / 60)}h late pays ${M(r.delay_tier1_payout)}. ${Math.round(r.delay_tier2_minutes / 60)}h late pays ${M(r.delay_tier2_payout)}. Cancelled pays ${M(r.cancel_payout)}.` : 'Delay cover was not added to this trip.'}</span></div>
       ${factsBlock()}
       ${p.baggage_cover && !S.baggage ? `<button id="bagStart" class="btn block">My bag is lost</button>` : ''}`;
   }
@@ -329,24 +336,32 @@ function claimsView() {
   return out;
 }
 function steps(tl) {
-  const subs = {'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, delay rule met', 'Risk checked': 'Checked automatically, no forms', 'Paid': 'Sent to your payout account', 'Held for review': 'A person is taking a look'};
-  return `<section class="card">` + tl.map(s => `<div class="step"><span class="dot ${s.pending ? 'wait' : s.label === 'Paid' ? 'fill' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span>
+  const subs = {'Event detected': 'Flight status updated', 'Traveler notified': 'A message explains what was paid and why', 'Traveler told a person will look': 'You are kept in the loop', 'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, rule met', 'Risk checked': 'Checked automatically, no forms', 'Paid': 'Sent to your payout account', 'Held for review': 'A person is taking a look'};
+  return `<section class="card">` + tl.map(s => `<div class="step"><span class="dot ${s.pending ? 'wait' : s.label === 'Paid' || s.label === 'Traveler notified' ? 'fill' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span>
       <div style="flex:1"><b>${esc(s.label)}</b>${s.label === 'Risk checked' ? ' ' + aiChip('AI') : ''}<small>${esc(subs[s.label] || '')}</small></div><time>${s.sec}s</time></div>`).join('') + `</section>`;
+}
+function msgCard(d) {
+  if (!d.message) return '';
+  return `<section class="card msg"><div class="cap" style="display:flex;align-items:center;gap:6px">${ico('info')} New message <span class="mute" style="margin-left:auto;font-weight:400">from KODA, just now</span></div>
+    <b style="display:block;margin:4px 0">${d.trigger === 'cancel' ? 'Your flight was cancelled' : 'Your flight was delayed'}</b><p style="line-height:1.5">${esc(d.message)}</p></section>`;
 }
 function paidView(d) {
   const r = S.rules, topped = r.delay_tier2_payout > r.delay_tier1_payout && d.amount >= r.delay_tier2_payout;
   return `<div class="rcpt"><span class="stamp">PAID</span>
       <div class="mute" style="font-size:13px">Payout receipt</div>
-      <h1 style="font-size:21px;margin-top:6px;max-width:210px">Flight delayed ${hm(d.delay_minutes)}. We paid you.</h1>
+      <h1 style="font-size:21px;margin-top:6px;max-width:210px">${d.trigger === 'cancel' ? 'Flight cancelled.' : 'Flight delayed ' + hm(d.delay_minutes) + '.'} We paid you.</h1>
       <div class="amt" style="margin-top:14px">${M(d.amount)}</div>
-      ${topped ? `<span class="chip paid" style="margin-top:8px">Topped up past ${Math.round(r.delay_tier2_minutes / 60)} hours</span>` : ''}
+      ${topped && d.trigger !== 'cancel' ? `<span class="chip paid" style="margin-top:8px">Topped up past ${Math.round(r.delay_tier2_minutes / 60)} hours</span>` : ''}
       <div class="ln"></div>
       <div class="kv"><span>Flight</span><b>${esc(S.flight.airline)} <span class="mono">${esc(S.flight.code)}</span></b></div>
       <div class="kv"><span>Date</span><b>${esc((S.flight.depart_label || '').split(',')[0])}</b></div>
       <div class="kv"><span>Sent to</span><b>${acct(S.policy.payout_account)}</b></div>
       <div class="kv"><span>Policy</span><b class="mono">${esc(S.policy.id)}</b></div>
-      <div class="kv"><span>Speed</span><b>Instant, simulated</b></div>
+      <div class="kv"><span>Booking (PNR)</span><b class="mono">${esc(S.policy.pnr || '')}</b></div>
+      <div class="kv"><span>Reason</span><b>${d.trigger === 'cancel' ? 'Flight cancellation verified' : 'Flight delay verified'}</b></div>
+      <div class="kv"><span>Time taken</span><b>Seconds</b></div>
       <div class="barcode" aria-hidden="true"></div></div>
+    ${msgCard(d)}
     <div class="aicard">${aiChip('KODA AI explains')}${aiText(d.explanation)}</div>
     ${steps(d.timeline)}
     ${S.market.statutory ? `<div class="note"><b>The airline may owe you too.</b> ${esc(S.market.statutory)} This payment does not reduce it.</div>` : ''}
@@ -356,6 +371,7 @@ function reviewView(d) {
   return `<div><span class="chip held"><i></i>Under review</span>
     <h1 style="margin-top:10px">A person is checking your claim</h1>
     <p class="sub">We never deny a claim automatically. A person on our team decides it.</p></div>
+    ${msgCard(d)}
     <div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div>
     <section class="card"><div class="cap">Claim timeline</div>
       ${[['Received', 'Delay found and cover matched', 'done'], ['Under review', 'A person is checking the claim', 'now'], ['Decision', 'Payout is sent once confirmed', 'next']].map(([t, s, st]) =>
@@ -471,22 +487,28 @@ function openSheet() {
   const ok = S && PID && S.policy.status === 'active' && S.policy.delay_cover;
   const hint = $('#demoHint'); hint.classList.toggle('hidden', !!ok);
   hint.textContent = !S || !PID ? 'Pick a flight and add cover first.' : 'Add delay cover on the Cover tab first. A delay only pays if the cover was bought before it.';
-  $('#simGo').disabled = !ok; document.querySelectorAll('.simQuick').forEach(b => b.disabled = !ok);
+  $('#simGo').disabled = !ok; document.querySelectorAll('.simQuick').forEach(b => b.disabled = !ok); $('#simCancel').disabled = !ok; $('#simOk').disabled = !ok;
   api('/api/live/status').then(u => {
     $('#liveBox').classList.toggle('hidden', !u.enabled);
     $('#liveUsage').textContent = u.enabled ? `(${u.used} of ${u.budget} lookups used this month)` : '';
   }).catch(() => {});
 }
-async function simulate(min) {
+async function simulate(min, cancelled = false) {
   closeSheet();
   try {
-    const r = await api('/api/demo/delay', 'POST', {flight: S.flight.code, minutes: min});
+    const r = await api('/api/demo/delay', 'POST', {flight: S.flight.code, minutes: min, cancelled});
     if (!r.covered) fail('Nobody is covered on this flight yet.');
     else if (!r.results.length) fail('Nothing new to pay at this length. Try a longer delay, or start a new trip.');
     else if (r.results.some(x => x.status === 'upgraded')) toast('The delay grew into the next level. The payout was topped up.', 'ok');
     await load(); tab = 'claims'; render(true);
   } catch (e) { fail(e); }
 }
+$('#simCancel').onclick = () => simulate(0, true);
+$('#simOk').onclick = async () => {
+  closeSheet();
+  try { const r = await api('/api/webhook/flight-event', 'POST', {flight: S.flight.code, event: 'landed', minutes: 0});
+    toast(r.archived ? 'Landed on time. Your trip was archived. No payout and no message.' : 'Nothing to archive.', 'ok'); await load(); tab = 'claims'; render(true); } catch (e) { fail(e); }
+};
 $('#demoBtn').onclick = openSheet;
 $('#sheetClose').onclick = closeSheet;
 $('#sheet').onclick = e => { if (e.target.id === 'sheet') closeSheet(); };

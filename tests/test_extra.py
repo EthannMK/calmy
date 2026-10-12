@@ -5,6 +5,7 @@ import time
 
 os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "x.db")
 os.environ.pop("AVIATIONSTACK_KEY", None)
+os.environ["KODA_NO_WEATHER"] = "1"
 
 from fastapi.testclient import TestClient  # noqa: E402
 

@@ -16,7 +16,7 @@ BASE_THRESHOLDS = {"delay_tier1_minutes": 180, "delay_tier2_minutes": 360, "risk
 RULE_LABELS = {
     "delay_tier1_minutes": "Tier 1 delay (minutes)", "delay_tier1_payout": "Tier 1 payout",
     "delay_tier2_minutes": "Tier 2 delay (minutes)", "delay_tier2_payout": "Tier 2 payout",
-    "lost_bag_payout": "Lost bag payout", "risk_threshold": "Auto pay below this risk score",
+    "lost_bag_payout": "Lost bag payout", "cancel_payout": "Cancelled flight payout", "risk_threshold": "Auto pay below this risk score",
     "delay_premium": "Delay cover price", "baggage_premium": "Baggage cover price",
 }
 
@@ -67,7 +67,7 @@ DEMO_CURRENCY = "USD"  # every amount in the demo is shown in US dollars, whatev
 
 def _m(name, currency, rails, **kw):
     # `currency` stays on record as the market's real currency. All demo money is in USD.
-    return {"name": name, "currency": DEMO_CURRENCY, "local_currency": currency, "rails": rails, **kw}
+    return {"name": name, "currency": DEMO_CURRENCY, "local_currency": currency, "rails": list(rails) + [r for r in ("Card refund", "Digital wallet") if r not in rails], **kw}
 
 
 # Each note: area, the law or rule, what KODA does about it.
@@ -184,7 +184,7 @@ def rules_for(market: str) -> dict:
     """Default rule values for a market."""
     dp, bp, t1, t2, bag = PRICES.get(market, PRICES["GLOBAL"])
     return {**BASE_THRESHOLDS, "delay_premium": dp, "baggage_premium": bp, "delay_tier1_payout": t1,
-            "delay_tier2_payout": t2, "lost_bag_payout": bag}
+            "delay_tier2_payout": t2, "lost_bag_payout": bag, "cancel_payout": t2}
 
 
 def public(market: str) -> dict:
