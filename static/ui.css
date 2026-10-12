@@ -153,3 +153,10 @@ th.r,td.r{text-align:right}
 .feed .ic svg{width:14px;height:14px}
 .feed small{display:block;color:var(--mute);font-size:12px}
 .field::placeholder{text-transform:none}
+
+/* Match the landing page: cooler paper, rounder controls, pill buttons, board-style flight cards. */
+:root{--paper:#EEF1F5;--r:10px;--signal:#FFC93C;--board:#0A1424}
+.btn{border-radius:999px}
+.btn.primary{background:var(--ink);border-color:var(--ink)}.btn.primary:hover{background:#12305f}
+.chip{border-radius:999px}
+.field{border-radius:12px}
