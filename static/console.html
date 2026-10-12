@@ -96,7 +96,7 @@
 <script>
 const usd2 = n => '$' + Number(n).toFixed(2);
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
-let LIVE = {}, EXP = null, COP = {}, CHAT = {}, DRAFT = {};
+let refreshing = false, liveAt = 0, LIVE = {}, EXP = null, COP = {}, CHAT = {}, DRAFT = {};
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
   ['Book of business', [['exposure', 'bolt', 'Exposure forecast'], ['policies', 'verified_user', 'Policies']]],
@@ -114,10 +114,19 @@ const searchBox = ph => `<label class="search"><span class="ms">search</span><in
 const matchQ = (...v) => !FQ || v.join(' ').toLowerCase().includes(FQ.toLowerCase());
 
 async function refresh() {
-  ov = await api('/api/console/overview?market=' + RM);
-  const held = ov.stats.held, bags = ov.stats.bag_waiting, base = route.split('/')[0];
-  try { LIVE = await api('/api/live/status'); } catch (e) { LIVE = {}; }
-  try { EXP = await api('/api/console/exposure'); } catch (e) { EXP = null; }
+  if (refreshing) return; refreshing = true;
+  try { await paint(); } finally { refreshing = false; }
+}
+async function paint() {
+  const base = route.split('/')[0], needExp = base === 'overview' || base === 'exposure';
+  // One round trip for everything the page needs, instead of one after another.
+  const [o, lv, ex] = await Promise.all([
+    api('/api/console/overview?market=' + RM),
+    Date.now() - liveAt > 20000 ? api('/api/live/status').catch(() => LIVE) : LIVE,
+    needExp ? api('/api/console/exposure').catch(() => null) : EXP,
+  ]);
+  ov = o; LIVE = lv; EXP = ex; if (Date.now() - liveAt > 20000) liveAt = Date.now();
+  const held = ov.stats.held, bags = ov.stats.bag_waiting;
   $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
   $('#crumb').textContent = 'Flightwise Insurance  /  ' + (TITLES[page] || 'Overview');
@@ -258,13 +267,21 @@ async function vDecisions(pid) {
         <div class="note good">${auto ? 'Paid with no human review and no forms.' : `Decided by ${esc(d.decided_by)}.${d.note ? ' Note: ' + esc(d.note) : ''}`}</div></div></section></div></div>`;
 }
 
+/* Gemini rewrites the draft in the background so the page never waits on it. A draft the reviewer has already edited is kept. */
+function upgradeCopilot(id) {
+  api('/api/console/copilot/' + id + '?ai=1').then(r => {
+    if (r.ai && DRAFT[id] === COP[id].draft) { DRAFT[id] = r.draft; }
+    if (r.ai) { COP[id] = r; last = ''; }
+  }).catch(() => {});
+}
+
 /* ---------- Review queue ---------- */
 async function vReview(id) {
   const q = await api('/api/console/review');
   if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the AI is unsure about appear here for a person to decide.');
   const d = q.find(x => x.id === id) || q[0];
   const info = await api('/api/console/decision/' + d.policy_id);
-  if (!COP[d.id]) COP[d.id] = await api('/api/console/copilot/' + d.id); const cp = COP[d.id]; if (DRAFT[d.id] == null) DRAFT[d.id] = cp.draft; CHAT[d.id] = CHAT[d.id] || [];
+  if (!COP[d.id]) { COP[d.id] = await api('/api/console/copilot/' + d.id); upgradeCopilot(d.id); } const cp = COP[d.id]; if (DRAFT[d.id] == null) DRAFT[d.id] = cp.draft; CHAT[d.id] = CHAT[d.id] || [];
   const p = info.policy, f = info.flight, th = info.rules.risk_threshold, cur = p.currency, parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
   return head('Review queue', `${q.length} ${q.length === 1 ? 'claim needs' : 'claims need'} a person. The system never declines a claim on its own.`) + `
   <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b><span class="mono">${x.risk_score}</span></div><div class="mute" style="font-size:12px">Policy ${esc(x.policy_id)}</div></a>`).join('')}</div></section>
@@ -382,7 +399,7 @@ function bindAll() {
 }
 $('#aiOn').innerHTML = aiChip('AI on');
 // Poll so a claim made in the traveler app shows up. Skip while a form is in use so typing is never wiped.
-setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 1500 : 3000);
+setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
 refresh();
 </script>
 </body>

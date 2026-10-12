@@ -231,9 +231,9 @@ const actions = {
   async 4() { goDesk('#review'); showTab('desk'); },
 };
 document.querySelectorAll('[data-do]').forEach(b => b.onclick = async () => {
-  busy = true; b.disabled = true;
+  busy = true; b.disabled = true; const label = b.textContent; b.textContent = 'Working...';
   try { await actions[b.dataset.do](); } catch (e) { fail(e); }
-  b.disabled = false; busy = false; picked = 0; poll();
+  b.textContent = label; b.disabled = false; busy = false; picked = 0; poll();
 });
 /* Step 2: the presenter acts as the airline's flight status feed, through the same webhook the product uses. */
 document.querySelectorAll('[data-ev]').forEach(b => b.onclick = async () => {
@@ -309,7 +309,7 @@ idlePipe();
 /* A judge opening this page for the first time starts from a clean story. A refresh keeps the current run. */
 (async () => {
   try { if (!sessionStorage.getItem('koda.fresh')) { sessionStorage.setItem('koda.fresh', '1'); await api('/api/demo/reset', 'POST'); store.set('calmy.pid', null); toPhone({reset: true}); try { desk.contentWindow.location.reload(); } catch (e) {} } } catch (e) {}
-  setInterval(poll, 1500); setInterval(sources, 20000); poll(); sources();
+  setInterval(poll, 2500); setInterval(sources, 20000); poll(); sources();
 })();
 </script>
 </body>

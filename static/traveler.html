@@ -529,7 +529,7 @@ function bind() {
     if (!form.flight.trim()) return fail('Pick a flight first.');
     if (form.name.trim().length < 2) return fail('Enter your name.');
     if (form.rail !== 'KODA points' && !/^\d{4}$/.test(form.last4)) return fail('Enter the last 4 digits of your payout account.');
-    $('#quote').disabled = true;
+    $('#quote').disabled = true; $('#quote').textContent = 'Checking your flight...';
     try {
       const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.rail === 'KODA points' ? '0000' : form.last4, flight: form.flight.trim(), rail: form.rail || null});
       PID = r.policy; store.set('calmy.pid', PID); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false;
@@ -559,7 +559,7 @@ window.addEventListener('message', e => {
 });
 
 // Poll so a payout triggered elsewhere shows up here. Skipped while typing so forms are not wiped.
-setInterval(() => { if (!document.hidden && PID) load().catch(() => {}); }, EMBED ? 1500 : 4000);
+setInterval(() => { if (!document.hidden && PID) load().catch(() => {}); }, EMBED ? 2500 : 4000);
 (async () => {
   try { SAMPLES = await api('/api/live/samples'); } catch (e) {}
   try { LIVE = await api('/api/live/status'); } catch (e) {}

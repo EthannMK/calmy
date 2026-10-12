@@ -10,6 +10,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -27,6 +28,13 @@ STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 @asynccontextmanager
 async def lifespan(_app):
     db.init()
+    if live.enabled() and not os.environ.get("KODA_SAMPLE_DATA"):  # fill the departures cache in the background so the first visitor does not wait on the flight data service
+        def warm():
+            try:
+                live.upcoming("BKK")
+            except Exception:
+                pass
+        threading.Thread(target=warm, daemon=True).start()
     yield
 
 
@@ -35,6 +43,16 @@ app = FastAPI(
     description="Smart flight cover. Demo data, flight data simulated.",
     lifespan=lifespan,
 )
+app.add_middleware(GZipMiddleware, minimum_size=1024)  # the pages are large text, so compression is a big win on slow links
+
+
+@app.middleware("http")
+async def cache_static(request, call_next):
+    """Fonts, styles and scripts rarely change. Let the browser keep them for a day instead of refetching."""
+    resp = await call_next(request)
+    if request.url.path.startswith("/static/") and resp.status_code == 200:
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
 
 
 
@@ -145,6 +163,7 @@ def create_policy(body: NewPolicy):
             raise HTTPException(502, str(e))
         if f["sched_ts"] and f["sched_ts"] < time.time():
             raise HTTPException(400, f"{f['code']} has already left. Pick a flight that has not departed yet.")
+    context.warm(f["origin"])  # weather is fetched now, in the background, so the later event never waits on it
     market = f.get("market") or "GLOBAL"
     info = markets.public(market)
     rail = body.rail or info["rails"][0]
@@ -613,9 +632,13 @@ def _copilot_ctx(c, decision_id):
 
 
 @app.get("/api/console/copilot/{decision_id}")
-def copilot_get(decision_id: str):
+def copilot_get(decision_id: str, ai: bool = False):
+    """Instant rule-based advice. With ai=1 the draft is also reworded by Gemini, which can take seconds, so the screen asks for it separately."""
     with db.conn() as c:
         d, p, rec = _copilot_ctx(c, decision_id)
+    if not ai:
+        rec["ai"] = False
+        return rec
     better = copilot.ask_gemini("Rewrite this message to an insurance customer so it is warm, clear and under 60 words. Keep every fact and ask. "
                                 "Return only the message.\n" + rec["draft"]) if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
     rec["draft"], rec["ai"] = (better or rec["draft"]), bool(better)
