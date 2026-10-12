@@ -144,12 +144,13 @@ function vOverview() {
   const covered = tracked.filter(f => f.travelers > 0).length;
   const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
+  const secs = ov.decisions.filter(d => d.kind === 'delay' && d.status === 'paid' && d.seconds != null).map(d => d.seconds), avg = secs.length ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : null;
   return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars.') + `
-  ${aiDesk()}${exposureStrip()}${bizStrip()}
-  <div class="panel kpis">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
+  <div class="panel kpis" style="margin-bottom:20px">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
     ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts'))}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
-    ${kpi('Auto-paid claims', 'bolt', share, s.held ? s.held + ' held for a person' : 'No human step needed')}</div>
+    ${kpi('Auto-paid claims', 'bolt', share, avg == null ? 'Decision time appears with the first claim' : 'Average decision ' + avg + ' seconds')}</div>
+  ${exposureStrip()}
   <div class="cols"><div class="stack">
     <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${covered} ${covered === 1 ? 'flight has' : 'flights have'} cover</span></div>
       ${tracked.length ? tracked.slice(0, 4).map(f => {
