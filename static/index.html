@@ -3,171 +3,236 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#071C3F">
+<meta name="theme-color" content="#EEF1F5">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <title>KODA, smart flight cover</title>
+<meta name="description" content="Flight delay, cancellation and lost bag cover that pays by itself.">
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/ui.css">
 <style>
-  body{background:#fff}
-  .split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);min-height:100vh}.L{min-height:100vh;height:100%}
-  .L{background:var(--navy);color:#fff;padding:clamp(20px,4vh,40px) 48px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:clamp(14px,2.6vh,26px);position:relative;overflow:hidden}
-  .L::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--navy-line) 1px,transparent 1px),linear-gradient(90deg,var(--navy-line) 1px,transparent 1px);background-size:60px 60px;opacity:.28;mask-image:radial-gradient(ellipse at 30% 80%,#000,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at 30% 80%,#000,transparent 70%)}
-  .L>*{position:relative;width:100%;max-width:800px}.L .lead{padding-right:15%}
-  .brand{display:flex;align-items:center;gap:12px}
-  .brand .wordmark{color:#fff;font-size:24px}
-  .L h1{font-size:clamp(34px,min(4.4vw,6.4vh),60px);line-height:1;}
-  .L h1 em{font-style:normal;color:var(--amber)}
-  .L .lead{font-size:clamp(14px,2vh,17px);line-height:1.55;color:#B9C7DB;}
+  :root{--bg:#EEF1F5;--ink:#071C3F;--board:#0A1424;--tile:#101C30;--sig:#FFC93C;--ok:#3DDC97;--rule:#C9D1DC}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
 
-  /* the board: a delay grows, a payout lands */
-  .board{background:#07111F;border:1px solid var(--navy-line);border-radius:12px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35)}
-  .board header{display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--navy-line);font-size:12px;color:var(--navy-mute);letter-spacing:.02em}
-  .board .row{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;padding:clamp(8px,1.4vh,13px) 16px;border-bottom:1px solid #12233A;font-family:'Geist Mono',monospace;font-size:14px;color:#C9D6E8}
-  .board .row:last-of-type{border-bottom:0}
-  .board .row b{color:var(--amber);font-weight:700}
-  .board .dly{font-weight:700;min-width:84px;text-align:right}
-  .board .dly.ok{color:#7FE3B8}.board .dly.late{color:var(--amber)}
-  .hero-row{background:#071C3F}
-  .payline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:clamp(9px,1.5vh,14px) 16px;background:#0B2A22;color:#7FE3B8;font-size:14px;font-weight:600;transition:opacity .4s,transform .4s;border-top:1px solid #14503D}
-  .payline.off{background:#0F1E32;color:#8FB0DE;border-top-color:var(--navy-line)}.payline.off .amt{color:#8FB0DE}
-  .payline .amt{font-family:'Geist Mono',monospace;font-weight:700;font-size:16px;color:#fff}
-  .board .trk{padding:0 16px 0;background:#071C3F}
-  
-  .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-  .facts>div{display:flex;flex-direction:column;gap:3px;padding:14px;border:1px solid var(--navy-line);border-radius:12px;background:rgba(20,43,77,.45);backdrop-filter:blur(4px)}
-  .facts b{font-family:'Figtree',sans-serif;font-size:clamp(15px,2.1vh,18px);color:#fff;letter-spacing:-.01em;line-height:1.15}
-  .facts small{font-size:12.5px;color:#8FB0DE;line-height:1.35}
-  .fi{width:34px;height:34px;border-radius:9px;background:#0F3470;color:var(--amber);display:flex;align-items:center;justify-content:center;margin-bottom:8px}
-  .fi .ms{font-size:20px}.fi.ai{background:linear-gradient(120deg,#0A62EA,#0560EB)}.fi svg{width:18px;height:18px}
-  .R{display:flex;align-items:center;justify-content:center;padding:40px 32px;background:var(--paper)}
-  .login{width:100%;max-width:410px}
-  .login h2{font-size:28px}
-  .login .sub{color:var(--mute);margin:8px 0 22px;font-size:14px}
-  .role{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;color:var(--ink);transition:border-color .15s,box-shadow .15s,transform .15s;text-decoration:none}
-  .role:hover{border-color:var(--cobalt);box-shadow:0 6px 22px rgba(31,79,209,.12);transform:translateY(-1px);text-decoration:none}
-  .role.feature{border:2px solid var(--navy);background:#fff;padding:18px 16px}.role.feature .ic{background:var(--amber);color:var(--navy)}
-  .role .ic{width:46px;height:46px;border-radius:10px;background:var(--navy);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .role .ic .ms{font-size:24px}
-  .role b{display:block;font-size:16px}.role span.d{display:block;font-size:13px;color:var(--mute);margin-top:2px}
-  .role .go{margin-left:auto;color:var(--cobalt)}
-  .or{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:12px;margin:18px 0}
-  .or::before,.or::after{content:'';flex:1;border-top:1px solid var(--line)}
-  .fine{font-size:12px;color:var(--mute);margin-top:18px;line-height:1.4}
-  .who{display:flex;gap:8px}
-  .who a{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink);text-decoration:none}
-  .who a:hover{border-color:var(--cobalt);text-decoration:none}
-  .who small{display:block;color:var(--mute);margin-top:1px}
-  .fine{margin-top:22px;font-size:12px;color:var(--mute);line-height:1.5}
+  /* Top bar */
+  .nav{display:flex;align-items:center;padding:22px 0}
+  .nav .wordmark{font-size:22px}
+  .nav a.link{font-weight:700;font-size:14px;border-bottom:2px solid var(--ink);padding-bottom:2px}
+  .nav a.link:hover{color:var(--cobalt);border-color:var(--cobalt)}
 
-  /* scene: a plane crosses the sky over drifting clouds. 11s loop, pure SVG and CSS. */
-  .scene{border-radius:14px;overflow:hidden;border:1px solid var(--navy-line);box-shadow:0 20px 50px rgba(0,0,0,.3);line-height:0}
-  .scene svg{width:100%;height:clamp(104px,16vh,220px);display:block}
-  .scene .cloud{animation:drift linear infinite;will-change:transform}
-  .scene .c1{animation-duration:52s;animation-delay:-18s}.scene .c2{animation-duration:34s;animation-delay:-9s}
-  .scene .c3{animation-duration:90s;animation-delay:-50s}.scene .c4{animation-duration:70s;animation-delay:-20s}
-  @keyframes drift{from{transform:translateX(660px)}to{transform:translateX(-260px)}}
-  .scene .fly{animation:fly 13s linear infinite;will-change:transform}
-  @keyframes fly{from{transform:translateX(-420px)}to{transform:translateX(700px)}}
-  .scene .rise{animation:rise 13s cubic-bezier(.45,0,.55,1) infinite}
-  @keyframes rise{from{transform:translateY(168px)}50%{transform:translateY(92px)}to{transform:translateY(150px)}}
-  .scene .bank{animation:bank 13s ease-in-out infinite}
-  @keyframes bank{0%{transform:rotate(-7deg)}50%{transform:rotate(1deg)}100%{transform:rotate(5deg)}}
-  .scene .rays{animation:rays 9s ease-in-out infinite alternate}@keyframes rays{from{opacity:.1}to{opacity:.26}}
-  .scene .trailg{animation:trail 13s linear infinite}@keyframes trail{0%,100%{opacity:.4}50%{opacity:1}}
-  @media(prefers-reduced-motion:reduce){.scene *{animation:none!important}.scene .fly{transform:translateX(250px)}.scene .rise{transform:translateY(110px)}.scene .cloud{transform:translateX(200px)}}
-  @media(max-width:900px){.facts{grid-template-columns:1fr}.split{grid-template-columns:1fr}.L{padding:28px 20px;justify-content:flex-start}.scene svg{height:200px}.R{padding:28px 18px 40px}.L h1{font-size:38px}}
+  /* Hero: words on the left, the departure board on the right */
+  .hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:56px;align-items:center;padding:40px 0 84px}
+  .path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
+  .hero>*:not(.path){position:relative;z-index:1}
+  h1.big{font-size:clamp(46px,6.2vw,92px);line-height:.94;letter-spacing:-.045em;font-weight:800}
+  h1.big span{display:block}
+  h1.big .two{color:var(--cobalt)}
+  .lede{font-size:19px;line-height:1.5;color:var(--ink2);max-width:30em;margin:26px 0 32px}
+  .cta{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
+  .start{display:inline-flex;align-items:center;gap:12px;background:var(--ink);color:#fff;font-weight:700;font-size:16px;padding:16px 24px;border-radius:999px;transition:background .15s,transform .15s}
+  .start:hover{background:var(--cobalt)}.start:active{transform:scale(.98)}
+  .start .ms{font-size:20px;transition:transform .2s}.start:hover .ms{transform:translateX(4px)}
+  .alt{font-weight:600;font-size:15px;border-bottom:1.5px solid var(--rule);padding-bottom:2px}.alt:hover{border-color:var(--ink)}
+
+  /* Departure board */
+  .boardwrap{min-width:0}
+  .board{--u:clamp(9px,calc((100vw - 96px)/31),19px);background:var(--board);border-radius:14px;padding:16px 16px 14px;box-shadow:0 2px 0 #000,0 28px 50px -22px rgba(7,28,63,.55);position:relative}
+  .bh{display:flex;justify-content:space-between;align-items:center;font-family:'Geist Mono',monospace;font-size:calc(var(--u)*.62);letter-spacing:.14em;color:#6F829F;padding:0 2px 12px;border-bottom:1px solid #1B2A44}
+  .bh b{font-weight:500;color:var(--sig)}
+  .cols{display:grid;grid-template-columns:calc(var(--u)*4 + 10px) calc(var(--u)*8 + 20px) calc(var(--u)*9.6 + 24px);gap:0 calc(var(--u)*.9);font-family:'Geist Mono',monospace;font-size:calc(var(--u)*.56);letter-spacing:.14em;color:#4F6380;padding:10px 2px 6px 18px}
+  .row{display:grid;grid-template-columns:calc(var(--u)*4 + 10px) calc(var(--u)*8 + 20px) calc(var(--u)*9.6 + 24px);gap:0 calc(var(--u)*.9);align-items:center;padding:calc(var(--u)*.32) 2px calc(var(--u)*.32) 18px;position:relative}
+  .row+.row{border-top:1px solid #15223A}
+  .row .mk{position:absolute;left:0;top:50%;width:8px;height:8px;margin-top:-4px;background:var(--sig);clip-path:polygon(0 0,100% 50%,0 100%);opacity:0;transition:opacity .3s}
+  .row.focus .mk{opacity:1}
+  .grp{display:flex;gap:2px;min-width:0}
+  .c{display:inline-flex;align-items:center;justify-content:center;width:calc(var(--u)*.8);height:calc(var(--u)*1.34);background:linear-gradient(#17263F 0 49%,#0C1626 50% 100%);border-radius:3px;font-family:'Geist Mono',monospace;font-weight:600;font-size:calc(var(--u)*.92);color:#E7EEF8;position:relative;backface-visibility:hidden}
+  .c::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#050A14}
+  .grp.sig .c{color:var(--sig)}.grp.ok .c{color:var(--ok)}
+  .lane{padding:2px 2px 4px 18px}
+  .lane .meter{position:relative;height:4px;background:#1B2A44;border-radius:4px;margin:8px 0 6px}
+  .lane .meter i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--sig);border-radius:4px;transition:width .9s cubic-bezier(.3,.7,.2,1)}
+  .lane .meter u{position:absolute;top:-4px;bottom:-4px;width:2px;background:#6F829F}
+  .lane .lab{position:relative;height:calc(var(--u)*.9);font-family:'Geist Mono',monospace;font-size:calc(var(--u)*.52);color:#6F829F;letter-spacing:.06em}
+  .lane .lab span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%)}
+  .lane .lab span:first-child{transform:none}
+  .pay{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:12px 4px 2px 18px;border-top:1px solid #1B2A44;opacity:.32;transition:opacity .4s}
+  .pay.on{opacity:1}
+  .pay small{font-family:'Geist Mono',monospace;font-size:calc(var(--u)*.56);letter-spacing:.14em;color:#6F829F}
+  .bnote{font-family:'Geist Mono',monospace;font-size:calc(var(--u)*.52);color:#51647F;margin-top:12px;padding-left:2px}
+
+  /* The ticket prints out of a slot under the board */
+  .slot{height:6px;background:#000;border-radius:0 0 6px 6px;margin:0 22px;position:relative;z-index:2}
+  .tickets{position:relative;height:178px;overflow:hidden;margin:0 30px;z-index:1}
+  .ticket{position:absolute;left:0;right:0;top:0;display:grid;grid-template-columns:1fr 92px;background:#fff;color:var(--ink);border-radius:0 0 10px 10px;transform:translateY(-104%);transition:transform .9s cubic-bezier(.2,.8,.2,1);box-shadow:0 14px 26px -14px rgba(7,28,63,.4)}
+  .ticket.out{transform:none}
+  .ticket .main{padding:16px 18px 14px}
+  .ticket .stub{border-left:2px dashed var(--rule);padding:16px 12px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;position:relative}
+  .ticket .stub::before,.ticket .stub::after{content:'';position:absolute;left:-9px;width:16px;height:16px;border-radius:50%;background:var(--bg)}
+  .ticket .stub::before{top:-9px}.ticket .stub::after{bottom:-9px}
+  .ticket .k{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.14em;color:#66758B}
+  .ticket .amt{font-weight:800;font-size:40px;letter-spacing:-.04em;line-height:1;margin:6px 0 4px;color:#0B8A5C}
+  .ticket .t{font-size:14px;color:var(--ink2)}
+  .bars{width:100%;height:46px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 13px)}
+  .stamp{font-weight:800;font-size:12px;letter-spacing:.12em;color:#0B8A5C;border:2px solid #0B8A5C;border-radius:4px;padding:2px 6px;transform:rotate(-8deg)}
+
+  /* How it works: one flight, three moments */
+  .how{padding:20px 0 96px}
+  .how h2{font-size:clamp(30px,3.6vw,46px);letter-spacing:-.035em;max-width:14em;line-height:1}
+  .journey{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:36px;margin-top:56px}
+  .journey::before{content:'';position:absolute;left:0;right:0;top:11px;border-top:2px dashed var(--rule)}
+  .journey .fill{position:absolute;left:0;top:10px;height:4px;width:0;background:var(--ink);border-radius:4px;transition:width 2.6s cubic-bezier(.45,.1,.2,1)}
+  .journey .jet{position:absolute;top:-2px;left:0;width:30px;height:30px;margin-left:-4px;transition:left 2.6s cubic-bezier(.45,.1,.2,1);color:var(--cobalt)}
+  .journey.on .fill{width:calc(75% + 31px)}.journey.on .jet{left:calc(75% + 23px)}
+  .stop{position:relative;padding-top:44px}
+  .stop::before{content:'';position:absolute;top:2px;left:0;width:20px;height:20px;border-radius:50%;background:var(--bg);border:3px solid var(--rule);transition:border-color .3s,background .3s}
+  .journey.on .stop::before{border-color:var(--ink);background:var(--ink)}
+  .journey.on .stop:last-child::before{border-color:#0B8A5C;background:#0B8A5C;transition-delay:2.2s}
+  .stop .tm{font-family:'Geist Mono',monospace;font-size:13px;color:var(--mute)}
+  .stop h3{font-size:24px;letter-spacing:-.025em;margin:8px 0 8px;line-height:1.1}
+  .stop p{color:var(--ink2);line-height:1.55;max-width:22em;margin:0}
+
+  /* Where to go */
+  .doors{border-top:2px solid var(--ink);margin-bottom:56px}
+  .door{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) auto;gap:24px;align-items:center;padding:26px 6px;border-bottom:1px solid var(--rule);transition:background .15s,padding .2s}
+  .door:hover{background:#fff;padding-left:18px;padding-right:18px}
+  .door b{font-size:clamp(22px,2.6vw,32px);letter-spacing:-.03em;font-weight:800}
+  .door span.d{color:var(--ink2);line-height:1.5}
+  .door .ms{font-size:28px;transition:transform .2s}.door:hover .ms{transform:translateX(6px);color:var(--cobalt)}
+  .fine{font-size:13px;color:var(--mute);padding:0 0 40px}
+
+  @media(max-width:1100px) and (min-width:981px){.journey{gap:22px}}
+  @media(max-width:980px){
+    .hero{grid-template-columns:1fr;gap:40px;padding-top:12px}
+    .journey{grid-template-columns:1fr;gap:34px;margin-top:40px;padding-left:34px}
+    .journey::before{left:10px;right:auto;top:0;bottom:0;border-top:0;border-left:2px dashed var(--rule)}
+    .journey .fill,.journey .jet{display:none}
+    .stop{padding-top:0}.stop::before{left:-34px;top:0}
+    .journey.on .stop::before{transition-delay:0s!important}
+    .door{grid-template-columns:1fr auto;gap:8px}.door span.d{grid-column:1;grid-row:2}.door .ms{grid-row:1/3;grid-column:2}
+  }
+  @media(max-width:520px){.wrap{padding:0 16px}.lede{font-size:17px}.ticket{grid-template-columns:1fr 78px}.ticket .amt{font-size:34px}.tickets{margin:0 14px;height:170px}.start{width:100%;justify-content:center}}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
-<div class="split">
-  <section class="L">
-    <div class="brand"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span></div>
-    <h1>Your flight is late.<br><em>Your money isn't.</em></h1>
-    <p class="lead">Delay, cancellation and lost bag cover that pays you by itself. You fill in nothing. The insurer sees every decision and the reason behind it.</p>
+<div class="wrap">
+  <header class="nav"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span></header>
 
-<div class="scene" aria-label="Animation: a plane crosses a bright sky">
-<svg viewBox="0 0 560 250" preserveAspectRatio="xMidYMid slice" role="img" aria-hidden="true">
-  <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B49C4"/><stop offset=".45" stop-color="#4F8EEA"/><stop offset=".8" stop-color="#A9D4F8"/><stop offset="1" stop-color="#FFE3C4"/></linearGradient>
-    <radialGradient id="sun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6D6"/><stop offset=".35" stop-color="#FFE29A" stop-opacity=".9"/><stop offset="1" stop-color="#FFE29A" stop-opacity="0"/></radialGradient>
-    <linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#D7E8FA"/></linearGradient>
-    <linearGradient id="trail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".85"/></linearGradient>
-    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#D5DEEA"/></linearGradient>
-    <filter id="b1" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="1.6"/></filter>
-    <filter id="b0" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation=".5"/></filter>
-    <filter id="b2" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="3"/></filter>
-  </defs>
-  <rect width="560" height="250" fill="url(#sky)"/>
-  <circle cx="120" cy="150" r="120" fill="url(#sun)"/>
-  <g class="rays" opacity=".18"><path d="M120 150 L-40 -20 L10 -40Z M120 150 L200 -30 L250 -10Z M120 150 L330 40 L350 100Z" fill="#fff"/></g>
-  <g class="cloud c3" style="opacity:.55" filter="url(#b2)"><g transform="translate(0 70) scale(0.8)"><ellipse cx="0" cy="8" rx="52" ry="12" fill="url(#cf)"/><circle cx="-24" cy="-2" r="16" fill="url(#cf)"/><circle cx="-4" cy="-12" r="22" fill="url(#cf)"/><circle cx="22" cy="-6" r="17" fill="url(#cf)"/><circle cx="40" cy="3" r="11" fill="url(#cf)"/></g></g><g class="cloud c4" style="opacity:.6" filter="url(#b2)"><g transform="translate(0 190) scale(1.2)"><ellipse cx="0" cy="8" rx="52" ry="12" fill="url(#cf)"/><circle cx="-24" cy="-2" r="16" fill="url(#cf)"/><circle cx="-4" cy="-12" r="22" fill="url(#cf)"/><circle cx="22" cy="-6" r="17" fill="url(#cf)"/><circle cx="40" cy="3" r="11" fill="url(#cf)"/></g></g>
-  <g class="cloud c2" style="opacity:.85" filter="url(#b1)"><g transform="translate(0 120) scale(1)"><ellipse cx="0" cy="8" rx="52" ry="12" fill="url(#cf)"/><circle cx="-24" cy="-2" r="16" fill="url(#cf)"/><circle cx="-4" cy="-12" r="22" fill="url(#cf)"/><circle cx="22" cy="-6" r="17" fill="url(#cf)"/><circle cx="40" cy="3" r="11" fill="url(#cf)"/></g></g><g class="cloud c1" style="opacity:.8" filter="url(#b1)"><g transform="translate(0 40) scale(0.9)"><ellipse cx="0" cy="8" rx="52" ry="12" fill="url(#cf)"/><circle cx="-24" cy="-2" r="16" fill="url(#cf)"/><circle cx="-4" cy="-12" r="22" fill="url(#cf)"/><circle cx="22" cy="-6" r="17" fill="url(#cf)"/><circle cx="40" cy="3" r="11" fill="url(#cf)"/></g></g>
-  <g class="fly"><g class="rise"><g class="bank">
-    <g class="trailg"><rect x="-300" y="-5" width="270" height="2.4" rx="1.2" fill="url(#trail)"/><rect x="-300" y="3" width="270" height="2.4" rx="1.2" fill="url(#trail)"/></g>
-    <g transform="scale(1.7)">
-      <path d="M-8,2 L-26,22 L-14,22 L10,2Z" fill="#B9C6D8"/>
-      <path d="M-30,-1 L-40,-20 L-30,-20 L-14,-1Z" fill="#0DC5FB"/>
-      <path d="M-38,1 C-38,-8 -16,-9 18,-8.5 C34,-8 44,-3 47,1 C44,5 34,8 18,8.5 C-16,9 -38,9 -38,1Z" fill="url(#body)"/>
-      <path d="M-36,4 H42" stroke="#0DC5FB" stroke-width="2.2"/>
-      <path d="M30,-6 C38,-6 43,-3 45,0 H30Z" fill="#6E86A8" opacity=".55"/>
-      <rect x="-24" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="-18" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="-12" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="-6" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="0" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="6" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="12" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="18" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/><rect x="24" y="-3.6" width="3.2" height="3.6" rx="1.2" fill="#6E86A8"/>
-      <path d="M-6,-1 L-24,-24 L-13,-24 L10,-1Z" fill="#fff"/>
-      <rect x="-4" y="9" width="12" height="5" rx="2.5" fill="#9FB0C8"/>
-    </g>
-  </g></g></g>
-</svg></div>
-    <div class="board" aria-label="Illustration of a delay growing and a payout landing">
-      <header><span>DEPARTURES · LIVE ILLUSTRATION</span><span id="clk">--:--</span></header>
-      <div class="row"><b>Example</b><span>FRA → MAD</span><span class="dly ok">On time</span></div>
-      <div class="row hero-row"><b>Example</b><span>LHR → CDG</span><span class="dly late" id="dly">On time</span></div>
-      <div class="trk" id="trk"></div>
-      <div class="payline off" id="pay"><span id="paytxt">Waiting for a delay</span><span class="amt" id="amt">0 USD</span></div>
+  <section class="hero">
+    <svg class="path" viewBox="0 0 1180 640" preserveAspectRatio="none" aria-hidden="true">
+      <path id="arc" d="M-40,560 C220,470 380,120 700,150 S1050,330 1240,40" fill="none" stroke="#071C3F" stroke-opacity=".13" stroke-width="2" stroke-dasharray="3 9" stroke-linecap="round"/>
+      <g id="jet"><path d="M-14,0 L-4,-3 L-1,-14 L3,-14 L2,-3 L14,-1 L14,2 L2,3 L3,14 L-1,14 L-4,3 L-14,2Z" fill="#071C3F" fill-opacity=".5" transform="rotate(0)"/>
+        <animateMotion id="mo" dur="34s" repeatCount="indefinite" rotate="auto"><mpath href="#arc"/></animateMotion></g>
+    </svg>
+
+    <div>
+      <h1 class="big"><span>Your flight</span><span>is late.</span><span class="two">Your money</span><span class="two">isn't.</span></h1>
+      <p class="lede">Delay, cancellation and lost bag cover that pays you by itself. You fill in nothing, and the insurer sees every decision and the reason for it.</p>
+      <div class="cta"><a class="start" href="/judge">Start the live demo<span class="ms" aria-hidden="true">arrow_forward</span></a></div>
     </div>
 
-    <div class="facts">
-      <div><span class="fi"><span class="ms" aria-hidden="true">bolt</span></span><b>Paid in seconds</b><small>No claim form to fill in</small></div>
-      <div><span class="fi ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z" fill="#fff"/></svg></span><b>AI explains it</b><small>Every decision, in plain words</small></div>
-      <div><span class="fi"><span class="ms" aria-hidden="true">person</span></span><b>A person decides no</b><small>The AI only pays or asks for help</small></div>
+    <div class="boardwrap">
+      <div class="board" id="board" role="img" aria-label="Illustration: a departure board where a delay grows past 3 hours and a 40 dollar payout is issued, with a payout ticket printing below.">
+        <div class="bh"><span>DEPARTURES</span><b id="clk">--:--</b></div>
+        <div class="cols"><span>TIME</span><span>TO</span><span>STATUS</span></div>
+        <div class="row" data-r="0"></div>
+        <div class="row focus" data-r="1"><i class="mk"></i></div>
+        <div class="lane"><div class="meter"><i id="fill"></i><u style="left:50%"></u><u style="left:100%;margin-left:-2px"></u></div>
+          <div class="lab"><span>0</span><span style="left:50%">3h rule</span><span style="left:100%;transform:translateX(-100%)">6h</span></div></div>
+        <div class="row" data-r="2"></div>
+        <div class="pay" id="pay"><small>PAYOUT</small><div class="grp ok" id="paytxt"></div></div>
+        <div class="bnote">Illustration, not live data.</div>
+      </div>
+      <div class="slot"></div>
+      <div class="tickets"><div class="ticket" id="ticket">
+        <div class="main"><div class="k">PAYOUT RECEIPT</div><div class="amt" id="tamt">40 USD</div><div class="t" id="tline">Flight to Phuket, delayed 3h 05m</div><div class="t" style="margin-top:2px">Paid in 8 seconds. No forms.</div></div>
+        <div class="stub"><span class="stamp">PAID</span><div class="bars"></div></div>
+      </div></div>
     </div>
   </section>
 
-  <section class="R">
-    <main class="login">
-      <h2>See KODA from both sides</h2>
-      <p class="sub">One policy, two people. The traveler gets paid, the insurer sees every decision and why.</p>
-      <a class="role feature" href="/judge"><span class="ic"><span class="ms" aria-hidden="true">dashboard</span></span><span><b>Start the live demo</b><span class="d">The traveler's phone and the insurer's desk side by side. Break a flight and watch the AI act on both.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
-      <div class="or">or open one side on its own</div>
-      <a class="role" href="/traveler"><span class="ic"><span class="ms" aria-hidden="true">luggage</span></span><span><b>I am a traveler</b><span class="d">Pick a real flight, add cover, watch the payout arrive.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
-      <a class="role" href="/console"><span class="ic"><span class="ms" aria-hidden="true">monitoring</span></span><span><b>I am the insurer</b><span class="d">Decisions, reviews, rules and audit log for Flightwise Insurance.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
-      <p class="fine">Built for the Google Cloud AI Builder Cup. Payouts are simulated and no real money moves.</p>
-    </main>
+  <section class="how">
+    <h2>Four steps, about three minutes</h2>
+    <div class="journey" id="leg"><span class="fill"></span>
+      <svg class="jet" viewBox="-16 -16 32 32" aria-hidden="true"><path d="M-14,0 L-4,-3 L-1,-14 L3,-14 L2,-3 L14,-1 L14,2 L2,3 L3,14 L-1,14 L-4,3 L-14,2Z" fill="currentColor"/></svg>
+      <div class="stop"><div class="tm">Step 1</div><h3>Cover a trip</h3><p>Pick a real upcoming flight and add cover. A second traveler with a suspicious profile joins the same flight.</p></div>
+      <div class="stop"><div class="tm">Step 2</div><h3>Break the flight</h3><p>Act as the airline's status feed. Build a storm, delay the flight or cancel it. The first traveler gets an early alert, then is paid in seconds.</p></div>
+      <div class="stop"><div class="tm">Step 3</div><h3>See the held claim</h3><p>The same delay hits the suspicious traveler. The AI does not pay it. It sends it to a person and shows why.</p></div>
+      <div class="stop"><div class="tm">Step 4</div><h3>Decide as the insurer</h3><p>Open the review queue, read the copilot's advice, then approve or decline.</p></div>
+    </div>
   </section>
+
+  <p class="fine">Built for the Google Cloud AI Builder Cup. Payouts are simulated and no real money moves.</p>
 </div>
-<script src="/static/ui.js"></script>
+
 <script>
-// The hook: a delay grows on the board, crosses the payout line, and the money lands.
-const R = {delay_tier1_minutes: 180, delay_tier2_minutes: 360, delay_tier1_payout: 45, delay_tier2_payout: 90};
-const dly = $('#dly'), trk = $('#trk'), pay = $('#pay'), amt = $('#amt');
-const tick = () => { const d = new Date(); $('#clk').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-tick(); setInterval(tick, 30000);
-const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-const still = matchMedia('(prefers-reduced-motion:reduce)').matches;
-let m = -1;
-function paint(v) {
-  v = Math.round(v); if (v === m) return; m = v;
-  dly.textContent = v ? hm(v) + ' late' : 'On time';
-  dly.className = 'dly ' + (v ? 'late' : 'ok');
-  trk.innerHTML = delayTrack(v, R, 'USD', true);
-  const p = v >= 360 ? 90 : v >= 180 ? 45 : 0;
-  amt.textContent = num(p) + ' USD';
-  pay.classList.toggle('off', !p);
-  $('#paytxt').textContent = p ? 'Delay rule met. Paid to your account.' : 'Waiting for a delay';
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = s => document.querySelector(s), sleep = ms => new Promise(r => setTimeout(r, ms));
+const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';
+
+/* Split-flap text: every character is a tile that clicks through a few letters before it lands. */
+function mount(el, len) { el.innerHTML = ''; el.dataset.len = len; for (let i = 0; i < len; i++) { const c = document.createElement('span'); c.className = 'c'; c.textContent = ' '; el.appendChild(c); } }
+function flipTo(el, text, cls) {
+  const len = +el.dataset.len; text = text.toUpperCase().padEnd(len, ' ').slice(0, len);
+  if (cls !== undefined) el.className = 'grp ' + cls;
+  [...el.children].forEach((c, i) => {
+    const want = text[i] === ' ' ? ' ' : text[i];
+    if (c.textContent === want) return;
+    if (REDUCED) { c.textContent = want; return; }
+    const spins = 3 + (i % 3);
+    let n = 0;
+    const tick = () => {
+      n++; c.animate([{transform: 'rotateX(0)'}, {transform: 'rotateX(-88deg)'}, {transform: 'rotateX(0)'}], {duration: 90});
+      setTimeout(() => { c.textContent = n >= spins ? want : ABC[Math.floor(Math.random() * ABC.length)]; }, 45);
+      if (n < spins) setTimeout(tick, 80);
+    };
+    setTimeout(tick, i * 26);
+  });
 }
-// One loop on the display clock: the delay grows with easing, holds on the payout, then resets.
-const GROW = 6500, HOLD = 4200, CYCLE = GROW + HOLD;
-if (still) paint(200);
-else { const t0 = performance.now(); (function frame(now) { const t = (now - t0) % CYCLE; paint(t < GROW ? 430 * ease(t / GROW) : 430); requestAnimationFrame(frame); })(t0); }
+
+const FLIGHTS = [['09:40', 'CHIANG MAI'], ['10:15', 'PHUKET'], ['10:50', 'SINGAPORE']];
+const rows = [...document.querySelectorAll('.row')].map(r => {
+  const t = document.createElement('div'), d = document.createElement('div'), s = document.createElement('div');
+  [t, d, s].forEach(x => x.className = 'grp'); mount(t, 5); mount(d, 10); mount(s, 12); r.append(t, d, s); return {t, d, s};
+});
+const pay = $('#paytxt'); mount(pay, 10);
+const fill = $('#fill'), ticket = $('#ticket');
+
+function board0() {
+  FLIGHTS.forEach(([t, d], i) => { flipTo(rows[i].t, t); flipTo(rows[i].d, d); flipTo(rows[i].s, 'ON TIME', 'ok'); });
+  flipTo(pay, ''); $('#pay').classList.remove('on'); fill.style.width = '0'; ticket.classList.remove('out');
+}
+const hm = m => Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+
+async function story() {
+  board0(); await sleep(2600);
+  const hero = rows[1];
+  const steps = [[65, 'DELAYED ' + hm(65), 'sig'], [135, 'DELAYED ' + hm(135), 'sig'], [185, 'DELAYED ' + hm(185), 'sig']];
+  for (const [m, label, cls] of steps) {
+    flipTo(hero.s, label, cls); fill.style.width = Math.min(100, m / 360 * 100) + '%';
+    if (m === 65) flipTo(hero.t, '11:20', 'sig');
+    await sleep(2300);
+  }
+  $('#pay').classList.add('on'); flipTo(pay, '40 USD', 'ok'); await sleep(900);
+  ticket.classList.add('out'); await sleep(5200);
+  ticket.classList.remove('out'); await sleep(1000);
+  fill.style.width = '0';
+}
+async function loop() { for (;;) { await story(); if (document.hidden) await new Promise(r => document.addEventListener('visibilitychange', () => !document.hidden && r(), {once: true})); } }
+
+function setClock() { const d = new Date(); $('#clk').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+setClock(); setInterval(setClock, 30000);
+
+if (REDUCED) {  // no motion: show the finished moment once
+  board0(); flipTo(rows[1].s, 'DELAYED 3:05', 'sig'); flipTo(rows[1].t, '11:20', 'sig'); fill.style.width = '51%';
+  $('#pay').classList.add('on'); flipTo(pay, '40 USD', 'ok'); ticket.classList.add('out'); $('#mo').remove();
+} else loop();
+
+/* The journey draws itself when it scrolls into view. */
+const leg = $('#leg');
+new IntersectionObserver((es, o) => es.forEach(e => { if (e.isIntersecting) { leg.classList.add('on'); o.disconnect(); } }), {threshold: .45}).observe(leg);
 </script>
 </body>
 </html>
