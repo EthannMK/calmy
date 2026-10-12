@@ -17,24 +17,23 @@
   .bar .push{margin-left:auto;display:flex;gap:10px;align-items:center}
   .bar a,.bar button{color:#C9D6E8;font-size:13px;font-weight:600;padding:6px 12px;border:1px solid var(--navy-line);border-radius:6px}
   .bar a:hover,.bar button:hover{background:#0B2C60;text-decoration:none}
-  #panelBtn{display:none}
 
-  .wrap{flex:1;min-height:0;display:grid;grid-template-columns:344px minmax(0,1fr)}
-
-  /* Presenter panel: backstage controls, kept apart from the two real apps */
-  .panel-side{background:#fff;border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:18px}
-  .ptag{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute);line-height:1.35}
-  .ptag b{color:var(--ink);font-size:14px;display:block}
-  .sec h4{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--mute);letter-spacing:.02em}
-  .stp{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;background:#fff;position:relative}
-  .stp .h{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px}
-  .stp .n{width:22px;height:22px;border-radius:50%;background:var(--line2);color:var(--ink2);font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .stp p{font-size:12.5px;color:var(--mute);margin:6px 0 0 32px;line-height:1.4}
-  .stp .acts{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0 32px}
-  .stp.now{border-color:var(--cobalt);box-shadow:0 0 0 3px var(--cobalt-t)}.stp.now .n{background:var(--cobalt);color:#fff}
-  .stp.done .n{background:var(--green);color:#fff}.stp.done .h::after{content:'Done';margin-left:auto;font-size:12px;font-weight:700;color:var(--green)}
+  /* Coach bar: one slim row that says what to do now, on each side */
+  .coach{display:flex;align-items:center;gap:18px;padding:10px 20px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;position:relative}
+  .dots{display:flex;gap:6px;flex-shrink:0}
+  .dots button{width:30px;height:30px;border-radius:50%;background:var(--line2);color:var(--ink2);font-weight:700;font-size:13px}
+  .dots button.done{background:var(--green);color:#fff}.dots button.now{background:var(--cobalt);color:#fff;box-shadow:0 0 0 4px var(--cobalt-t)}
+  .dots button.sel{outline:2px solid var(--ink);outline-offset:2px}
+  .stp{display:none;flex:1;min-width:0;align-items:center;gap:16px;flex-wrap:wrap}.stp.show{display:flex}
+  .stp .h{font-weight:700;font-size:15px;white-space:nowrap}
+  .stp .t{font-size:13px;color:var(--mute);flex:1;min-width:min(220px,100%);line-height:1.35}
+  .stp .acts{display:flex;gap:6px;flex-wrap:wrap}
   .stp.lock .acts .btn{opacity:.45}
-  .src{display:grid;grid-template-columns:10px 1fr;gap:4px 10px;align-items:start;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line2)}
+  .coach .tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0}
+  .menu{position:absolute;right:20px;top:100%;margin-top:6px;width:340px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(7,28,63,.2);padding:14px;z-index:30;display:none;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto}
+  .menu.open{display:flex}
+  .sec h4{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--mute)}
+  .src{display:grid;grid-template-columns:10px 1fr;gap:4px 10px;align-items:start;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line2)}
   .src:last-child{border-bottom:0}
   .src i{width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--faint)}
   .src i.live{background:#1DB87E}.src i.error{background:var(--red)}.src i.sim,.src i.off,.src i.idle{background:#9AA7B8}
@@ -42,9 +41,10 @@
   .lnk{display:flex;flex-direction:column;gap:2px}
   .lnk a{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;color:var(--ink);font-size:13px;font-weight:600}
   .lnk a:hover{background:var(--line2);text-decoration:none}.lnk .ms{font-size:18px;color:var(--cobalt)}
+  .rf{display:flex;gap:6px}.rf input{flex:1;height:34px}
 
   /* Stage: the two real apps, plus the AI pipeline between them and the title */
-  .stage{min-width:0;min-height:0;display:flex;flex-direction:column;padding:14px 20px 16px;gap:12px}
+  .stage{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:14px 20px 16px;gap:12px}
   .ai{flex-shrink:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px}
   .pipe{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
   .pn{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--faint);padding:5px 10px;border-radius:99px;border:1px solid var(--line);background:#fff;transition:all .25s}
@@ -58,7 +58,8 @@
   .ai .idle{font-size:13px;color:var(--mute)}.ai{min-height:58px}
   .two{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:stretch}
   .side{display:flex;flex-direction:column;min-height:0;min-width:0}
-  .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute)}
+  .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute);min-height:22px}
+  .cap em{font-style:normal;font-weight:700;color:var(--cobalt);background:var(--cobalt-t);border-radius:99px;padding:2px 10px;font-size:12.5px}
   .cap b{font-family:'Figtree',sans-serif;font-size:17px;color:var(--ink);letter-spacing:-.01em}
   .phone{flex:1;min-height:0;aspect-ratio:390/800;max-width:100%;background:var(--navy);padding:9px;border-radius:38px;box-shadow:0 18px 40px rgba(7,28,63,.22)}
   .phone iframe{width:100%;height:100%;border:0;border-radius:30px;background:#fff;display:block}
@@ -66,11 +67,9 @@
   .desk .url{height:30px;display:flex;align-items:center;padding:0 12px;background:#F8FAFC;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute);font-family:'Geist Mono',monospace}
   .desk iframe{flex:1;border:0;width:100%;min-height:0}
   .tabs{display:none}
-  .rf{display:flex;gap:6px;margin-top:8px}.rf input{flex:1;height:34px}
   @media(max-width:1180px){
-    body{overflow:auto}.wrap{grid-template-columns:1fr;display:block}
-    .panel-side{display:none;border-right:0;border-bottom:1px solid var(--line)}.panel-side.open{display:flex}
-    #panelBtn{display:inline-block}
+    body{overflow:auto}
+    .coach{flex-wrap:wrap}.coach .tools{margin-left:0}
     .stage{padding:10px 12px 14px;min-height:900px}
     .ai{grid-template-columns:1fr}.two{grid-template-columns:1fr}
     .tabs{display:flex;gap:6px}.tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
@@ -82,39 +81,30 @@
 </head>
 <body>
 <header class="bar"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><span class="t">Live demo: one policy, two views</span>
-  <div class="push"><button id="panelBtn" aria-expanded="false">Presenter panel</button><a href="/">Exit</a></div></header>
+  <div class="push"><a href="/">Exit</a></div></header>
 
-<div class="wrap">
-<aside class="panel-side" id="panel" aria-label="Presenter panel">
-  <div class="ptag"><span class="ms" style="color:var(--cobalt)">tune</span><span><b>Presenter panel</b>Backstage controls. Not part of the product.</span></div>
-
-  <div class="sec" id="script"><h4>Run the demo</h4>
-    <button id="story" class="btn primary block" style="margin-bottom:10px;height:42px">Run the whole story</button>
-    <div class="stp" data-s="1"><div class="h"><span class="n">1</span>Cover a trip</div>
-      <p>A traveler gets cover on a flight.</p>
-      <div class="acts"><button class="btn primary sm" data-do="1">Cover a trip for me</button></div>
-      <div id="rf" class="rf hidden" style="margin-left:32px"><input id="rfNo" class="field mono" placeholder="Real flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
-    <div class="stp" data-s="2"><div class="h"><span class="n">2</span>Break the flight</div>
-      <p>You act as the airline's status feed.</p>
-      <div class="acts"><button class="btn sm" data-ev="delay" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delay" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
-    <div class="stp" data-s="3"><div class="h"><span class="n">3</span>Try a risky traveler</div>
-      <p>Suspicious profile. The AI asks a person.</p>
-      <div class="acts"><button class="btn sm" data-do="3">Run the risky case</button></div></div>
-    <div class="stp" data-s="4"><div class="h"><span class="n">4</span>Decide as the insurer</div>
-      <p>A person approves or declines. The phone updates.</p>
-      <div class="acts"><button class="btn sm" data-do="4">Open the review queue</button></div></div>
+<section class="coach" aria-label="What to do now">
+  <div class="dots" id="dots"><button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button><button data-d="4">4</button></div>
+  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a flight and adds cover.</span>
+    <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button></div>
+    <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Real flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
+  <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The AI reacts on both sides.</span>
+    <div class="acts"><button class="btn primary sm" data-ev="delayed" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delayed" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
+  <div class="stp" data-s="3"><span class="h">Try a risky traveler</span><span class="t">Same delay, suspicious profile. The AI asks a person instead of paying.</span>
+    <div class="acts"><button class="btn primary sm" data-do="3">Run the risky case</button></div></div>
+  <div class="stp" data-s="4"><span class="h">Decide as the insurer</span><span class="t">A person approves or declines in the review queue.</span>
+    <div class="acts"><button class="btn primary sm" data-do="4">Open the review queue</button></div></div>
+  <div class="tools"><button id="story" class="btn sm">Run the whole story</button><button id="menuBtn" class="btn sm" aria-expanded="false" aria-controls="menu">More</button></div>
+  <div class="menu" id="menu" role="dialog" aria-label="More demo tools">
+    <div class="sec"><h4>Data sources</h4><div id="sources"><div class="mute" style="font-size:13px">Checking...</div></div></div>
+    <div class="sec"><h4>Open on their own</h4><div class="lnk">
+      <a href="/traveler" target="_blank" rel="noopener"><span class="ms">luggage</span>Traveler app</a>
+      <a href="/console" target="_blank" rel="noopener"><span class="ms">monitoring</span>Insurer console</a>
+      <a href="/api/demo/sources" target="_blank" rel="noopener"><span class="ms">info</span>Data source status (JSON)</a>
+      <a href="https://github.com/EthannMK/calmy" target="_blank" rel="noopener"><span class="ms">receipt_long</span>Source code</a></div></div>
+    <div class="sec"><button id="reset" class="btn danger block">Reset demo data</button></div>
   </div>
-
-  <div class="sec"><h4>Data sources</h4><div id="sources"><div class="mute" style="font-size:13px">Checking...</div></div></div>
-
-  <div class="sec"><h4>Open on their own</h4><div class="lnk">
-    <a href="/traveler" target="_blank" rel="noopener"><span class="ms">luggage</span>Traveler app</a>
-    <a href="/console" target="_blank" rel="noopener"><span class="ms">monitoring</span>Insurer console</a>
-    <a href="/api/demo/sources" target="_blank" rel="noopener"><span class="ms">info</span>Data source status (JSON)</a>
-    <a href="https://github.com/EthannMK/calmy" target="_blank" rel="noopener"><span class="ms">receipt_long</span>Source code</a></div></div>
-
-  <div class="sec"><h4>Start over</h4><button id="reset" class="btn danger block">Reset demo data</button></div>
-</aside>
+</section>
 
 <main class="stage">
   <section class="ai" aria-label="What the KODA AI did">
@@ -123,11 +113,10 @@
   </section>
   <div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
   <div class="two">
-    <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><span>the KODA app on a phone</span></div><div class="phone"><iframe id="phone" src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
-    <section class="side show" id="s-desk"><div class="cap"><b>Insurer</b><span>the KODA claims desk at Orchid Insure</span></div><div class="desk"><iframe id="desk" src="/console?embed=1" title="Insurer console"></iframe></div></section>
+    <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><em id="capP">On the phone</em></div><div class="phone"><iframe id="phone" src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
+    <section class="side show" id="s-desk"><div class="cap"><b>Insurer</b><em id="capD">On the claims desk</em></div><div class="desk"><iframe id="desk" src="/console?embed=1" title="Insurer console"></iframe></div></section>
   </div>
 </main>
-</div>
 <div id="toast" class="hidden"></div>
 <script src="/static/ui.js"></script>
 <script>
@@ -157,10 +146,21 @@ async function poll() {
     if (d && d.id !== shown) { shown = d.id; playPipeline(d); }
   } catch (e) {}
 }
+const WHERE = {
+  1: ['Pick a flight, add your name, add cover', 'The new policy appears on the overview'],
+  2: ['Nothing to do. You get paid by itself', 'Watch the AI score the risk and decide'],
+  3: ['This traveler is told a person is checking', 'The AI holds the claim and shows why'],
+  4: ['The traveler sees the result straight away', 'Approve or decline in the review queue'],
+};
+let picked = 0, canEv = false;
 function paintSteps(canEvent) {
-  const now = [1, 2, 3, 4].find(k => !st[k]);
-  document.querySelectorAll('.stp').forEach(el => { const k = +el.dataset.s; el.classList.toggle('done', st[k]); el.classList.toggle('now', k === now); el.classList.toggle('lock', k === 2 && !canEvent); });
+  canEv = canEvent;
+  const now = [1, 2, 3, 4].find(k => !st[k]) || 4, cur = picked || now;
+  document.querySelectorAll('.dots button').forEach(b => { const k = +b.dataset.d; b.classList.toggle('done', st[k]); b.classList.toggle('now', k === now); b.classList.toggle('sel', k === cur && k !== now); b.setAttribute('aria-label', 'Step ' + k + (st[k] ? ', done' : '')); });
+  document.querySelectorAll('.stp').forEach(el => { const k = +el.dataset.s; el.classList.toggle('show', k === cur); el.classList.toggle('lock', k === 2 && !canEvent); });
+  $('#capP').textContent = 'You: ' + WHERE[cur][0]; $('#capD').textContent = 'Watch: ' + WHERE[cur][1];
 }
+document.querySelectorAll('.dots button').forEach(b => b.onclick = () => { picked = +b.dataset.d; paintSteps(canEv); });
 
 /* The AI pipeline: each stage lights in turn, then the speed comparison appears. */
 const ICON = {'Paid or held': 'paid', 'Event detected': 'flight_takeoff', 'Policy matched': 'verified_user', 'Risk checked': 'shield', 'Paid': 'paid', 'Held for review': 'hourglass_top', 'Traveler notified': 'info', 'Traveler told a person will look': 'info'};
@@ -198,7 +198,7 @@ const actions = {
 document.querySelectorAll('[data-do]').forEach(b => b.onclick = async () => {
   busy = true; b.disabled = true;
   try { await actions[b.dataset.do](); } catch (e) { fail(e); }
-  b.disabled = false; busy = false; poll();
+  b.disabled = false; busy = false; picked = 0; poll();
 });
 /* Step 2: the presenter acts as the airline's flight status feed, through the same webhook the product uses. */
 document.querySelectorAll('[data-ev]').forEach(b => b.onclick = async () => {
@@ -211,7 +211,7 @@ document.querySelectorAll('[data-ev]').forEach(b => b.onclick = async () => {
     else if (!r.results.length) toast('Nothing new to pay at this level. Try a longer delay or a cancellation.', 'ok');
     toPhone({tab: 'claims'}); goDesk(b.dataset.ev === 'landed' ? '#policies' : '#decisions/' + pid); shown = '';
   } catch (e) { fail(e); }
-  b.disabled = false; busy = false; poll();
+  b.disabled = false; busy = false; picked = 0; poll();
 });
 /* One tap for a three minute slot: cover, a delay that pays at once, then a risky traveler held for a person. */
 $('#story').onclick = async () => {
@@ -257,7 +257,8 @@ async function sources() {
 
 function showTab(t) { document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('#s-phone').classList.toggle('show', t === 'phone'); $('#s-desk').classList.toggle('show', t === 'desk'); }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
-$('#panelBtn').onclick = () => { const o = $('#panel').classList.toggle('open'); $('#panelBtn').setAttribute('aria-expanded', o); };
+$('#menuBtn').onclick = e => { e.stopPropagation(); const o = $('#menu').classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', o); };
+document.addEventListener('click', e => { if (!e.target.closest('#menu') && !e.target.closest('#menuBtn')) { $('#menu').classList.remove('open'); $('#menuBtn').setAttribute('aria-expanded', 'false'); } });
 if (matchMedia('(max-width:1180px)').matches) showTab('phone');
 idlePipe();
 /* A judge opening this page for the first time starts from a clean story. A refresh keeps the current run. */

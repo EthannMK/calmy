@@ -107,9 +107,9 @@ and uses the template explanation.
 
 ## Live demo page
 
-Open `/judge`. The two real apps sit side by side: the traveler app in a phone frame and the insurer console. All demo controls live in a separate presenter panel on the left, so the apps themselves contain no demo buttons.
+Open `/judge`. The two real apps sit side by side: the traveler app in a phone frame and the insurer console. One slim bar on top coaches the viewer through four steps (cover a trip, break the flight, try a risky traveler, decide as the insurer). For each step it shows the buttons to press, and a label above each app says what to do or watch on that side. A More menu holds the data sources list, links to open each app alone, and Reset demo data. The apps themselves contain no demo buttons.
 
-The panel has a Run the whole story button, the four steps one by one (cover a trip, break the flight with a delay, a cancellation or a landing on time, try a risky traveler, decide as the insurer), a data sources list that says what is live and why anything is not, links to open each app on its own, and Reset demo data. Flight events go through the same webhook the product uses. The first visit in a browser session starts from clean data.
+Flight events go through the same webhook the product uses. The first visit in a browser session starts from clean data.
 
 ## Design system
 
