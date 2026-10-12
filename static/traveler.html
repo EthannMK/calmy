@@ -293,7 +293,7 @@ function startView() {
   const m = MK[form.market];
   const rails = m ? m.rails : [];
   if (m && !rails.includes(form.rail)) form.rail = rails[0];
-  return `<section class="hero"><h1>Your flight is late.<br>Your money isn't.</h1>
+  return `<section class="hero"><h1>Your flight is delayed.<br>Your payout isn't.</h1>
       <p>Pick your flight. If it runs late or your bag is lost, we pay you automatically.</p>
       ${routeArt()}</section>
     <section><div class="cap">1. Find your flight</div>

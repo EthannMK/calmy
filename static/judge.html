@@ -70,7 +70,7 @@
   #welcome{position:fixed;inset:0;z-index:90;background:rgba(7,28,63,.55);display:flex;align-items:center;justify-content:center;padding:16px}
   .wbox{background:#fff;border-radius:16px;max-width:560px;width:100%;padding:24px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto}
   .wbox h2{font-size:22px;line-height:1.15}.wbox p{font-size:14px;color:var(--ink2);line-height:1.5}
-  .wgrid{display:grid;gap:10px}.wgrid div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}.wgrid b{display:block;margin-bottom:2px}.wgrid span{color:var(--mute)}
+  .wsteps{list-style:none;counter-reset:w;margin:12px 0 14px;padding:0;display:grid;gap:8px}.wsteps li{counter-increment:w;display:grid;grid-template-columns:26px 1fr;column-gap:10px;font-size:13.5px}.wsteps li::before{content:counter(w);grid-row:span 2;width:22px;height:22px;border-radius:50%;background:var(--ink,#071C3F);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}.wsteps b{display:block}.wsteps span{color:var(--mute)}.wgrid{display:grid;gap:10px}.wgrid div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}.wgrid b{display:block;margin-bottom:2px}.wgrid span{color:var(--mute)}
   #liveWarn{margin:10px 20px 0;padding:10px 14px;border-radius:10px;background:var(--amber-t);border:1px solid #F3D68E;color:#5C3A00;font-size:13px}
   @media(max-width:1180px){
     body{overflow:auto}
@@ -115,7 +115,8 @@
 <div id="welcome" class="hidden" role="dialog" aria-modal="true" aria-labelledby="wt"><div class="wbox">
   <h2 id="wt">A flight is late. The traveler is paid in seconds.</h2>
   <p>KODA is cover that pays by itself when a flight is delayed or cancelled. Flightwise Insurance sells it, KODA AI runs it. This page shows both sides of one trip at the same time.</p>
-  <div class="wgrid"><div><b>Left: the traveler</b><span>The phone app. Pick a real flight, add cover, get paid.</span></div><div><b>Right: the insurer</b><span>Flightwise Insurance's desk. Every decision and the reason for it.</span></div><div><b>Top bar: your steps</b><span>Four steps. Each button does the step for you. Real flight data, simulated payout.</span></div></div>
+  <div class="wgrid"><div><b>Left: the traveler</b><span>The phone app. Pick a real flight, add cover, get paid.</span></div><div><b>Right: the insurer</b><span>Flightwise Insurance's desk. Every decision and the reason for it.</span></div><div><b>Top bar: your four steps</b><span>Each button does the step for you. Real flight data, simulated payout.</span></div></div>
+  <ol class="wsteps"><li><b>Cover a trip</b><span>Pick a real upcoming flight and add cover. A second traveler with a suspicious profile joins the same flight.</span></li><li><b>Break the flight</b><span>Act as the airline's status feed: build a storm, delay or cancel. The first traveler gets an early alert, then is paid in seconds.</span></li><li><b>See the held claim</b><span>The same delay hits the suspicious traveler. It is not paid. It goes to a person with the reason.</span></li><li><b>Decide as the insurer</b><span>Open the review queue, read the copilot's advice, then approve or decline.</span></li></ol>
   <button id="wgo" class="btn primary">Start the demo</button></div></div>
 <main class="stage">
   <section class="aibar" aria-label="What the KODA AI did">
