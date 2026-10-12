@@ -55,6 +55,8 @@ def payout_for_delay(rules: dict, minutes: int) -> int:
 
 # ---------------------------------------------------------------- risk
 
+AI_LAST = {"ok": None, "error": None}  # latest Gemini outcome, shown in the demo panel
+
 DAY = 86400
 
 
@@ -136,7 +138,14 @@ def template_explanation(kind: str, amount: int, minutes: int, rules: dict, curr
     return f"Lost bag declared with an airline report. Covered under clause 4.2, payout {money(amount, currency)}."
 
 
-def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, currency: str = "USD") -> str:
+def held_explanation(reasons: list, amount: int, currency: str) -> str:
+    """Plain reason a claim went to a person. It recommends review and never a denial."""
+    top = "; ".join(r.rstrip(".").lower() for r in reasons[:3])
+    return (f"Sent to a person for review, not denied. The delay qualifies for {money(amount, currency)}, "
+            f"but the AI saw these signals: {top}.")
+
+
+def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, currency: str = "USD", reasons: list | None = None) -> str:
     """Plain English reason for a decision, written by Gemini on Vertex AI.
 
     Called from a background thread, never while the database is locked, and
@@ -152,7 +161,9 @@ def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, curr
         )
     else:
         facts = f"Lost bag declared with an airline report. {CLAUSE_BAG}. Payout {amount} {currency}. Decision: {status}."
-    fallback = template_explanation(kind, amount, minutes, rules, currency)
+    if status == "held" and reasons:
+        facts += " Risk signals found: " + "; ".join(reasons) + ". The AI recommends review by a person, never denial."
+    fallback = held_explanation(reasons, amount, currency) if status == "held" and reasons else template_explanation(kind, amount, minutes, rules, currency)
 
     project = os.environ.get("GOOGLE_CLOUD_PROJECT")
     if not project:
@@ -172,8 +183,10 @@ def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, curr
                 "reviewer. Cite the clause. Facts only, no invented details.\n" + facts
             ),
         )
+        AI_LAST["ok"], AI_LAST["error"] = time.time(), None
         return (resp.text or fallback).strip()
-    except Exception:
+    except Exception as e:  # pragma: no cover
+        AI_LAST["error"] = f"{type(e).__name__}: {str(e)[:140]}"
         return fallback
 
 
@@ -259,7 +272,8 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
                 did, p["id"], "delay", status, amount, score,
                 json.dumps(reasons_out), json.dumps(_timeline("Paid", amount, p["payout_account"], status)),
                 CLAUSE_CANCEL if cancelled else CLAUSE_DELAY,
-                template_explanation("cancel" if cancelled else "delay", amount, minutes, rules, cur), minutes, time.time(),
+                (template_explanation("cancel" if cancelled else "delay", amount, minutes, rules, cur) if status == "paid" else
+                 held_explanation(reasons_out, amount, cur)), minutes, time.time(),
                 "system" if status == "paid" else None, None, "cancel" if cancelled else "delay",
                 caring_message(flight_code, cancelled, minutes, amount, status, p["payout_account"], cur),
                 json.dumps(context.for_event(flight_code, fl.get("origin", ""), cancelled, minutes)),
@@ -284,7 +298,7 @@ def enrich_explanations(decision_ids: list[str]) -> None:
         if not d:
             continue
         cur = currency_of((pol or {}).get("market") or "TH")
-        text = explain("cancel" if d.get("trigger") == "cancel" else d["kind"], d["amount"], d["delay_minutes"], rules, d["status"], cur)  # network, no lock held
+        text = explain("cancel" if d.get("trigger") == "cancel" else d["kind"], d["amount"], d["delay_minutes"], rules, d["status"], cur, json.loads(d["reasons"] or "[]"))  # network, no lock held
         with db.conn() as c:
             c.execute("UPDATE decisions SET explanation=? WHERE id=?", (text, did))
 

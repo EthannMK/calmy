@@ -124,5 +124,5 @@ function gauge(score, th) {
 /* KODA's decision time next to a manual claim. The manual bar is illustrative, drawn hatched on purpose. */
 function speedCompare(sec) {
   return `<div class="spd"><div class="r"><b>KODA AI</b><div class="b calmy"><i style="width:7%">${sec}s</i></div></div>
-    <div class="r"><span class="mute">Manual claim</span><div class="b manual"><i>days, illustrative</i></div></div></div>`;
+    <div class="r"><span class="mute">Manual claim (industry)</span><div class="b manual"><i>About 14 days</i></div></div></div>`;
 }

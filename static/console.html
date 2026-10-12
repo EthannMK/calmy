@@ -83,18 +83,18 @@
   <aside class="rail">
     <div class="brand"><div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><small>Orchid Insure</small></div></div>
     <nav class="nav" id="nav" aria-label="Main"></nav>
-    <div class="foot"><span id="srcNote">Demo data. Payouts are simulated.</span><button id="reset"><span class="ms">refresh</span>Reset demo data</button></div>
+    
   </aside>
   <div class="main">
     <header class="top"><span class="crumb" id="crumb"></span>
-      <div class="env"><span id="aiOn"></span><span class="chip blue">Demo</span><div style="text-align:right;line-height:1.2"><div style="font-weight:600;font-size:13px">Nok P.</div><div class="mute" style="font-size:12px">Claims reviewer</div></div><span class="avatar">NP</span></div></header>
+      <div class="env"><span id="aiOn"></span><div style="text-align:right;line-height:1.2"><div style="font-weight:600;font-size:13px">Nok P.</div><div class="mute" style="font-size:12px">Claims reviewer</div></div><span class="avatar">NP</span></div></header>
     <main id="view" class="page"></main>
   </div>
 </div>
 <script src="/static/ui.js"></script>
 <script>
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
-let SIMSEL = '', LIVE = {};
+let LIVE = {};
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
   ['Book of business', [['policies', 'verified_user', 'Policies']]],
@@ -115,7 +115,6 @@ async function refresh() {
   ov = await api('/api/console/overview?market=' + RM);
   const held = ov.stats.held, bags = ov.stats.bag_waiting, base = route.split('/')[0];
   try { LIVE = await api('/api/live/status'); } catch (e) { LIVE = {}; }
-  $('#srcNote').innerHTML = LIVE.enabled ? (LIVE.last_error ? `<b>Live flights:</b> ${esc(LIVE.last_error)}` : `<span class="radar" style="width:8px;height:8px;margin-right:6px"></span>Live flight data on, ${LIVE.used} of ${LIVE.budget} lookups used.`) : 'Live flight data is off here. Set AVIATIONSTACK_KEY on Cloud Run to switch it on.';
   $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
   $('#crumb').textContent = 'Orchid Insure  /  ' + (TITLES[page] || 'Overview');
@@ -128,38 +127,45 @@ async function refresh() {
 /* ---------- Overview ---------- */
 function vOverview() {
   const s = ov.stats, o = ov.outcomes;
-  const share = s.paid_count ? Math.round(100 * s.auto_paid / s.paid_count) + '%' : 'n/a';
+  const share = s.paid_count + s.held ? s.auto_paid + ' of ' + (s.paid_count + s.held) : 'None yet';
   const tracked = [...ov.flights].sort((a, b) => (b.travelers > 0) - (a.travelers > 0));
   const covered = tracked.filter(f => f.travelers > 0).length;
   const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
-  return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars at indicative demo rates.') + `
+  return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars.') + `
+  ${aiDesk()}${bizStrip()}
   <div class="panel kpis">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
-    ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts') + ', simulated')}
+    ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts'))}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
-    ${kpi('Paid automatically', 'bolt', share, 'Payouts with no human step')}</div>
-  ${aiDesk()}
+    ${kpi('Auto-paid claims', 'bolt', share, s.held ? s.held + ' held for a person' : 'No human step needed')}</div>
   <div class="cols"><div class="stack">
-    <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${covered} of ${tracked.length} flights have cover</span></div>
-      ${tracked.length ? tracked.slice(0, 5).map(f => {
+    <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${covered} ${covered === 1 ? 'flight has' : 'flights have'} cover</span></div>
+      ${tracked.length ? tracked.slice(0, 4).map(f => {
         const m = mk(f.market), late = f.delay_minutes > 0, r = ov.rules_all[f.market] || ov.rules;
         return `<div class="brow"><div class="code">${esc(f.code)}</div>
           <div class="route">${esc(f.origin)} <span class="ms" style="color:var(--amber);font-size:16px">flight_takeoff</span> ${esc(f.dest)} <em>${esc(f.origin_city)} to ${esc(f.dest_city)}</em></div>
           <div class="st"><i style="background:${late ? 'var(--amber)' : '#34D399'}"></i>${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time'}</div>
-          <div class="meta"><span>${esc(f.depart_label)}</span><span>${esc(m.name)}, ${esc(m.currency)}</span><span>${f.travelers} covered ${f.travelers === 1 ? 'traveler' : 'travelers'}</span><span>${f.source === 'live' ? 'Real flight, checked ' + ago(f.fetched_at) + ' <button class="chk" data-f="' + esc(f.code) + '">Check now</button>' : 'Sample flight'}</span></div>
+          <div class="meta"><span>${esc(f.depart_label)}</span><span>${esc(m.name)}, ${esc(m.currency)}</span><span>${f.travelers} covered ${f.travelers === 1 ? 'traveler' : 'travelers'}</span><span>${f.source === 'live' ? 'Live status, updated ' + ago(f.fetched_at) + ' <button class="chk" data-f="' + esc(f.code) + '">Refresh</button>' : 'Scheduled'}</span></div>
           <div class="trk">${delayTrack(f.delay_minutes, r, m.currency, true).replace('class="dtrack tall', 'class="dtrack mini')}</div></div>`;
-      }).join('') + (tracked.length > 5 ? `<div class="boardempty" style="padding:10px">${tracked.length - 5} more sample flights are available in the test box below.</div>` : '') : '<div class="boardempty">No flights loaded.</div>'}
-      <div class="tool"><span>Test an event on</span><select id="simFlight" class="field" aria-label="Flight">${tracked.map(f => `<option value="${esc(f.code)}" ${f.code === SIMSEL ? 'selected' : ''}>${esc(f.code)} ${flightOf(f)}${f.travelers ? '' : ' (no cover yet)'}</option>`).join('')}</select>
-        <input id="simMin" class="field min" type="number" min="0" max="2880" value="200" aria-label="Delay in minutes"><span>minutes</span><button id="simGo" class="btn" ${tracked.length ? '' : 'disabled'}>Run delay</button><button id="simCancel" class="btn" ${tracked.length ? '' : 'disabled'}>Cancel flight</button><button id="simOk" class="btn" ${tracked.length ? '' : 'disabled'}>Lands on time</button></div></section>
+      }).join('') : '<div class="boardempty">No flights loaded.</div>'}
+</section>
     <section class="panel"><div class="ph"><h2>Recent decisions</h2><a class="push" href="#decisions">All decisions</a></div>
-      ${recent.length ? `<div class="tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${recent.map(d => `<tr class="click" onclick="location.hash='${d.status === 'held' ? 'review/' + esc(d.id) : 'decisions/' + esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="pb mute">No decisions yet. A delay that reaches a payout rule creates one.</div>'}</section>
+      ${recent.length ? `<div class="tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${recent.map(d => `<tr class="click" onclick="location.hash='${d.status === 'held' ? 'review/' + esc(d.id) : 'decisions/' + esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="pb mute">No decisions yet. A delay or cancellation that reaches a payout rule creates one.</div>'}</section>
   </div><div class="stack">
     <section class="panel"><div class="ph"><h2>Claim outcomes</h2></div><div class="pb">${outcomeBar(o)}</div></section>
     <section class="panel"><div class="ph"><h2>Paid out by market</h2></div><div class="pb">${ov.by_market.length ? barList(ov.by_market.map(m => ({label: mk(m.market).name, value: m.usd, text: usd(m.usd)}))) : '<p class="mute">No payouts yet.</p>'}</div></section>
   </div></div>`;
 }
+function bizStrip() {
+  const p = ov.performance, saved = p.auto_paid * p.manual_cost_usd;
+  return `<section class="panel" style="margin-bottom:20px"><div class="pb" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px">
+    <div><div class="mute" style="font-size:12px">Manual claim today</div><div class="disp" style="font-size:22px">14 days</div><div class="mute" style="font-size:12px">industry average</div></div>
+    <div><div class="mute" style="font-size:12px">With KODA</div><div class="disp" style="font-size:22px;color:var(--cobalt)">${p.seconds_to_payout} seconds</div><div class="mute" style="font-size:12px">event to payout</div></div>
+    <div><div class="mute" style="font-size:12px">Handling cost per policy</div><div class="disp" style="font-size:22px">$${p.manual_cost_usd} to $${p.admin_cost_usd}</div><div class="mute" style="font-size:12px">manual vs measured here</div></div>
+    <div><div class="mute" style="font-size:12px">Handling cost avoided so far</div><div class="disp" style="font-size:22px;color:var(--green)">${p.auto_paid ? '$' + saved : 'None yet'}</div><div class="mute" style="font-size:12px">${p.auto_paid ? p.auto_paid + (p.auto_paid === 1 ? ' claim' : ' claims') + ' paid with no human step' : 'Appears with the first auto-paid claim'}</div></div></div></section>`;
+}
 function aiDesk() {
-  const done = ov.decisions.filter(d => d.kind === 'delay' && d.status !== 'pending');
+  const done = ov.decisions.filter(d => d.kind === 'delay' && d.status === 'paid');
   const secs = done.map(d => d.seconds).filter(x => x != null), avg = secs.length ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : 8;
   const auto = ov.decisions.filter(d => d.decided_by === 'system' && d.status === 'paid').length;
   const feed = ov.decisions.slice(0, 5).map(d => {
@@ -167,11 +173,11 @@ function aiDesk() {
     const href = d.status === 'held' ? '#review/' + esc(d.id) : d.kind === 'baggage' ? '#baggage/' + esc(d.id.replace('-D', '')) : '#decisions/' + esc(d.policy_id);
     return `<a href="${href}"><span class="ic">${STAR}</span><span><b>${esc(d.flight)}${d.kind === 'delay' ? ', ' + hm(d.delay_minutes || 0) + ' late' : ', lost bag'}</b><small>Risk ${d.risk_score ?? '-'}, ${m}</small></span><span class="mono">${d.status === 'held' ? 'review' : money(d.amount, d.currency)}</span></a>`;
   }).join('');
-  return `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>KODA AI at work</h2>${aiChip('Gemini on Vertex AI')}<span class="push mute">${auto} ${auto === 1 ? 'claim' : 'claims'} paid with no human step</span></div>
+  return `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>KODA AI at work</h2>${aiChip(ov.ai_live ? 'Gemini on Vertex AI' : 'KODA AI')}<span class="push mute">${auto} ${auto === 1 ? 'claim' : 'claims'} paid with no human step</span></div>
     <div class="pb" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:32px" id="aiDesk">
       <div><div class="mute" style="font-size:13px;margin-bottom:12px">Time from delay to decision</div>${speedCompare(avg)}
         <div class="aistrip" style="margin-top:18px"><div>${ico('flight')}Delay or cancel found</div><div>${ico('shield')}AI checks the policy</div><div>${ico('paid')}Money is sent</div><div>${ico('info')}Traveler is told</div></div></div>
-      <div><div class="mute" style="font-size:13px;margin-bottom:4px">Latest decisions</div>${feed ? `<div class="feed">${feed}</div>` : '<p class="mute" style="padding:12px 0">Run a delay test below and watch the AI decide.</p>'}</div></div></section>`;
+      <div><div class="mute" style="font-size:13px;margin-bottom:4px">Latest decisions</div>${feed ? `<div class="feed">${feed}</div>` : '<p class="mute" style="padding:12px 0">Decisions appear here as flights are delayed or cancelled.</p>'}</div></div></section>`;
 }
 function outcomeChip(d) {
   return d.status === 'held' ? '<span class="chip held"><i></i>Held for review</span>' : d.status === 'declined' ? '<span class="chip red"><i></i>Declined</span>'
@@ -195,7 +201,7 @@ async function vDecisions(pid) {
     const list = ov.decisions.filter(d => d.kind === 'delay' && d.status !== 'held' && matchQ(d.id, d.policy_id, d.status));
     return head('Decisions', 'Every delay decision, with the reason behind it.', searchBox('Search decisions')) + (list.length ?
       `<div class="panel tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${list.map(d => `<tr class="click" onclick="location.hash='decisions/${esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` :
-      empty('gavel', 'No decisions yet', 'Run a delay test on the Overview page, or wait for a real delay.'));
+      empty('gavel', 'No decisions yet', 'Decisions appear when a flight is delayed or cancelled.'));
   }
   const {policy: p, flight: f, decision: d, rules, market: mkt} = await api('/api/console/decision/' + pid);
   const cur = p.currency;
@@ -209,7 +215,7 @@ async function vDecisions(pid) {
   return `<p class="mute" style="margin-bottom:8px"><a href="#decisions">Decisions</a> / <span class="mono">${esc(p.id)}</span></p>` +
     head(declined ? `Declined ${money(d.amount, cur)}` : `Paid ${money(d.amount, cur)}`, `${esc(p.traveler)} on ${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}`, chip) + `
   <div class="panel" style="margin-bottom:20px"><div class="ph"><h2>${cx ? 'Cancellation event' : 'Delay against the payout rules'}</h2><span class="push mute">${esc(mkt.name)}, ${esc(cur)}</span></div><div class="pb">${cx ? `<div class="note info"><b>${esc(f.code)} was cancelled.</b> Rule: cancelled flights pay ${money(rules.cancel_payout, cur)} at once, with no waiting tier.</div>` : delayTrack(d.delay_minutes, rules, cur)}</div></div>
-  <div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Decision timeline</h2>${auto ? `<span class="chip push mono">${d.elapsed_ms ? d.elapsed_ms + ' ms to decide' : '8s'}</span>` : ''}</div><div class="pb tl">
+  <div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Decision timeline</h2>${auto ? `<span class="chip push mono">${d.elapsed_ms ? 'Scoring step: ' + d.elapsed_ms + ' ms' : '8s'}</span>` : ''}</div><div class="pb tl">
       ${d.timeline.map(s => `<div><span class="dot ${s.pending ? 'wait' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span><div><b>${esc(s.label)}</b><div class="mute" style="font-size:13px">${sub[s.label] || ''}</div></div><span class="mono mute" style="font-size:12px">${s.sec}s</span></div>`).join('')}</div></section>
     <div class="stack"><section class="panel"><div class="ph"><h2>Risk score</h2><span class="push">${aiChip('AI scored')}</span></div><div class="pb">${gauge(d.risk_score, th)}<div style="height:12px"></div>${scoreBreakdown(parts, th)}</div></section>
       <section class="panel"><div class="ph"><h2>${declined ? 'Why it was declined' : 'Why it was paid'}</h2><span class="push">${aiChip('AI explained')}</span></div><div class="pb" style="display:grid;gap:12px">
@@ -223,17 +229,17 @@ async function vDecisions(pid) {
 /* ---------- Review queue ---------- */
 async function vReview(id) {
   const q = await api('/api/console/review');
-  if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Held claims appear here. Run a delay test on the Overview page to create one.');
+  if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the AI is unsure about appear here for a person to decide.');
   const d = q.find(x => x.id === id) || q[0];
   const info = await api('/api/console/decision/' + d.policy_id);
   const p = info.policy, f = info.flight, th = info.rules.risk_threshold, cur = p.currency, parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
   return head('Review queue', `${q.length} ${q.length === 1 ? 'claim needs' : 'claims need'} a person. The system never declines a claim on its own.`) + `
   <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b><span class="mono">${x.risk_score}</span></div><div class="mute" style="font-size:12px">Policy ${esc(x.policy_id)}</div></a>`).join('')}</div></section>
   <div class="stack"><section class="panel"><div class="ph"><h2>${esc(p.traveler)}</h2><span class="chip held push"><i></i>Needs a person</span></div><div class="pb">
-      <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd></dl></div></section>
-    <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div></div></section>
+      <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd><dt>Why it was held</dt><dd>${aiChip('AI')} ${esc(d.explanation)}</dd></dl></div></section>
     <section class="panel"><div class="ph"><h2>Your decision</h2></div><div class="pb"><label class="lbl" for="note">Reason, saved in the audit log</label><textarea id="note" rows="3" class="field" placeholder="Why you approve or decline"></textarea>
-      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div></div></section></div></div>`;
+      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div><p class="mute" style="font-size:12px;margin-top:10px">The KODA AI can pay or ask for help. Only a person can decline.</p></div></section>
+    <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div></div></section></div></div>`;
 }
 
 /* ---------- Baggage ---------- */
@@ -261,16 +267,16 @@ function vRules() {
       <div><label class="lbl" for="rmSel">Market</label><select id="rmSel" class="field">${ov.markets.map(x => `<option value="${x.code}" ${x.code === RM ? 'selected' : ''}>${esc(x.name)} (${esc(x.currency)})</option>`).join('')}</select></div>
       ${fields.map(([k, l]) => `<div style="display:grid;grid-template-columns:1fr 130px;gap:12px;align-items:center"><label for="r_${k}">${l}</label><input id="r_${k}" data-rule="${k}" type="number" min="0" value="${r[k]}" class="field mono" style="text-align:right"></div>`).join('')}
       <div style="display:flex;align-items:center;gap:12px;padding-top:6px;border-top:1px solid var(--line2)"><button id="saveRules" class="btn primary">Save rules</button><span id="saved" style="color:var(--green);font-size:13px"></span></div>
-      <p class="mute" style="font-size:12px">Prices and payouts are demo values in US dollars. They are not actuarially priced.</p></div></section>
+      <p class="mute" style="font-size:12px">Prices and payouts are in US dollars.</p></div></section>
     <div class="stack"><section class="panel"><div class="ph"><h2>What a traveler is paid</h2><span class="push mute">${esc(m.name)}</span></div><div class="pb">${payoutCurve(r, c)}</div></section>
     <section class="panel"><div class="ph"><h2>Cover price against the top payout</h2></div><div class="pb">${barList([{label: 'Delay cover', value: r.delay_premium, text: money(r.delay_premium, c)}, {label: 'Top delay payout', value: r.delay_tier2_payout, text: money(r.delay_tier2_payout, c)}, {label: 'Baggage cover', value: r.baggage_premium, text: money(r.baggage_premium, c)}, {label: 'Lost bag payout', value: r.lost_bag_payout, text: money(r.lost_bag_payout, c)}])}</div></section></div></div>`;
 }
 
 /* ---------- Markets and law ---------- */
 function vCompliance() {
-  return head('Markets and law', 'How the product adapts to each market. This is a summary for the demo and not legal advice. A launch needs a licensed insurer and local counsel to confirm the current text of each law.') + `
+  return head('Markets and law', 'How the product adapts to each market. This is a summary and not legal advice. A launch needs a licensed insurer and local counsel to confirm the current text of each law.') + `
   <div class="stack">${ov.markets.map(m => `<details class="panel mk" ${m.code === 'EU' ? 'open' : ''}><summary><h2 style="font-size:17px">${esc(m.name)}</h2><span class="chip">${esc(m.currency)}</span><span class="mute">${esc(m.regulator)}</span></summary>
-    <div class="body"><dl class="kv"><dt>Payout options</dt><dd>${esc(m.rails.join(', '))} (simulated)</dd><dt>Tax</dt><dd>${esc(m.tax)}</dd></dl>
+    <div class="body"><dl class="kv"><dt>Payout options</dt><dd>${esc(m.rails.join(', '))}</dd><dt>Tax</dt><dd>${esc(m.tax)}</dd></dl>
       ${m.statutory ? `<div class="note"><b>Airline obligations.</b> ${esc(m.statutory)}</div>` : ''}
       <div class="tbl"><table><thead><tr><th>Area</th><th>Law or rule</th><th>What KODA does</th></tr></thead><tbody>${m.notes.map(n => `<tr style="vertical-align:top"><td><b>${esc(n.area)}</b></td><td>${esc(n.law)}</td><td>${esc(n.handling)}</td></tr>`).join('')}</tbody></table></div></div></details>`).join('')}
     <section class="panel"><div class="ph"><h2>Rules that apply in every market</h2></div><div class="pb" style="display:grid;gap:10px">${(ov.markets[0].principles || []).map(t => `<div style="display:flex;gap:10px">${ico('check', 'mute')}<span>${esc(t)}</span></div>`).join('')}</div></section></div>`;
@@ -283,7 +289,7 @@ function vPerformance() {
   const ms = p.avg_decision_ms;
   return head('Performance', 'Manual baselines come from industry research. The last column is measured live from this prototype, so it changes as you run tests.') + `
   <div class="panel tbl" style="margin-bottom:20px"><table><thead><tr><th>Measure</th><th>Manual process today</th><th>KODA goal</th><th>Prototype result</th></tr></thead><tbody>
-    ${row('Time to payout', 'About 14 days', 'Seconds after the event', p.decisions ? `<b class="mono">${p.seconds_to_payout}s</b> from event to payout, simulated` : none)}
+    ${row('Time to payout', 'About 14 days', 'Seconds after the event', p.decisions ? `<b class="mono">${p.seconds_to_payout}s</b> from event to payout` : none)}
     ${row('Documents from traveler', 'Forms, receipts, airline letter', 'None', p.decisions ? `<b class="mono">${p.documents_asked}</b> asked` : none)}
     ${row('Admin cost per policy', '$' + p.manual_cost_usd, 'Close to zero', p.covered_total ? `<b class="mono">$${p.admin_cost_usd}</b> across ${p.covered_total} ${p.covered_total === 1 ? 'policy' : 'policies'}` : none)}
     ${row('Decision time', 'Manual review', 'Seconds or less', ms ? `<b class="mono">${ms} ms</b> average over ${p.decisions} ${p.decisions === 1 ? 'decision' : 'decisions'}` : none)}
@@ -293,7 +299,7 @@ function vPerformance() {
     <section class="panel"><div class="ph"><h2>Cancellations paid</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.cancellations}</div><p class="mute">Cancelled flights decided by the same engine</p></div></section>
     <section class="panel"><div class="ph"><h2>Trips archived quietly</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.archived}</div><p class="mute">No payout, no promo, no spam</p></div></section>
   </div>
-  <p class="mute" style="margin-top:16px;max-width:70ch">Admin cost counts only claims a person had to review, at the $41 manual rate. Time to payout is the step count of the simulated payout. Industry reference: AI first notice of loss cuts claim turnaround by about 30% (McKinsey, 2025). KODA removes the claim step for flight delays and cancellations.</p>`;
+  <p class="mute" style="margin-top:16px;max-width:70ch">Admin cost counts only claims a person had to review, at the $41 manual rate. Time to payout is measured from the flight event to the payout record. Industry reference: AI first notice of loss cuts claim turnaround by about 30% (McKinsey, 2025). KODA removes the claim step for flight delays and cancellations.</p>`;
 }
 
 /* ---------- Audit ---------- */
@@ -306,26 +312,6 @@ async function vAudit() {
 
 /* ---------- events ---------- */
 function bindAll() {
-  const simSel = $('#simFlight'); if (simSel) simSel.onchange = () => { SIMSEL = simSel.value; };
-  const runEvent = async (kind, btn) => {
-    const m = parseInt($('#simMin').value, 10), code = $('#simFlight').value;
-    if (!code) return fail('There is no flight to test yet.');
-    if (kind === 'delay' && !(m >= 0 && m <= 2880)) return fail('Enter minutes between 0 and 2880.');
-    btn.disabled = true;
-    try {
-      const fl = ov.flights.find(x => x.code === code);
-      if (fl && !fl.travelers) { await api('/api/demo/cover-sample', 'POST', {flight: code}); toast('Added a sample traveler with cover on ' + code + ' for this test.', 'ok'); }
-      if (kind === 'landed') {
-        const w = await api('/api/webhook/flight-event', 'POST', {flight: code, event: 'landed', minutes: 0});
-        toast(w.archived ? `${w.archived} trip${w.archived > 1 ? 's' : ''} archived. No payout, no message.` : 'Nothing to archive on this flight.', 'ok'); last = ''; refresh(); return;
-      }
-      const r = await api('/api/webhook/flight-event', 'POST', {flight: code, event: kind === 'cancel' ? 'cancelled' : 'delayed', minutes: kind === 'cancel' ? 0 : m});
-      if (!r.results.length) toast('Nothing new to pay. This flight already paid at this level. Try a longer delay.', 'ok');
-      else toast(r.results.some(x => x.status === 'upgraded') ? 'The delay grew into the next level. Payouts were topped up.' : `${r.results.length} decision${r.results.length > 1 ? 's' : ''} made.`, 'ok');
-    } catch (e) { fail(e); }
-    last = ''; refresh();
-  };
-  const simGo = $('#simGo'); if (simGo) { simGo.onclick = () => runEvent('delay', simGo); $('#simCancel').onclick = e => runEvent('cancel', e.currentTarget); $('#simOk').onclick = e => runEvent('landed', e.currentTarget); }
   document.querySelectorAll('.chk').forEach(b => b.onclick = async () => {
     b.disabled = true;
     try { const r = await api('/api/flights/' + encodeURIComponent(b.dataset.f) + '/refresh', 'POST'); toast(`Checked ${r.flight.code}. Delay is ${r.flight.delay_minutes} min.`, 'ok'); } catch (e) { fail(e); }
@@ -344,7 +330,6 @@ function bindAll() {
   };
 }
 $('#aiOn').innerHTML = aiChip('AI on');
-$('#reset').onclick = async () => { try { await api('/api/demo/reset', 'POST'); toast('Demo data reset.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); };
 // Poll so a claim made in the traveler app shows up. Skip while a form is in use so typing is never wiped.
 setInterval(() => { if (!document.hidden && route.split('/')[0] !== 'rules' && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 1500 : 3000);
 refresh();

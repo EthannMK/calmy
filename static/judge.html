@@ -5,152 +5,266 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#071C3F">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<title>KODA, both sides</title>
+<title>KODA live demo</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/ui.css">
 <style>
   html,body{height:100%}
   body{display:flex;flex-direction:column;background:var(--paper);overflow:hidden}
-  .bar{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--navy);color:#fff;flex-shrink:0}
-  .bar .wordmark{color:#fff;font-size:21px}
+  .bar{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--navy);color:#fff;flex-shrink:0}
+  .bar .wordmark{font-size:20px}
   .bar .t{font-size:13px;color:var(--navy-mute);padding-left:16px;border-left:1px solid var(--navy-line)}
   .bar .push{margin-left:auto;display:flex;gap:10px;align-items:center}
   .bar a,.bar button{color:#C9D6E8;font-size:13px;font-weight:600;padding:6px 12px;border:1px solid var(--navy-line);border-radius:6px}
-  .bar a:hover,.bar button:hover{background:#0F3470;text-decoration:none}
+  .bar a:hover,.bar button:hover{background:#0B2C60;text-decoration:none}
+  #panelBtn{display:none}
 
-  /* the guided run: one strip, five cells */
-  .run{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-bottom:1px solid var(--line);flex-shrink:0}
-  .cell{padding:12px 18px 12px;border-right:1px solid var(--line2);position:relative;min-width:0}
-  .cell:last-child{border-right:0}
-  .cell .n{font-family:'Geist Mono',monospace;font-size:12px;color:var(--faint);display:flex;gap:8px;align-items:center}
-  .cell h3{font-size:15px;margin:3px 0 2px;font-family:'Figtree',sans-serif;letter-spacing:0;font-weight:700}
-  .cell p{font-size:12.5px;color:var(--mute);line-height:1.35;min-height:34px}
-  .cell .do{margin-top:6px;font-size:12.5px;font-weight:700;color:var(--cobalt);display:none}
-  .cell .do:hover{text-decoration:underline}
-  .cell.now{background:#FFFBEF}.cell.now::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--amber)}
-  .cell.now .do{display:inline-block}.cell.now .n{color:var(--amber-d)}
-  .cell.done h3{color:var(--ink2)}.cell.done .n{color:var(--green)}
-  .cell.done .n::after{content:'Done';font-family:'Figtree',sans-serif;font-weight:700}
+  .wrap{flex:1;min-height:0;display:grid;grid-template-columns:344px minmax(0,1fr)}
 
-  /* the two sides and the wire between them */
-  .stage{flex:1;min-height:0;display:grid;grid-template-columns:auto 72px minmax(0,1fr);gap:0;padding:14px 24px 18px;align-items:stretch}
+  /* Presenter panel: backstage controls, kept apart from the two real apps */
+  .panel-side{background:#fff;border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:18px}
+  .ptag{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute);line-height:1.35}
+  .ptag b{color:var(--ink);font-size:14px;display:block}
+  .sec h4{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--mute);letter-spacing:.02em}
+  .stp{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;background:#fff;position:relative}
+  .stp .h{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px}
+  .stp .n{width:22px;height:22px;border-radius:50%;background:var(--line2);color:var(--ink2);font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .stp p{font-size:12.5px;color:var(--mute);margin:6px 0 0 32px;line-height:1.4}
+  .stp .acts{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0 32px}
+  .stp.now{border-color:var(--cobalt);box-shadow:0 0 0 3px var(--cobalt-t)}.stp.now .n{background:var(--cobalt);color:#fff}
+  .stp.done .n{background:var(--green);color:#fff}.stp.done .h::after{content:'Done';margin-left:auto;font-size:12px;font-weight:700;color:var(--green)}
+  .stp.lock .acts .btn{opacity:.45}
+  .src{display:grid;grid-template-columns:10px 1fr;gap:4px 10px;align-items:start;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line2)}
+  .src:last-child{border-bottom:0}
+  .src i{width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--faint)}
+  .src i.live{background:#1DB87E}.src i.error{background:var(--red)}.src i.sim,.src i.off,.src i.idle{background:#9AA7B8}
+  .src b{font-size:13px}.src small{display:block;color:var(--mute);font-size:12px;line-height:1.35}
+  .lnk{display:flex;flex-direction:column;gap:2px}
+  .lnk a{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;color:var(--ink);font-size:13px;font-weight:600}
+  .lnk a:hover{background:var(--line2);text-decoration:none}.lnk .ms{font-size:18px;color:var(--cobalt)}
+
+  /* Stage: the two real apps, plus the AI pipeline between them and the title */
+  .stage{min-width:0;min-height:0;display:flex;flex-direction:column;padding:14px 20px 16px;gap:12px}
+  .ai{flex-shrink:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px}
+  .pipe{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
+  .pn{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--faint);padding:5px 10px;border-radius:99px;border:1px solid var(--line);background:#fff;transition:all .25s}
+  .pn .ms{font-size:16px}.pn em{font-style:normal;font-family:'Geist Mono',monospace;font-size:11px}
+  .pn.on{color:var(--ink);border-color:#B8E3F8;background:var(--ai-t)}.pn.on .ms{color:var(--cobalt)}
+  .pn.hold.on{background:var(--amber-t);border-color:#F3D68E;color:var(--amber-d)}
+  .pa{color:var(--line);font-size:14px}
+  .cmp{display:flex;gap:16px;align-items:center;font-size:12.5px;color:var(--mute);white-space:nowrap}
+  .cmp b{font-family:'Figtree',sans-serif;font-size:22px;color:var(--cobalt);display:block;line-height:1}
+  .cmp .m b{color:var(--ink2)}
+  .ai .idle{font-size:13px;color:var(--mute)}.ai{min-height:58px}
+  .two{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:stretch}
   .side{display:flex;flex-direction:column;min-height:0;min-width:0}
   .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute)}
   .cap b{font-family:'Figtree',sans-serif;font-size:17px;color:var(--ink);letter-spacing:-.01em}
-  .phone{flex:1;min-height:0;aspect-ratio:390/800;max-width:100%;background:var(--navy);padding:9px;border-radius:38px;box-shadow:0 18px 40px rgba(12,27,46,.22)}
+  .phone{flex:1;min-height:0;aspect-ratio:390/800;max-width:100%;background:var(--navy);padding:9px;border-radius:38px;box-shadow:0 18px 40px rgba(7,28,63,.22)}
   .phone iframe{width:100%;height:100%;border:0;border-radius:30px;background:#fff;display:block}
-  .desk{flex:1;min-height:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(12,27,46,.1);display:flex;flex-direction:column}
-  .desk .url{height:30px;display:flex;align-items:center;gap:6px;padding:0 12px;background:#F8FAFC;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute);font-family:'Geist Mono',monospace}
+  .desk{flex:1;min-height:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(7,28,63,.1);display:flex;flex-direction:column}
+  .desk .url{height:30px;display:flex;align-items:center;padding:0 12px;background:#F8FAFC;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute);font-family:'Geist Mono',monospace}
   .desk iframe{flex:1;border:0;width:100%;min-height:0}
-  .wire{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .wire::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:2px dashed #B7C2D1}
-  .wire .dot{position:absolute;top:calc(50% - 6px);left:0;width:12px;height:12px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px rgba(13,197,251,.28);opacity:0}
-  .wire.go .dot{animation:travel .9s cubic-bezier(.5,0,.3,1) forwards}
-  @keyframes travel{0%{opacity:1;transform:translateX(0)}100%{opacity:1;transform:translateX(60px)}}
-  .wire .lbl{position:relative;background:var(--paper);padding:4px 6px;font-size:11px;font-weight:700;color:var(--mute);text-align:center;line-height:1.2;max-width:70px}
   .tabs{display:none}
+  .rf{display:flex;gap:6px;margin-top:8px}.rf input{flex:1;height:34px}
   @media(max-width:1180px){
-    .run{grid-template-columns:repeat(5,minmax(150px,1fr));overflow-x:auto}
-    .stage{grid-template-columns:1fr;padding:10px 12px 12px}
-    .wire{display:none}.tabs{display:flex;gap:6px;padding:10px 12px 0}
-    .tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
+    body{overflow:auto}.wrap{grid-template-columns:1fr;display:block}
+    .panel-side{display:none;border-right:0;border-bottom:1px solid var(--line)}.panel-side.open{display:flex}
+    #panelBtn{display:inline-block}
+    .stage{padding:10px 12px 14px;min-height:900px}
+    .ai{grid-template-columns:1fr}.two{grid-template-columns:1fr}
+    .tabs{display:flex;gap:6px}.tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
     .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-    .side{display:none}.side.show{display:flex}.phone{max-width:400px;margin:0 auto;aspect-ratio:auto;flex:1}
+    .side{display:none}.side.show{display:flex}.phone{max-width:400px;margin:0 auto;aspect-ratio:auto;height:760px;flex:none}.desk{height:760px;flex:none}
     .bar .t{display:none}
   }
 </style>
 </head>
 <body>
-<header class="bar"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><span class="t">Two views of one policy, live</span>
-  <div class="push"><button id="reset">Reset demo</button><a href="/">Exit</a></div></header>
+<header class="bar"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><span class="t">Live demo: one policy, two views</span>
+  <div class="push"><button id="panelBtn" aria-expanded="false">Presenter panel</button><a href="/">Exit</a></div></header>
 
-<section class="run" aria-label="Guided run">
-  <div class="cell" data-s="1"><div class="n">1 </div><h3>Buy cover</h3><p>On the phone, pick a flight, add your name and add cover.</p><button class="do" data-do="1">Do it for me</button></div>
-  <div class="cell" data-s="2"><div class="n">2 </div><h3>Delay the flight</h3><p>Phone: Test tools, then delay by 200 minutes.</p><button class="do" data-do="2">Do it for me</button></div>
-  <div class="cell" data-s="3"><div class="n">3 </div><h3>Read the reasoning</h3><p>Insurer: open Decisions and the new decision.</p><button class="do" data-do="3">Do it for me</button></div>
-  <div class="cell" data-s="4"><div class="n">4 </div><h3>Try a risky traveler</h3><p>Same delay, riskier profile. The AI asks a person.</p><button class="do" data-do="4">Do it for me</button></div>
-  <div class="cell" data-s="5"><div class="n">5 </div><h3>Decide as the insurer</h3><p>Approve or decline in the Review queue. The phone updates.</p><button class="do" data-do="5">Open the queue</button></div>
-</section>
+<div class="wrap">
+<aside class="panel-side" id="panel" aria-label="Presenter panel">
+  <div class="ptag"><span class="ms" style="color:var(--cobalt)">tune</span><span><b>Presenter panel</b>Backstage controls. Not part of the product.</span></div>
 
-<div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
+  <div class="sec" id="script"><h4>Run the demo</h4>
+    <button id="story" class="btn primary block" style="margin-bottom:10px;height:42px">Run the whole story</button>
+    <div class="stp" data-s="1"><div class="h"><span class="n">1</span>Cover a trip</div>
+      <p>A traveler gets cover on a flight.</p>
+      <div class="acts"><button class="btn primary sm" data-do="1">Cover a trip for me</button></div>
+      <div id="rf" class="rf hidden" style="margin-left:32px"><input id="rfNo" class="field mono" placeholder="Real flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
+    <div class="stp" data-s="2"><div class="h"><span class="n">2</span>Break the flight</div>
+      <p>You act as the airline's status feed.</p>
+      <div class="acts"><button class="btn sm" data-ev="delay" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delay" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
+    <div class="stp" data-s="3"><div class="h"><span class="n">3</span>Try a risky traveler</div>
+      <p>Suspicious profile. The AI asks a person.</p>
+      <div class="acts"><button class="btn sm" data-do="3">Run the risky case</button></div></div>
+    <div class="stp" data-s="4"><div class="h"><span class="n">4</span>Decide as the insurer</div>
+      <p>A person approves or declines. The phone updates.</p>
+      <div class="acts"><button class="btn sm" data-do="4">Open the review queue</button></div></div>
+  </div>
+
+  <div class="sec"><h4>Data sources</h4><div id="sources"><div class="mute" style="font-size:13px">Checking...</div></div></div>
+
+  <div class="sec"><h4>Open on their own</h4><div class="lnk">
+    <a href="/traveler" target="_blank" rel="noopener"><span class="ms">luggage</span>Traveler app</a>
+    <a href="/console" target="_blank" rel="noopener"><span class="ms">monitoring</span>Insurer console</a>
+    <a href="/api/demo/sources" target="_blank" rel="noopener"><span class="ms">info</span>Data source status (JSON)</a>
+    <a href="https://github.com/EthannMK/calmy" target="_blank" rel="noopener"><span class="ms">receipt_long</span>Source code</a></div></div>
+
+  <div class="sec"><h4>Start over</h4><button id="reset" class="btn danger block">Reset demo data</button></div>
+</aside>
+
 <main class="stage">
-  <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><span>the phone in your pocket</span></div><div class="phone"><iframe id="phone" src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
-  <div class="wire" id="wire" aria-hidden="true"><span class="dot"></span><span class="lbl">live</span></div>
-  <section class="side" id="s-desk"><div class="cap"><b>Insurer</b><span>Orchid Insure, claims desk</span></div><div class="desk"><div class="url">orchid-insure / console</div><iframe id="desk" src="/console?embed=1" title="Insurer console"></iframe></div></section>
+  <section class="ai" aria-label="What the KODA AI did">
+    <div id="pipe" class="pipe"></div>
+    <div class="cmp" id="cmp"></div>
+  </section>
+  <div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
+  <div class="two">
+    <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><span>the KODA app on a phone</span></div><div class="phone"><iframe id="phone" src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
+    <section class="side show" id="s-desk"><div class="cap"><b>Insurer</b><span>the KODA claims desk at Orchid Insure</span></div><div class="desk"><iframe id="desk" src="/console?embed=1" title="Insurer console"></iframe></div></section>
+  </div>
 </main>
+</div>
 <div id="toast" class="hidden"></div>
 <script src="/static/ui.js"></script>
 <script>
-const phone = $('#phone'), desk = $('#desk'), cells = [...document.querySelectorAll('.cell')];
-const SAMPLE_FLIGHTS = ['OA 310', 'OA 530', 'OA 640', 'OA 750', 'OA 860', 'OA 970'];
-let st = {s1: false, s2: false, s3: false, s4: false, s5: false}, lastCount = 0, busy = false;
+const phone = $('#phone'), desk = $('#desk');
+const IDLE = ['Event detected', 'Policy matched', 'Risk checked', 'Paid or held', 'Traveler notified'];
+const idlePipe = () => { $('#pipe').innerHTML = IDLE.map((l, i) => `${i ? '<span class="pa">›</span>' : ''}<span class="pn">${ico(ICON[l] || 'paid')}${l}</span>`).join(''); $('#cmp').innerHTML = '<span class="idle">Waiting for a flight event</span>'; };
+const FREE = ['OA 310', 'OA 530', 'OA 640', 'OA 750', 'OA 860', 'OA 970', 'OA 204', 'OA 420'];
+let st = {1: false, 2: false, 3: false, 4: false}, busy = false, shown = '';
 
-const reloadPhone = (q = '') => { phone.src = '/traveler?embed=1' + q + '&t=' + Date.now(); };
+const toPhone = msg => { try { phone.contentWindow.postMessage(msg, location.origin); } catch (e) {} };
 const goDesk = h => { try { desk.contentWindow.location.hash = h; } catch (e) {} };
+const myPid = () => store.get('calmy.pid');
 
-/* Which step is the judge on? Read it from real state, so doing it by hand and pressing the button both work. */
+/* Which step is the presenter on? Read from real state, so tapping the apps by hand also counts. */
 async function poll() {
   if (busy) return;
   try {
-    const pid = store.get('calmy.pid');
-    let own = null; if (pid) { try { own = await api('/api/traveler/' + pid); } catch (e) {} }
-    let risky = null; try { risky = await api('/api/traveler/CL-45102'); } catch (e) {}
-    const hash = (() => { try { return desk.contentWindow.location.hash; } catch (e) { return ''; } })();
-    st.s1 = !!(own && own.policy.status === 'active') || !!(risky && risky.policy.status === 'active' && pid === 'CL-45102');
-    st.s2 = !!(own && own.delay_decision);
-    if (/^#(decisions\/|review\/)/.test(hash)) st.s3 = true;
-    st.s4 = !!(risky && risky.delay_decision);
-    st.s5 = !!(risky && risky.delay_decision && risky.delay_decision.status !== 'held');
-    if (!st.s2) st.s3 = false;
-    const ov = await api('/api/console/overview');
-    const count = ov.decisions.length;
-    if (count > lastCount && lastCount !== 0 || (count && !lastCount && document.readyState === 'complete' && st.s2)) pulse();
-    lastCount = count;
+    const pid = myPid(); let own = null, risky = null;
+    if (pid) { try { own = await api('/api/traveler/' + pid); } catch (e) {} }
+    try { risky = await api('/api/traveler/CL-45102'); } catch (e) {}
+    st[1] = !!(own && own.policy.status !== 'quote');
+    st[2] = !!(own && (own.delay_decision || own.policy.status === 'archived'));
+    st[3] = !!(risky && risky.delay_decision);
+    st[4] = !!(risky && risky.delay_decision && risky.delay_decision.status !== 'held');
+    paintSteps(!!(own && own.policy.status === 'active'));
+    const d = (own && own.delay_decision) || (risky && risky.delay_decision && pid === 'CL-45102' ? risky.delay_decision : null);
+    if (d && d.id !== shown) { shown = d.id; playPipeline(d); }
   } catch (e) {}
-  paint();
 }
-function paint() {
-  const keys = ['s1', 's2', 's3', 's4', 's5']; const now = keys.find(k => !st[k]);
-  cells.forEach((c, i) => { const k = keys[i]; c.classList.toggle('done', !!st[k]); c.classList.toggle('now', k === now); });
+function paintSteps(canEvent) {
+  const now = [1, 2, 3, 4].find(k => !st[k]);
+  document.querySelectorAll('.stp').forEach(el => { const k = +el.dataset.s; el.classList.toggle('done', st[k]); el.classList.toggle('now', k === now); el.classList.toggle('lock', k === 2 && !canEvent); });
 }
-function pulse() { const w = $('#wire'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); }
 
-async function buyCover(name, last4, flights) {
+/* The AI pipeline: each stage lights in turn, then the speed comparison appears. */
+const ICON = {'Paid or held': 'paid', 'Event detected': 'flight_takeoff', 'Policy matched': 'verified_user', 'Risk checked': 'shield', 'Paid': 'paid', 'Held for review': 'hourglass_top', 'Traveler notified': 'info', 'Traveler told a person will look': 'info'};
+function playPipeline(d) {
+  const tl = d.timeline || [], box = $('#pipe'); $('#cmp').innerHTML = '';
+  box.innerHTML = tl.map((s, i) => `${i ? '<span class="pa">›</span>' : ''}<span class="pn ${s.pending ? 'hold' : ''}" data-i="${i}">${ico(ICON[s.label] || 'check')}${esc(s.label)} <em>${s.sec}s</em></span>`).join('');
+  const nodes = [...box.querySelectorAll('.pn')];
+  nodes.forEach((n, i) => setTimeout(() => n.classList.add('on'), 250 + i * 380));
+  setTimeout(() => {
+    const held = d.status === 'held', secs = (tl.find(s => s.label === 'Paid' || s.pending) || {}).sec || 8;
+    $('#cmp').innerHTML = held ? `<div><b style="color:var(--amber-d)">Sent to a person</b>The AI never denies a claim by itself</div>`
+      : `<div><b>${secs} seconds</b>with KODA</div><div class="m"><b>About 14 days</b>manual claim</div>`;
+  }, 250 + nodes.length * 380);
+}
+
+async function coverTrip(name, last4, flights) {
   for (const f of flights) {
     try {
       const q = await api('/api/policies', 'POST', {name, last4, flight: f});
       await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true});
       return {pid: q.policy, flight: f};
-    } catch (e) { /* that flight is already delayed or has left, try the next one */ }
+    } catch (e) { /* that flight already has a delay or has left, try the next one */ }
   }
-  throw 'No sample flight is free. Use Reset demo and try again.';
+  throw 'No flight is free for a new trip. Reset the demo data and try again.';
 }
 const actions = {
-  async 1() { const r = await buyCover('Lena Fischer', '1234', SAMPLE_FLIGHTS); store.set('calmy.pid', r.pid); reloadPhone(); },
-  async 2() {
-    const pid = store.get('calmy.pid'); const t = pid && await api('/api/traveler/' + pid);
-    if (!t || t.policy.status !== 'active') throw 'Buy cover first (step 1).';
-    await api('/api/demo/delay', 'POST', {flight: t.flight.code, minutes: 200}); reloadPhone('&tab=claims');
-  },
-  async 3() { const pid = store.get('calmy.pid'); if (!pid) throw 'Buy cover first (step 1).'; goDesk('#decisions/' + pid); st.s3 = true; },
-  async 4() {
+  async 1() { const r = await coverTrip('Lena Fischer', '1234', FREE); store.set('calmy.pid', r.pid); toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); },
+  async 3() {
     try { await api('/api/traveler/CL-45102/checkout', 'POST', {delay: true, baggage: true, ack: true}); } catch (e) { if (!/already active/i.test(e)) throw e; }
-    await api('/api/demo/delay', 'POST', {flight: 'OA 108', minutes: 200});
-    store.set('calmy.pid', 'CL-45102'); reloadPhone('&tab=claims'); goDesk('#review');
+    await api('/api/webhook/flight-event', 'POST', {flight: 'OA 108', event: 'delayed', minutes: 200});
+    store.set('calmy.pid', 'CL-45102'); toPhone({pid: 'CL-45102', tab: 'claims'}); goDesk('#review'); shown = '';
   },
-  async 5() { goDesk('#review'); showTab('desk'); },
+  async 4() { goDesk('#review'); showTab('desk'); },
 };
-document.querySelectorAll('.do').forEach(b => b.onclick = async () => {
+document.querySelectorAll('[data-do]').forEach(b => b.onclick = async () => {
   busy = true; b.disabled = true;
-  try { await actions[b.dataset.do](); if (b.dataset.do !== '5') pulse(); } catch (e) { fail(e); }
+  try { await actions[b.dataset.do](); } catch (e) { fail(e); }
   b.disabled = false; busy = false; poll();
 });
-$('#reset').onclick = async () => { try { await api('/api/demo/reset', 'POST'); } catch (e) { return fail(e); } store.set('calmy.pid', null); st = {s1: false, s2: false, s3: false, s4: false, s5: false}; lastCount = 0; reloadPhone(); goDesk('#overview'); desk.contentWindow.location.reload(); toast('Demo reset.', 'ok'); poll(); };
+/* Step 2: the presenter acts as the airline's flight status feed, through the same webhook the product uses. */
+document.querySelectorAll('[data-ev]').forEach(b => b.onclick = async () => {
+  const pid = myPid(); let t = null; try { t = pid && await api('/api/traveler/' + pid); } catch (e) {}
+  if (!t || t.policy.status !== 'active') return fail('Cover a trip first (step 1).');
+  busy = true; b.disabled = true;
+  try {
+    const r = await api('/api/webhook/flight-event', 'POST', {flight: t.flight.code, event: b.dataset.ev, minutes: +b.dataset.min || 0});
+    if (b.dataset.ev === 'landed') toast(r.archived ? 'Landed on time. The trip was archived with no payout and no message.' : 'Nothing to archive.', 'ok');
+    else if (!r.results.length) toast('Nothing new to pay at this level. Try a longer delay or a cancellation.', 'ok');
+    toPhone({tab: 'claims'}); goDesk(b.dataset.ev === 'landed' ? '#policies' : '#decisions/' + pid); shown = '';
+  } catch (e) { fail(e); }
+  b.disabled = false; busy = false; poll();
+});
+/* One tap for a three minute slot: cover, a delay that pays at once, then a risky traveler held for a person. */
+$('#story').onclick = async () => {
+  const b = $('#story'); b.disabled = true; busy = true;
+  try {
+    const r = await coverTrip('Lena Fischer', '1234', FREE); store.set('calmy.pid', r.pid); toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview');
+    await new Promise(x => setTimeout(x, 2200));
+    await api('/api/webhook/flight-event', 'POST', {flight: r.flight, event: 'delayed', minutes: 192});
+    shown = ''; toPhone({tab: 'claims'}); goDesk('#overview'); busy = false; await poll(); busy = true;
+    await new Promise(x => setTimeout(x, 6500));
+    await actions[3](); busy = false; await poll();
+  } catch (e) { fail(e); }
+  busy = false; b.disabled = false; poll();
+};
+$('#reset').onclick = async () => {
+  if (!confirm('Reset all demo data? Trips, decisions and the audit log are cleared.')) return;
+  try { await api('/api/demo/reset', 'POST'); } catch (e) { return fail(e); }
+  store.set('calmy.pid', null); st = {1: false, 2: false, 3: false, 4: false}; shown = '';
+  idlePipe();
+  toPhone({reset: true}); goDesk('#overview'); try { desk.contentWindow.location.reload(); } catch (e) {}
+  toast('Demo data reset.', 'ok'); poll();
+};
 
-/* Narrow screens show one side at a time. */
+/* Real flight: shown only when live flight data is on. */
+$('#rfGo').onclick = async () => {
+  const v = $('#rfNo').value.trim(); if (!v) return fail('Enter a flight number.');
+  busy = true;
+  try { const q = await api('/api/policies', 'POST', {name: 'Lena Fischer', last4: '1234', flight: v}); await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true}); store.set('calmy.pid', q.policy); toPhone({pid: q.policy, tab: 'cover'}); }
+  catch (e) { fail(e); }
+  busy = false; poll();
+};
+
+/* Data sources, with the reason when one is not live. */
+const MODE = {live: 'Live', off: 'Built in', error: 'Problem', sim: 'Simulated', idle: 'Ready'};
+async function sources() {
+  try {
+    const s = await api('/api/demo/sources');
+    $('#sources').innerHTML = [['Flight status', s.flights], ['Weather', s.weather], ['AI reasons', s.ai], ['Payouts', s.payments]].map(([n, x]) =>
+      `<div class="src"><i class="${x.mode}"></i><span><b>${n}: ${MODE[x.mode]}</b><small>${esc(x.detail)}</small></span></div>`).join('');
+    $('#rf').classList.toggle('hidden', s.flights.mode !== 'live');
+  } catch (e) {}
+}
+
 function showTab(t) { document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('#s-phone').classList.toggle('show', t === 'phone'); $('#s-desk').classList.toggle('show', t === 'desk'); }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
-setInterval(poll, 1500); poll();
+$('#panelBtn').onclick = () => { const o = $('#panel').classList.toggle('open'); $('#panelBtn').setAttribute('aria-expanded', o); };
+if (matchMedia('(max-width:1180px)').matches) showTab('phone');
+idlePipe();
+/* A judge opening this page for the first time starts from a clean story. A refresh keeps the current run. */
+(async () => {
+  try { if (!sessionStorage.getItem('koda.fresh')) { sessionStorage.setItem('koda.fresh', '1'); await api('/api/demo/reset', 'POST'); store.set('calmy.pid', null); toPhone({reset: true}); try { desk.contentWindow.location.reload(); } catch (e) {} } } catch (e) {}
+  setInterval(poll, 1500); setInterval(sources, 20000); poll(); sources();
+})();
 </script>
 </body>
 </html>

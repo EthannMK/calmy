@@ -105,9 +105,11 @@ and uses the template explanation.
 | Prototype performance report | Console, Performance page: manual baselines against measured prototype results | Built |
 | Baggage and fraud checks (Later) | Lost bag cover and an additive risk score already included | Built ahead of plan |
 
-## Judge view
+## Live demo page
 
-Open `/judge` for the traveler phone and the insurer console side by side. A five step strip follows the real state, and each step has a Do it for me button.
+Open `/judge`. The two real apps sit side by side: the traveler app in a phone frame and the insurer console. All demo controls live in a separate presenter panel on the left, so the apps themselves contain no demo buttons.
+
+The panel has a Run the whole story button, the four steps one by one (cover a trip, break the flight with a delay, a cancellation or a landing on time, try a risky traveler, decide as the insurer), a data sources list that says what is live and why anything is not, links to open each app on its own, and Reset demo data. Flight events go through the same webhook the product uses. The first visit in a browser session starts from clean data.
 
 ## Design system
 

@@ -53,6 +53,7 @@
   .role .go{margin-left:auto;color:var(--cobalt)}
   .or{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:12px;margin:18px 0}
   .or::before,.or::after{content:'';flex:1;border-top:1px solid var(--line)}
+  .fine{font-size:12px;color:var(--mute);margin-top:18px;line-height:1.4}
   .who{display:flex;gap:8px}
   .who a{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink);text-decoration:none}
   .who a:hover{border-color:var(--cobalt);text-decoration:none}
@@ -83,7 +84,7 @@
   <section class="L">
     <div class="brand"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span></div>
     <h1>Your flight is late.<br><em>Your money isn't.</em></h1>
-    <p class="lead">Delay and lost bag cover that pays you by itself. You fill in nothing. The insurer sees every decision and the reason behind it.</p>
+    <p class="lead">Delay, cancellation and lost bag cover that pays you by itself. You fill in nothing. The insurer sees every decision and the reason behind it.</p>
 
 <div class="scene" aria-label="Animation: a plane crosses a bright sky">
 <svg viewBox="0 0 560 250" preserveAspectRatio="xMidYMid slice" role="img" aria-hidden="true">
@@ -118,8 +119,8 @@
 </svg></div>
     <div class="board" aria-label="Illustration of a delay growing and a payout landing">
       <header><span>DEPARTURES · LIVE ILLUSTRATION</span><span id="clk">--:--</span></header>
-      <div class="row"><b>OA 420</b><span>LHR → AMS</span><span class="dly ok">On time</span></div>
-      <div class="row hero-row"><b>TG 102</b><span>BKK → HND</span><span class="dly late" id="dly">On time</span></div>
+      <div class="row"><b>OA 420</b><span>FRA → MAD</span><span class="dly ok">On time</span></div>
+      <div class="row hero-row"><b>OA 310</b><span>LHR → CDG</span><span class="dly late" id="dly">On time</span></div>
       <div class="trk" id="trk"></div>
       <div class="payline off" id="pay"><span id="paytxt">Waiting for a delay</span><span class="amt" id="amt">0 USD</span></div>
     </div>
@@ -135,22 +136,18 @@
     <main class="login">
       <h2>See KODA from both sides</h2>
       <p class="sub">One policy, two people. The traveler gets paid, the insurer sees every decision and why.</p>
-      <a class="role feature" href="/judge"><span class="ic"><span class="ms" aria-hidden="true">dashboard</span></span><span><b>Watch both sides at once</b><span class="d">The traveler's phone and the insurer's desk, side by side, with a guided run.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
-      <div class="or">or take one side</div>
+      <a class="role feature" href="/judge"><span class="ic"><span class="ms" aria-hidden="true">dashboard</span></span><span><b>Start the live demo</b><span class="d">The traveler's phone and the insurer's desk side by side. Break a flight and watch the AI act on both.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
+      <div class="or">or open one side on its own</div>
       <a class="role" href="/traveler"><span class="ic"><span class="ms" aria-hidden="true">luggage</span></span><span><b>I am a traveler</b><span class="d">Pick a real flight, add cover, watch the payout arrive.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
       <a class="role" href="/console"><span class="ic"><span class="ms" aria-hidden="true">monitoring</span></span><span><b>I am the insurer</b><span class="d">Decisions, reviews, rules and audit log for Orchid Insure.</span></span><span class="go"><span class="ms" aria-hidden="true">arrow_forward</span></span></a>
-      <div class="or">or jump in as a sample traveler</div>
-      <div class="who">
-        <a href="/traveler?p=CL-44910">Somchai K.<small>clean, paid</small></a>
-        <a href="/traveler?p=CL-45102">Anan T.<small>risky, held for review</small></a>
-      </div>
+      <p class="fine">Built for the Google Cloud AI Builder Cup. Payouts are simulated and no real money moves.</p>
     </main>
   </section>
 </div>
 <script src="/static/ui.js"></script>
 <script>
 // The hook: a delay grows on the board, crosses the payout line, and the money lands.
-const R = {delay_tier1_minutes: 180, delay_tier2_minutes: 360, delay_tier1_payout: 40, delay_tier2_payout: 80};
+const R = {delay_tier1_minutes: 180, delay_tier2_minutes: 360, delay_tier1_payout: 45, delay_tier2_payout: 90};
 const dly = $('#dly'), trk = $('#trk'), pay = $('#pay'), amt = $('#amt');
 const tick = () => { const d = new Date(); $('#clk').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 tick(); setInterval(tick, 30000);
@@ -162,7 +159,7 @@ function paint(v) {
   dly.textContent = v ? hm(v) + ' late' : 'On time';
   dly.className = 'dly ' + (v ? 'late' : 'ok');
   trk.innerHTML = delayTrack(v, R, 'USD', true);
-  const p = v >= 360 ? 80 : v >= 180 ? 40 : 0;
+  const p = v >= 360 ? 90 : v >= 180 ? 45 : 0;
   amt.textContent = num(p) + ' USD';
   pay.classList.toggle('off', !p);
   $('#paytxt').textContent = p ? 'Delay rule met. Paid to your account.' : 'Waiting for a delay';

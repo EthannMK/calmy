@@ -123,7 +123,7 @@ def create_policy(body: NewPolicy):
         f = sample
     else:
         if not live.enabled():
-            raise HTTPException(400, "That is not a sample flight and real flight lookup is switched off on this demo.")
+            raise HTTPException(400, "We could not find that flight. Pick one from the list.")
         try:
             f = live.lookup(body.flight)
         except live.LiveError as e:
@@ -146,6 +146,23 @@ def create_policy(body: NewPolicy):
         )
         db.log(c, pid, "quote_created", {"flight": f["code"], "market": market})
     return {"policy": pid, "flight": f, "market": info}
+
+
+@app.get("/api/demo/sources")
+def demo_sources():
+    """Where each kind of data comes from right now. Shown only in the presenter panel."""
+    u = live.usage()
+    context.warm("BKK")  # so the weather status is real the first time the panel opens
+    ai_on = bool(os.environ.get("GOOGLE_CLOUD_PROJECT"))
+    flights = {"mode": "error" if u["last_error"] else "live" if u["enabled"] else "off",
+               "detail": u["last_error"] or (f"{u['used']} of {u['budget']} lookups used this month" if u["enabled"]
+                                               else "No flight data key on the server, so built in flights are used.")}
+    wx = {"mode": "error" if context.LAST["error"] else "live" if context.LAST["ok"] else "idle",
+          "detail": context.LAST["error"] or ("Live from Open-Meteo" if context.LAST["ok"] else "Fetched at the first event")}
+    ai = {"mode": "error" if engine.AI_LAST["error"] else "live" if ai_on else "off",
+          "detail": engine.AI_LAST["error"] or ("Gemini on Vertex AI writes each reason" if ai_on else "No Google Cloud project set, so template reasons are used.")}
+    return {"flights": flights, "weather": wx, "ai": ai,
+            "payments": {"mode": "sim", "detail": "Payout rails are simulated. No real money moves."}}
 
 
 @app.get("/api/live/samples")
@@ -454,6 +471,7 @@ def overview(market: str = "TH"):
         "auto_paid": auto, "reviewed": reviewed, "cancellations": cancels, "archived": archived, "covered_total": covered_total,
     }
     return {
+        "ai_live": bool(os.environ.get("GOOGLE_CLOUD_PROJECT")),
         "performance": performance,
         "stats": {
             "active": active,

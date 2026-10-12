@@ -31,6 +31,7 @@ _CODES = {0: "Clear sky", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast", 
           95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Thunderstorm with hail"}
 _SEVERE = {45, 48, 65, 75, 82, 95, 96, 99}
 TTL = 600
+LAST = {"ok": None, "error": None}  # outcome of the latest weather call, shown in the demo panel
 _cache: dict[str, tuple[float, dict]] = {}
 _busy: set[str] = set()
 _lock = threading.Lock()
@@ -46,6 +47,7 @@ def fetch(origin: str) -> dict | None:
     try:
         with urllib.request.urlopen(url, timeout=4) as r:
             cur = json.loads(r.read())["current"]
+        LAST["ok"], LAST["error"] = time.time(), None
         code = int(cur.get("weather_code", 0))
         vis = cur.get("visibility")
         return {"airport": origin, "weather": _CODES.get(code, "Variable conditions"), "code": code,
@@ -53,7 +55,8 @@ def fetch(origin: str) -> dict | None:
                 "rain_mm": cur.get("precipitation", 0), "visibility_km": round(vis / 1000, 1) if vis is not None else None,
                 "severe": code in _SEVERE or (vis is not None and vis < 1000) or cur.get("wind_speed_10m", 0) >= 50,
                 "source": "Live weather, Open-Meteo"}
-    except Exception:
+    except Exception as e:
+        LAST["error"] = f"Weather service not reachable ({type(e).__name__})"
         return None
 
 

@@ -4,6 +4,7 @@ The demo keeps all state in one SQLite file so that a reset is a single call.
 On Google Cloud the same tables map to Cloud SQL, and the `events` table is
 the one that is streamed to BigQuery as the audit log.
 """
+import datetime
 import json
 import os
 import sqlite3
@@ -118,8 +119,8 @@ def seed(c):
         "INSERT OR REPLACE INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,"
         "scheduled,delay_minutes,travelers,source) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         [
-            ("OA 108", "Orchid Air", "BKK", "Bangkok", "CNX", "Chiang Mai", "Thu 14 Nov, 11:30", "11:30", 0, 84, "sim"),
-            ("OA 204", "Orchid Air", "BKK", "Bangkok", "HKT", "Phuket", "Thu 14 Nov, 14:10", "14:10", 0, 112, "sim"),
+            ("OA 108", "Orchid Air", "BKK", "Bangkok", "CNX", "Chiang Mai", "{D}, 11:30", "11:30", 0, 84, "sim"),
+            ("OA 204", "Orchid Air", "BKK", "Bangkok", "HKT", "Phuket", "{D}, 14:10", "14:10", 0, 112, "sim"),
         ],
     )
     # Sample flights in other markets, so every currency and rule set can be tried without a live key.
@@ -127,13 +128,13 @@ def seed(c):
         "INSERT OR REPLACE INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,"
         "scheduled,delay_minutes,travelers,source,market) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         [
-            ("OA 310", "Orchid Air", "LHR", "London", "CDG", "Paris", "Thu 14 Nov, 09:20", "09:20", 0, 0, "sim", "UK"),
-            ("OA 420", "Orchid Air", "FRA", "Frankfurt", "MAD", "Madrid", "Thu 14 Nov, 10:05", "10:05", 0, 0, "sim", "EU"),
-            ("OA 530", "Orchid Air", "JFK", "New York", "LAX", "Los Angeles", "Thu 14 Nov, 08:00", "08:00", 0, 0, "sim", "US"),
-            ("OA 640", "Orchid Air", "DEL", "Delhi", "BOM", "Mumbai", "Thu 14 Nov, 07:40", "07:40", 0, 0, "sim", "IN"),
-            ("OA 750", "Orchid Air", "SYD", "Sydney", "MEL", "Melbourne", "Thu 14 Nov, 12:15", "12:15", 0, 0, "sim", "AU"),
-            ("OA 860", "Orchid Air", "YYZ", "Toronto", "YVR", "Vancouver", "Thu 14 Nov, 13:30", "13:30", 0, 0, "sim", "CA"),
-            ("OA 970", "Orchid Air", "GRU", "Sao Paulo", "GIG", "Rio de Janeiro", "Thu 14 Nov, 15:45", "15:45", 0, 0, "sim", "BR"),
+            ("OA 310", "Orchid Air", "LHR", "London", "CDG", "Paris", "{D}, 09:20", "09:20", 0, 0, "sim", "UK"),
+            ("OA 420", "Orchid Air", "FRA", "Frankfurt", "MAD", "Madrid", "{D}, 10:05", "10:05", 0, 0, "sim", "EU"),
+            ("OA 530", "Orchid Air", "JFK", "New York", "LAX", "Los Angeles", "{D}, 08:00", "08:00", 0, 0, "sim", "US"),
+            ("OA 640", "Orchid Air", "DEL", "Delhi", "BOM", "Mumbai", "{D}, 07:40", "07:40", 0, 0, "sim", "IN"),
+            ("OA 750", "Orchid Air", "SYD", "Sydney", "MEL", "Melbourne", "{D}, 12:15", "12:15", 0, 0, "sim", "AU"),
+            ("OA 860", "Orchid Air", "YYZ", "Toronto", "YVR", "Vancouver", "{D}, 13:30", "13:30", 0, 0, "sim", "CA"),
+            ("OA 970", "Orchid Air", "GRU", "Sao Paulo", "GIG", "Rio de Janeiro", "{D}, 15:45", "15:45", 0, 0, "sim", "BR"),
         ],
     )
     c.executemany(
@@ -147,6 +148,9 @@ def seed(c):
             ("CL-45102", "Anan T.", "OA 108", "PromptPay ending 7730", 0, 0, 0, "quote", 4, 1, 1, 1),
         ],
     )
+    # Departure dates follow the calendar, so the demo never shows a date in the past.
+    tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%a %d %b")
+    c.execute("UPDATE flights SET depart_label=REPLACE(depart_label, '{D}', ?)", (tomorrow,))
     c.execute("UPDATE policies SET pnr='K7M2QD' WHERE id='CL-44910'")
     c.execute("UPDATE policies SET pnr='R4T9XE' WHERE id='CL-45102'")
 
