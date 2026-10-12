@@ -10,7 +10,7 @@ import os
 import time
 import uuid
 
-from . import context, db, markets
+from . import context, db, markets, partners
 
 CLAUSE_DELAY = "Clause 3.1, delay over 3 hours"
 CLAUSE_CANCEL = "Clause 3.2, flight cancelled"
@@ -106,6 +106,8 @@ def risk_parts(p: dict) -> list[tuple[str, int]]:
         parts.append(("Flight time changed shortly before the cover was bought", 20))
     if p["f_shared_account"]:
         parts.append(("Several payout accounts share the same contact details", 28))
+    if p.get("f_adverse"):
+        parts.append(("Cover was bought while a delay was already likely (forecast check)", 35))
     if p["f_prior_claims"]:
         parts.append(("A claim was paid on this profile in the last 12 months", 4))
     return parts
@@ -213,6 +215,10 @@ def _hm(minutes: int) -> str:
 def caring_message(flight: str, cancelled: bool, minutes: int, amount: int, status: str, account: str, cur: str = "USD") -> str:
     """The message the traveler gets. Warm and short, says what was paid, why and where."""
     what = "was cancelled" if cancelled else f"is delayed by {_hm(minutes)}"
+    if status == "paid" and account.startswith(markets.POINTS_RAIL):
+        pts = round(amount * markets.POINTS_PER_USD * (1 + markets.POINTS_BONUS))
+        return (f"Your flight {flight} {what}. We have added {pts:,} points to your KODA wallet, "
+                f"{int(markets.POINTS_BONUS * 100)}% more than the cash value. Spend them at partner restaurants in your airport. No forms, no waiting.")
     if status == "paid":
         return (f"Your flight {flight} {what}. We have sent {money(amount, cur)} to {account}. "
                 "Have a drink or a meal at the airport on us. No forms, no waiting.")
@@ -257,6 +263,7 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
                     "UPDATE decisions SET amount=?, delay_minutes=?, explanation=? WHERE id=?",
                     (amount, minutes, template_explanation("delay", amount, minutes, rules, cur), prior["id"]),
                 )
+                partners.sync(c, p["id"])
                 db.log(c, p["id"], "tier_upgrade", {"decision": prior["id"], "extra": extra, "total": amount})
                 results.append({"policy": p["id"], "decision": prior["id"], "status": "upgraded", "extra": extra})
             continue  # double claim prevention
@@ -282,6 +289,7 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
         c.execute("UPDATE decisions SET elapsed_ms=? WHERE id=?", (max(1, int((time.perf_counter() - t0) * 1000)), did))
         c.execute("UPDATE decisions SET breakdown=? WHERE id=?", (json.dumps(risk_parts(feats)), did))
         db.log(c, p["id"], f"decision_{status}", {"decision": did, "score": score, "amount": amount})
+        partners.sync(c, p["id"])
         results.append({"policy": p["id"], "decision": did, "status": status, "score": score})
     return results
 
@@ -325,6 +333,7 @@ def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) ->
         (status, reviewer, note, json.dumps(tl), msg, decision_id),
     )
     db.log(c, d["policy_id"], f"review_{status}", {"decision": decision_id, "by": reviewer, "note": note})
+    partners.sync(c, d["policy_id"])
     return db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,))
 
 
@@ -372,4 +381,5 @@ def decide_baggage(c, claim_id: str, approve: bool, reviewer: str) -> dict:
     status = "paid" if approve else "declined"
     c.execute("UPDATE decisions SET status=?, decided_by=? WHERE id=?", (status, reviewer, claim_id + "-D"))
     db.log(c, d["policy_id"], f"baggage_{status}", {"claim": claim_id, "by": reviewer})
+    partners.sync(c, d["policy_id"])
     return db.one(c, "SELECT * FROM decisions WHERE id=?", (claim_id + "-D",))

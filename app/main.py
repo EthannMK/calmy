@@ -21,7 +21,7 @@ from typing import Literal
 import re
 import time
 
-from . import context, db, engine, live, markets, track
+from . import context, copilot, db, engine, forecast, live, markets, partners, rights, track
 
 STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 @asynccontextmanager
@@ -92,7 +92,22 @@ def traveler_state(pid: str):
         track.maybe_refresh(flight)  # starts a background refresh if the real status is stale
         if flight:
             context.warm(flight["origin"])
+        fc = al = rt = pts = None
+        if flight:
+            fc = forecast.compute(flight)
+            al = forecast.alert(fc, flight) if p["status"] == "active" and p["delay_cover"] and not delay else None
+            live_w = context.cached(flight["origin"])
+            rt = rights.build(p["market"], flight, bool((live_w and live_w.get("severe")) or flight.get("stress")))
+            if rt:
+                rights.enrich(rt)
+                rt = {k: v for k, v in rt.items() if not k.startswith("_")}
+        partners.sync(c, pid)
+        if p["payout_account"].startswith(markets.POINTS_RAIL):
+            pts = partners.balance(c, pid)
+            pts["redemptions"] = db.rows(c, "SELECT r.*, t.name partner FROM redemptions r JOIN partners t ON t.id=r.partner_id "
+                                            "WHERE r.policy_id=? ORDER BY r.created_at DESC", (pid,))
         return {
+            "forecast": fc, "alert": al, "rights": rt, "points": pts,
             "weather": context.for_event(flight["code"], flight["origin"], bool(flight.get("cancelled")), flight["delay_minutes"]) if flight else None,
             "policy": p,
             "flight": flight,
@@ -142,7 +157,7 @@ def create_policy(body: NewPolicy):
         pnr = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))  # booking reference
         c.execute(
             "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr) VALUES (?,?,?,?,'quote',?,?,?)",
-            (pid, body.name.strip(), f["code"], f"{rail} ending {body.last4}", market, info["currency"], pnr),
+            (pid, body.name.strip(), f["code"], (f"{rail} wallet" if rail == markets.POINTS_RAIL else f"{rail} ending {body.last4}"), market, info["currency"], pnr),
         )
         db.log(c, pid, "quote_created", {"flight": f["code"], "market": market})
     return {"policy": pid, "flight": f, "market": info}
@@ -211,15 +226,52 @@ def checkout(pid: str, body: Checkout):
             raise HTTPException(400, "Please confirm you have read the key facts and the privacy notice.")
         rules = engine.get_rules(c, p["market"])
         total = int(rules["delay_premium"]) * body.delay + int(rules["baggage_premium"]) * body.baggage
+        prob = forecast.compute(f)["probability"] if f else 0
+        adverse = int(bool(body.delay) and prob >= forecast.ALERT_AT)  # AI fraud check: buying into a likely delay
         c.execute(
             "UPDATE policies SET delay_cover=?, baggage_cover=?, premium=?, status='active', created_at=?, "
-            "sched_at_purchase=? WHERE id=?",
-            (int(body.delay), int(body.baggage), total, time.time(), f["scheduled"] if f else None, pid),
+            "sched_at_purchase=?, risk_at_purchase=?, f_adverse=? WHERE id=?",
+            (int(body.delay), int(body.baggage), total, time.time(), f["scheduled"] if f else None, prob, adverse, pid),
         )
         db.log(c, pid, "policy_active", {"delay": body.delay, "baggage": body.baggage, "total": total, "currency": p["currency"]})
         # Record that the notices were shown and accepted, with the version of the legal notes.
         db.log(c, pid, "notices_accepted", {"market": p["market"], "version": markets.LAW_VERSION})
         return {"policy": pid, "total": total, "currency": p["currency"]}
+
+
+class Redeem(BaseModel):
+    partner: str
+    points: int = Field(..., ge=100, le=1000000)
+
+
+@app.get("/api/airport/{iata}/partners")
+def airport_partners(iata: str, pid: str | None = None):
+    """Restaurants at an airport that accept KODA points and are open while the traveler waits. Others are listed as not joined."""
+    iata = iata.upper()
+    with db.conn() as c:
+        sched, delay, bal = None, 0, 0
+        if pid:
+            p = _policy(c, pid)
+            f = _flight(c, p["flight"]) or {}
+            sched, delay = f.get("scheduled"), f.get("delay_minutes") or 0
+            partners.sync(c, pid)
+            bal = partners.balance(c, pid)["balance"]
+        out = partners.list_for(c, iata, sched, delay, bal)
+        out["balance"] = bal
+        return out
+
+
+@app.post("/api/traveler/{pid}/redeem")
+def redeem_points(pid: str, body: Redeem):
+    with db.conn() as c:
+        _policy(c, pid)
+        try:
+            r = partners.redeem(c, pid, body.partner, body.points)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        db.log(c, pid, "points_redeemed", {"partner": r["partner"], "points": r["points"]})
+        r["balance"] = partners.balance(c, pid)["balance"]
+        return r
 
 
 @app.post("/api/traveler/{pid}/review-request")
@@ -300,7 +352,7 @@ def demo_delay(body: Delay):
 
 class FlightEvent(BaseModel):
     flight: str
-    event: Literal["delayed", "cancelled", "on_time", "landed"]
+    event: Literal["delayed", "cancelled", "on_time", "landed", "storm", "clear"]
     minutes: int = Field(0, ge=0, le=2880)
 
 
@@ -316,6 +368,9 @@ def flight_event(body: FlightEvent):
         if not _flight(c, body.flight):
             raise HTTPException(404, "flight not found")
         db.log(c, None, "webhook_received", {"flight": body.flight, "event": body.event, "minutes": body.minutes})
+        if body.event in ("storm", "clear"):
+            c.execute("UPDATE flights SET stress=? WHERE origin=(SELECT origin FROM flights WHERE code=?)", (2 if body.event == "storm" else 0, body.flight))
+            return {"event": body.event, "results": [], "archived": 0, "forecast": forecast.compute(_flight(c, body.flight))}
         if body.event in ("delayed", "cancelled"):
             results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.event == "cancelled")
             _enrich_later(results)
@@ -510,6 +565,72 @@ def console_decision(policy_id: str):
         d = _decision(db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (policy_id,)))
         return {"policy": p, "flight": _flight(c, p["flight"]), "decision": d, "rules": engine.get_rules(c, p["market"]),
                 "market": markets.public(p["market"])}
+
+
+@app.get("/api/console/exposure")
+def exposure():
+    """Expected payouts on the book today, a reserve to hold, and a suggested delay price per flight."""
+    out, total, var = [], 0.0, 0.0
+    with db.conn() as c:
+        flights = db.rows(c, "SELECT * FROM flights ORDER BY sched_ts IS NULL, sched_ts, code")
+        for f in flights:
+            fc = forecast.compute(f)
+            pols = db.rows(c, "SELECT market, currency FROM policies WHERE flight=? AND status='active' AND delay_cover=1 "
+                              "AND id NOT IN (SELECT policy_id FROM decisions WHERE kind='delay')", (f["code"],))
+            rules = engine.get_rules(c, f.get("market") or "TH")
+            t1 = float(rules["delay_tier1_payout"])
+            pr = forecast.pricing(fc, float(rules["delay_premium"]), t1)
+            pc = pr["p_claim"] / 100
+            exp = pc * t1 * len(pols)
+            total += exp
+            var += pc * (1 - pc) * (t1 ** 2) * len(pols)
+            out.append({"flight": f["code"], "route": f"{f['origin']} to {f['dest']}", "covered": len(pols), "probability": fc["probability"],
+                        "level": fc["level"], "drivers": [{"text": t, "points": pts} for t, pts in fc["drivers"]],
+                        "expected_usd": round(exp, 2), "price_now": pr["current"], "price_suggested": pr["suggested"], "move": pr["move"],
+                        "stress": int(f.get("stress") or 0)})
+        premium = sum(markets.to_usd(r["premium"], r["currency"]) for r in db.rows(c, "SELECT premium, currency FROM policies WHERE status='active'"))
+    reserve = total + 1.28 * (var ** 0.5)
+    return {"expected_usd": round(total, 2), "reserve_usd": round(reserve), "premium_usd": round(premium),
+            "flights": sorted(out, key=lambda x: -x["probability"]), "method": "Transparent score: weather, traffic, time of day and current delay. Not a trained model."}
+
+
+def _copilot_ctx(c, decision_id):
+    d = _decision(db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,)))
+    if not d:
+        raise HTTPException(404, "claim not found")
+    p = _policy(c, d["policy_id"])
+    others = db.one(c, "SELECT COUNT(*) n FROM policies WHERE status IN ('active','archived') AND payout_account=? AND LOWER(TRIM(traveler))<>?",
+                    (p["payout_account"], (p["traveler"] or "").strip().lower()))["n"]
+    rec = copilot.recommend(d, p, p["traveler"], p["currency"], others)
+    rec["draft"] = rec["draft"].replace("{flight}", p["flight"])
+    return d, p, rec
+
+
+@app.get("/api/console/copilot/{decision_id}")
+def copilot_get(decision_id: str):
+    with db.conn() as c:
+        d, p, rec = _copilot_ctx(c, decision_id)
+    better = copilot.ask_gemini("Rewrite this message to an insurance customer so it is warm, clear and under 60 words. Keep every fact and ask. "
+                                "Return only the message.\n" + rec["draft"]) if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
+    rec["draft"], rec["ai"] = (better or rec["draft"]), bool(better)
+    return rec
+
+
+class Ask(BaseModel):
+    decision: str
+    question: str = Field(..., min_length=2, max_length=300)
+
+
+@app.post("/api/console/copilot")
+def copilot_ask(body: Ask):
+    with db.conn() as c:
+        d, p, rec = _copilot_ctx(c, body.decision)
+    base = copilot.answer(body.question, d, rec, p)
+    facts = (f"Claim {d['id']}: delay {d['delay_minutes']} min, amount {d['amount']}, risk {d['risk_score']}, signals "
+             + "; ".join(f"{t} +{pts}" for t, pts in d["breakdown"]) + f". Recommendation {rec['label']}.")
+    better = copilot.ask_gemini("You help an insurance claims reviewer. Answer in at most 2 sentences using only these facts; never suggest declining.\n"
+                                f"{facts}\nQuestion: {body.question}") if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
+    return {"answer": better or base, "ai": bool(better)}
 
 
 @app.get("/api/console/review")

@@ -62,12 +62,15 @@ def market_for_timezone(tz: str | None) -> str:
     return "GLOBAL"
 
 
+POINTS_RAIL = "KODA points"   # payout as points to spend at partner airport restaurants
+POINTS_PER_USD = 100          # 1 point = 1 cent
+POINTS_BONUS = 0.25           # taking points instead of money earns 25% more
 DEMO_CURRENCY = "USD"  # every amount in the demo is shown in US dollars, whatever the market's own currency
 
 
 def _m(name, currency, rails, **kw):
     # `currency` stays on record as the market's real currency. All demo money is in USD.
-    return {"name": name, "currency": DEMO_CURRENCY, "local_currency": currency, "rails": list(rails) + [r for r in ("Card refund", "Digital wallet") if r not in rails], **kw}
+    return {"name": name, "currency": DEMO_CURRENCY, "local_currency": currency, "rails": list(rails) + [r for r in ("Card refund", "Digital wallet", POINTS_RAIL) if r not in rails], **kw}
 
 
 # Each note: area, the law or rule, what KODA does about it.

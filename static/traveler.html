@@ -110,6 +110,23 @@
   .stamp.hold{border-color:#B26A00;color:#B26A00}
   .barcode{height:34px;margin-top:14px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 9px,var(--ink) 9px 12px,transparent 12px 14px)}
 
+  .tabs{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}.tab[hidden]{display:none!important}
+  .fcbar{height:8px;border-radius:99px;background:var(--line2,#E8ECF2);overflow:hidden;margin:6px 0 8px}
+  .fcbar i{display:block;height:100%;border-radius:99px;background:var(--cobalt)}
+  .fc.high .fcbar i{background:#E08A00}.fc.medium .fcbar i{background:var(--cyan,#0DC5FB)}
+  .alertbox{display:flex;gap:10px;align-items:flex-start;background:var(--amber-t);border:1px solid #F3D68E;color:#5C3A00;border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.45}
+  .alertbox .ms{font-size:22px;color:#B26A00;flex-shrink:0}
+  .rt{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line2,#E8ECF2);font-size:13px}
+  .rt:first-of-type{border-top:0}
+  .rt .st{font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 8px;flex-shrink:0;margin-top:1px}
+  .rt .st.owed{background:var(--green-t);color:#0B6B49}.rt .st.maybe{background:var(--amber-t);color:#5C3A00}.rt .st.no{background:#EEF1F5;color:var(--mute)}
+  .bal{background:var(--navy);color:#fff;border-radius:14px;padding:18px}
+  .bal b{display:block;font-family:'Figtree',sans-serif;font-weight:800;font-size:38px;letter-spacing:-.03em;line-height:1.05;margin-top:4px}
+  .bal small{color:var(--navy-mute);font-size:13px}
+  .rest{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .rest.pick{border-color:var(--cobalt);box-shadow:0 0 0 2px var(--cobalt-t)}
+  .voucher{background:#fff;border:2px dashed var(--cobalt);border-radius:12px;padding:16px;text-align:center}
+  .voucher .code{font-family:'Geist Mono',monospace;font-weight:700;font-size:26px;letter-spacing:.06em;color:var(--navy);margin:6px 0}
   /* test tools sheet */
   #sheet{position:absolute;inset:0;background:rgba(12,27,46,.45);z-index:50;display:flex;align-items:flex-end}
   #sheet .in{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:90%;overflow-y:auto}
@@ -131,6 +148,7 @@
   <nav class="tabs" aria-label="Sections">
     <button data-tab="cover" class="tab"><span class="ms" aria-hidden="true">shield</span><span>Cover</span></button>
     <button data-tab="claims" class="tab"><span class="ms" aria-hidden="true">receipt_long</span><span>Claims</span></button>
+    <button data-tab="wallet" class="tab" id="walletTab" hidden><span class="ms" aria-hidden="true">payments</span><span>Wallet</span></button>
     <button data-tab="help" class="tab"><span class="ms" aria-hidden="true">support_agent</span><span>Help</span></button>
   </nav>
 
@@ -140,7 +158,8 @@
 <script>
 const EMBED = new URLSearchParams(location.search).has('embed'); if (EMBED) document.documentElement.classList.add('embed');
 let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid');
-let S = null, MK = {}, tab = ['cover', 'claims', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
+let S = null, MK = {}, tab = ['cover', 'claims', 'wallet', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
+let W = null, voucher = null, otherOpen = false;
 let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
 const cur = () => (S && S.policy && S.policy.currency) || 'USD';
@@ -158,15 +177,18 @@ async function load() {
   const pol = S && PID ? S.policy : null;
   $('#avatar').textContent = pol ? pol.traveler.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   $('#mkt').innerHTML = pol ? `${esc(S.market.name)}<br>${esc(S.market.currency)}` : '';
+  if (tab === 'wallet' && S && S.points) { try { W = await api(`/api/airport/${S.flight.origin}/partners?pid=${PID}`); } catch (e) {} }
   if (!typing()) render();
 }
-function setTab(t) { tab = t; bagForm = false; render(true); }
+function setTab(t) { tab = t; bagForm = false; render(true); if (t === 'wallet') loadWallet(); }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 
 function render(force) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   const v = $('#view');
-  const html = !PID || !S ? startView() : tab === 'cover' ? coverView() : tab === 'claims' ? claimsView() : helpView();
+  const wt = $('#walletTab'); if (wt) wt.hidden = !(S && S.points);
+  if (tab === 'wallet' && !(S && S.points)) tab = 'cover';
+  const html = !PID || !S ? startView() : tab === 'cover' ? coverView() : tab === 'claims' ? claimsView() : tab === 'wallet' ? walletView() : helpView();
   if (force || v.dataset.k !== html) {
     const vk = tab + bagForm + (PID || ''); const top = vk === v.dataset.vk ? v.scrollTop : 0; v.dataset.vk = vk;
     v.innerHTML = '<div class="fade">' + html + '</div>';
@@ -197,6 +219,55 @@ function paidTotal() {
   if (S.delay_decision?.status === 'paid') t += S.delay_decision.amount;
   if (S.baggage?.decision?.status === 'paid') t += S.baggage.decision.amount;
   return t;
+}
+const pts = n => Number(n || 0).toLocaleString() + ' points';
+const payTxt = d => S.points ? pts(d.points) : M(d.amount);
+function forecastCard() {
+  const fc = S.forecast; if (!fc || S.flight.cancelled) return '';
+  const lvl = {low: 'Low', medium: 'Medium', high: 'High'}[fc.level];
+  return `<section class="card fc ${fc.level}"><div class="cap" style="display:flex;align-items:center;gap:6px">${aiChip('Delay forecast')}<span class="chip ${fc.level === 'high' ? 'held' : 'paid'}" style="margin-left:auto"><i></i>${lvl} risk</span></div>
+    <div class="kv" style="padding-bottom:0"><span>Chance of a delay</span><b class="mono" style="font-size:18px">${fc.probability}%</b></div>
+    <div class="fcbar" role="img" aria-label="${fc.probability} percent chance of a delay"><i style="width:${fc.probability}%"></i></div>
+    ${fc.drivers.filter(d => d[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 3).map(d => `<div class="kv" style="font-size:13px;padding:2px 0"><span>${esc(d[0])}</span><b class="mono">+${d[1]}</b></div>`).join('')}
+    <div class="mute" style="font-size:12px;margin-top:6px">${esc(fc.source)}. A readable score that Gemini explains, not a guarantee.</div></section>`;
+}
+function alertBox() {
+  const a = S.alert; if (!a) return '';
+  return `<div class="alertbox" role="alert">${ico('warning')}<div><b>${esc(a.title)}</b><br>${esc(a.text)}</div></div>`;
+}
+function rightsCard() {
+  const r = S.rights;
+  if (!r) return S.market.statutory && S.delay_decision ? `<div class="note"><b>The airline may owe you too.</b> ${esc(S.market.statutory)} This payment does not reduce it.</div>` : '';
+  const lab = {owed: 'Airline owes you', maybe: 'May be owed', no: 'Unlikely'};
+  return `<section class="card"><div class="cap" style="display:flex;align-items:center;gap:6px">${aiChip('Your rights')}<span class="mute" style="margin-left:auto;font-weight:400">${esc(S.market.name)}</span></div>
+    <p style="line-height:1.5;margin-bottom:6px">${aiText(r.summary)}</p>
+    ${r.items.map(i => `<div class="rt"><span class="st ${i.status}">${lab[i.status]}</span><div><b>${esc(i.name)}</b><div class="mute">${esc(i.detail)}</div></div></div>`).join('')}
+    <div class="note info" style="margin-top:8px">${esc(r.how)}</div>
+    <div class="mute" style="font-size:12px;margin-top:8px">${esc(r.disclaimer)} This payout is on top and does not reduce what the airline owes.</div></section>`;
+}
+async function loadWallet() {
+  if (!S || !S.points) return;
+  try { W = await api(`/api/airport/${S.flight.origin}/partners?pid=${PID}`); } catch (e) { W = {partners: [], not_partner: []}; }
+  render(true);
+}
+function walletView() {
+  const b = S.points, d = S.delay_decision;
+  const list = W ? W.partners : [];
+  return `<div><h1>Your points</h1><p class="sub">Spend them at partner restaurants in ${esc(S.flight.origin)} while you wait.</p></div>
+    <section class="bal"><small>Balance</small><b>${b.balance.toLocaleString()}</b><small>points · worth ${M(b.balance / 100)}${d && d.status === 'paid' ? ' · includes a 25% bonus over cash' : ''}</small></section>
+    ${voucher ? `<section class="voucher"><span class="chip paid"><i></i>Voucher ready</span><div class="code">${esc(voucher.code)}</div>
+      <div><b>${esc(voucher.partner)}</b>, ${esc(voucher.terminal)}, ${voucher.walk_min} min walk</div>
+      <div class="mute" style="font-size:13px;margin-top:4px">Show this code at the till. ${pts(voucher.points)} used.</div></section>` : ''}
+    ${b.balance < 100 ? `<div class="note info">${d ? 'You have used your points.' : 'Points arrive here when a claim is paid. Nothing to do until then.'}</div>` : !W ? '<div class="mute">Finding restaurants that accept points...</div>' : `
+    <div class="cap" style="display:flex;align-items:center;gap:6px;margin:0">${aiChip('Restaurants for you')}<span class="mute" style="margin-left:auto;font-weight:400">${list.length} accept points</span></div>
+    ${list.length ? list.map(p => `<div class="rest ${p.pick ? 'pick' : ''}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>${esc(p.name)}</b><span class="mono mute" style="font-size:12px">${p.walk_min} min · ${esc(p.terminal)}</span></div>
+        <div class="mute" style="font-size:13px">${esc(p.kind)} · usually ${M(p.avg_spend)} · open ${esc(p.opens)} to ${esc(p.closes)}</div>
+        ${p.pick ? `<div style="font-size:13px;color:var(--cobalt);font-weight:600">${ico('bolt')} ${esc(p.pick_reason)}</div>` : ''}
+        <button data-redeem="${esc(p.id)}" data-amt="${p.worth}" class="btn ${p.pick ? 'primary' : ''} sm block">Spend ${p.worth.toLocaleString()} points here</button></div>`).join('')
+        : `<div class="note">No partner restaurants are listed at ${esc(S.flight.origin)} yet.</div>`}
+    ${W.not_partner.length ? `<div class="card" style="padding:0"><button id="otherToggle" style="width:100%;display:flex;justify-content:space-between;padding:12px 14px;font-weight:600;text-align:left" aria-expanded="${otherOpen}">${W.not_partner.length} places here do not accept points ${ico(otherOpen ? 'expand_less' : 'expand_more')}</button>
+      ${otherOpen ? `<div style="padding:0 14px 12px;font-size:13px">${W.not_partner.map(n => `<div class="kv" style="padding:2px 0"><span>${esc(n.name)}</span><span>${esc(n.reason)}</span></div>`).join('')}</div>` : ''}</div>` : ''}
+    <div class="mute" style="font-size:12px">KODA checks which outlets have joined and are open while you wait. Restaurant list is a prototype directory.</div>`}`;
 }
 function factsBlock() {
   const m = S.market;
@@ -233,8 +304,8 @@ function startView() {
     <section><div class="cap">2. You</div>
       <div style="display:flex;flex-direction:column;gap:8px">
       <input id="fName" class="field" placeholder="Full name" maxlength="40" value="${esc(form.name)}">
-      <input id="fLast4" class="field mono" placeholder="Last 4 digits of your payout account" inputmode="numeric" maxlength="4" value="${esc(form.last4)}">
-      ${rails.length ? `<select id="fRail" class="field">${rails.map(r => `<option ${r === form.rail ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select><div class="mute" style="font-size:13px">Payout in ${esc(m.currency)} to your own account.</div>` : '<div class="mute" style="font-size:13px">Payout options appear once you pick a flight.</div>'}</div></section>
+      ${form.rail === 'KODA points' ? '' : `<input id="fLast4" class="field mono" placeholder="Last 4 digits of your payout account" inputmode="numeric" maxlength="4" value="${esc(form.last4)}">`}
+      ${rails.length ? `<select id="fRail" class="field">${rails.map(r => `<option ${r === form.rail ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>${form.rail === 'KODA points' ? '<div class="note info">Get 25% more as points. Spend them at partner restaurants in your departure airport. No account needed.</div>' : `<div class="mute" style="font-size:13px">Payout in ${esc(m.currency)} to your own account.</div>`}` : '<div class="mute" style="font-size:13px">Payout options appear once you pick a flight.</div>'}</div></section>
     <button id="quote" class="btn primary block">See price</button>`;
 }
 
@@ -249,14 +320,16 @@ function coverView() {
   if (p.status === 'active') {
     return `<div><span class="chip paid"><i></i>Covered</span><h1 style="margin-top:10px">Your trip is covered</h1>
       <p class="sub">Policy <span class="mono" style="font-weight:600;color:var(--ink)">${esc(p.id)}</span>. We watch your flight and pay you if it is delayed or cancelled.</p></div>
+      ${alertBox()}
       ${flightCard(p.delay_cover)}
+      ${p.delay_cover && !S.delay_decision ? forecastCard() : ''}
       <div class="aistrip" aria-label="What KODA AI does for you">
         <div>${ico('flight')}Watches your flight</div><div>${ico('shield')}Checks the risk</div><div>${ico('paid')}Pays you</div></div>
       <section class="card">
         <div class="kv"><span>Delay cover</span><b class="mono">${p.delay_cover ? 'Active' : 'Not added'}</b></div>
         <div class="kv"><span>Baggage cover</span><b class="mono">${p.baggage_cover ? 'Active' : 'Not added'}</b></div>
         <div class="kv"><span>You paid for cover</span><b class="mono">${M(p.premium)}</b></div>
-        <div class="kv" style="border-top:1px solid var(--line2);margin-top:6px;padding-top:12px"><span>Paid out to you so far</span><b class="mono" style="font-size:16px">${M(paidTotal())}</b></div>
+        <div class="kv" style="border-top:1px solid var(--line2);margin-top:6px;padding-top:12px"><span>Paid out to you so far</span><b class="mono" style="font-size:16px">${S.points ? pts(S.points.earned) : M(paidTotal())}</b></div>
       </section>
       <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>${p.delay_cover ? `${Math.round(r.delay_tier1_minutes / 60)}h late pays ${M(r.delay_tier1_payout)}. ${Math.round(r.delay_tier2_minutes / 60)}h late pays ${M(r.delay_tier2_payout)}. Cancelled pays ${M(r.cancel_payout)}.` : 'Delay cover was not added to this trip.'}</span></div>
       ${factsBlock()}
@@ -267,6 +340,8 @@ function coverView() {
   const m = S.market, tax = m.tax_rate ? Math.round(total * m.tax_rate / (1 + m.tax_rate)) : 0;
   return `<div><h1>Add KODA to your trip</h1><p class="sub">Automatic payout for flight delays and lost bags.</p></div>
     ${flightCard(false)}
+    ${forecastCard()}
+    ${S.forecast && S.forecast.probability >= 55 ? '<div class="note"><b>A delay is already likely.</b> You can still add cover. A claim on cover bought now gets an extra check by a person.</div>' : ''}
     ${coverCard('delay', 'Delay cover', r.delay_premium, `${Math.round(r.delay_tier1_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier1_payout)}</b>. ${Math.round(r.delay_tier2_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier2_payout)}</b>.`)}
     ${coverCard('baggage', 'Baggage cover', r.baggage_premium, `Pays up to <b class="mono">${M(r.lost_bag_payout)}</b> if your bag is lost.`)}
     <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>No forms. Paid straight to ${acct(S.policy.payout_account)}.</span></div>
@@ -303,7 +378,8 @@ function claimsView() {
   let out = '';
   if (d) out += d.status === 'paid' ? paidView(d) : d.status === 'held' ? reviewView(d) : declinedView(d);
   if (b) out += bagView(b);
-  if (!d && !b) out = `<div style="text-align:center;padding-top:36px;display:flex;flex-direction:column;align-items:center;gap:10px">
+  if (S.rights && !d) out += rightsCard();
+  if (!d && !b && !S.rights) out = `<div style="text-align:center;padding-top:36px;display:flex;flex-direction:column;align-items:center;gap:10px">
       <div style="width:84px;height:84px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--cobalt)">${ico('flight_takeoff').replace('class="ms ', 'class="ms ').replace('aria-hidden', 'style="font-size:40px" aria-hidden')}</div>
       <h2 style="font-size:21px">No claims yet</h2>
       <p class="mute" style="max-width:270px">${S.policy.status === 'active' ? 'Nothing to do. If your flight is late, we pay you automatically and it shows up here.' : 'Add cover first. Then claims show up here.'}</p></div>` + (S.policy.status === 'active' ? flightCard(S.policy.delay_cover) : '');
@@ -324,7 +400,7 @@ function paidView(d) {
   return `<div class="rcpt"><span class="stamp">PAID</span>
       <div class="mute" style="font-size:13px">Payout receipt</div>
       <h1 style="font-size:21px;margin-top:6px;max-width:210px">${d.trigger === 'cancel' ? 'Flight cancelled.' : 'Flight delayed ' + hm(d.delay_minutes) + '.'} We paid you.</h1>
-      <div class="amt" style="margin-top:14px">${M(d.amount)}</div>
+      <div class="amt" style="margin-top:14px">${payTxt(d)}</div>${S.points ? `<div class="mute" style="font-size:13px">Worth ${M(d.amount)} in cash, plus a 25% bonus for choosing points</div>` : ''}
       ${topped && d.trigger !== 'cancel' ? `<span class="chip paid" style="margin-top:8px">Topped up past ${Math.round(r.delay_tier2_minutes / 60)} hours</span>` : ''}
       <div class="ln"></div>
       <div class="chk">${aiChip('What KODA AI checked')}
@@ -332,7 +408,7 @@ function paidView(d) {
       <div class="ln"></div>
       <div class="kv"><span>Flight</span><b>${esc(S.flight.airline)} <span class="mono">${esc(S.flight.code)}</span></b></div>
       <div class="kv"><span>Date</span><b>${esc((S.flight.depart_label || '').split(',')[0])}</b></div>
-      <div class="kv"><span>Sent to</span><b>${acct(S.policy.payout_account)}</b></div>
+      <div class="kv"><span>${S.points ? 'Added to' : 'Sent to'}</span><b>${S.points ? 'KODA wallet' : acct(S.policy.payout_account)}</b></div>
       <div class="kv"><span>Policy</span><b class="mono">${esc(S.policy.id)}</b></div>
       <div class="kv"><span>Booking (PNR)</span><b class="mono">${esc(S.policy.pnr || '')}</b></div>
       <div class="kv"><span>Reason</span><b>${d.trigger === 'cancel' ? 'Flight cancellation verified' : 'Flight delay verified'}</b></div>
@@ -341,7 +417,7 @@ function paidView(d) {
     ${msgCard(d)}
     <div class="aicard">${aiChip('KODA AI explains')}${aiText(d.explanation)}</div>
     ${steps(d.timeline)}
-    ${S.market.statutory ? `<div class="note"><b>The airline may owe you too.</b> ${esc(S.market.statutory)} This payment does not reduce it.</div>` : ''}
+    ${rightsCard()}
     <button id="done" class="btn primary block">Done</button>`;
 }
 function reviewView(d) {
@@ -401,6 +477,13 @@ function bind() {
     try { await api(`/api/traveler/${PID}/checkout`, 'POST', {...sel, ack}); ack = false; } catch (e) { fail(e); }
     await load();
   });
+  on('#otherToggle', () => { otherOpen = !otherOpen; render(true); });
+  document.querySelectorAll('[data-redeem]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { voucher = await api(`/api/traveler/${PID}/redeem`, 'POST', {partner: b.dataset.redeem, points: +b.dataset.amt}); toast('Voucher ready', 'ok'); }
+    catch (e) { fail(e); }
+    await load(); await loadWallet();
+  });
   on('#why', () => { showWhy = !showWhy; render(true); });
   on('#done', () => setTab('cover'));
   on('#bagToggle', () => { bagOpen = !bagOpen; render(true); });
@@ -429,17 +512,17 @@ function bind() {
   const fl = $('#fFlight'); if (fl) fl.oninput = () => { form.flight = fl.value; };
   const fn = $('#fName'); if (fn) fn.oninput = () => form.name = fn.value;
   const f4 = $('#fLast4'); if (f4) f4.oninput = () => { form.last4 = f4.value.replace(/\D/g, ''); f4.value = form.last4; };
-  const fr = $('#fRail'); if (fr) fr.onchange = () => form.rail = fr.value;
+  const fr = $('#fRail'); if (fr) fr.onchange = () => { form.rail = fr.value; render(true); };
   document.querySelectorAll('.pick').forEach(b => b.onclick = () => pickFlight(b.dataset.pick, b.dataset.mk));
   document.querySelectorAll('.apq').forEach(b => b.onclick = () => { ap = b.dataset.ap; loadReal(); });
   on('#fUse', () => { const v = form.flight.replace(/\s/g, '').toUpperCase(); const hit = [...SAMPLES, ...REAL].find(f => f.code.replace(/\s/g, '') === v); pickFlight(v, hit ? hit.market : ''); });
   on('#quote', async () => {
     if (!form.flight.trim()) return fail('Pick a flight first.');
     if (form.name.trim().length < 2) return fail('Enter your name.');
-    if (!/^\d{4}$/.test(form.last4)) return fail('Enter the last 4 digits of your payout account.');
+    if (form.rail !== 'KODA points' && !/^\d{4}$/.test(form.last4)) return fail('Enter the last 4 digits of your payout account.');
     $('#quote').disabled = true;
     try {
-      const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.last4, flight: form.flight.trim(), rail: form.rail || null});
+      const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.rail === 'KODA points' ? '0000' : form.last4, flight: form.flight.trim(), rail: form.rail || null});
       PID = r.policy; store.set('calmy.pid', PID); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false;
     } catch (e) { fail(e); $('#quote') && ($('#quote').disabled = false); return; }
     await load();
@@ -463,7 +546,7 @@ window.addEventListener('message', e => {
   if (e.data.reset) { PID = null; S = null; store.set('calmy.pid', null); form = {name: '', last4: '', flight: '', rail: '', market: ''}; tab = 'cover'; load(); return; }
   if (e.data.pid) { PID = e.data.pid; store.set('calmy.pid', PID); }
   if (e.data.tab) tab = e.data.tab;
-  load().then(() => render(true));
+  load().then(() => { render(true); if (tab === 'wallet') loadWallet(); });
 });
 
 // Poll so a payout triggered elsewhere shows up here. Skipped while typing so forms are not wiped.

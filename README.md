@@ -117,3 +117,17 @@ No build step and no CDN. `static/ui.css` holds the tokens and components, `stat
 shared helpers and the charts (delay track, risk score breakdown, outcome bar, payout curve, route
 art). Fonts and a 25 KB icon subset are served from `static/fonts`. Charts follow one rule set:
 status colors always carry a label, one axis only, values labeled directly.
+
+
+## AI value features (added for the final round)
+
+| Where | Feature | How it works in the prototype |
+|---|---|---|
+| Traveler | Delay forecast and early alert | `app/forecast.py`: a readable score from weather (live Open-Meteo when reachable, else simulated), airport traffic, time of day and the current delay. At 55% or more a covered traveler gets an alert. Presenter buttons "Storm builds" and "Weather clears" drive it. |
+| Traveler | Your rights card | `app/rights.py`: what the airline may also owe by market (EU261, UK261, US DOT, APPR, DGCA, ANAC, CAAT). Weather counts as extraordinary, so cash compensation shows as unlikely. Gemini rewords the summary when configured. Not legal advice. |
+| Traveler | Points payout and airport restaurants | Payout rail "KODA points" pays 25% more as points (1 point = 1 cent). The Wallet tab lists only restaurants that accepted points and are open during the wait, picks the best one, and issues a voucher code. The directory (`app/partners.py`) is fictional prototype data. |
+| Fraud | Adverse selection check | Cover bought while the forecast was already 55% or more adds 35 points to the risk score, so the claim goes to a person. It is never declined by the system. |
+| Insurer | Exposure forecast and dynamic price | `GET /api/console/exposure`: expected payout, reserve (expected plus a safety margin) and a suggested delay price per flight. Informs only. |
+| Insurer | Reviewer copilot | `GET /api/console/copilot/{id}` and `POST /api/console/copilot`: recommendation with confidence, evidence, an editable draft message and a question box. It advises approve, ask for proof or escalate. It never declines. |
+
+The forecast is a transparent score, not a trained model. In production the same inputs feed BigQuery ML.

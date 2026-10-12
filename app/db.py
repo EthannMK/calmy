@@ -12,7 +12,7 @@ import threading
 import time
 from contextlib import contextmanager
 
-from . import markets
+from . import markets, partners
 
 DB_PATH = os.environ.get("CALMY_DB", os.path.join(os.path.dirname(__file__), "..", "calmy.db"))
 _lock = threading.RLock()
@@ -69,6 +69,17 @@ CREATE TABLE IF NOT EXISTS baggage (
     policy_id TEXT, report_id TEXT, bag_tag TEXT, status TEXT,
     items TEXT, total INTEGER, created_at REAL
 );
+CREATE TABLE IF NOT EXISTS partners (
+    id TEXT PRIMARY KEY,
+    airport TEXT, name TEXT, kind TEXT, terminal TEXT, walk_min INTEGER,
+    opens TEXT, closes TEXT,              -- local opening hours, HH:MM
+    accepts INTEGER DEFAULT 0,            -- 1 when the outlet has joined KODA points
+    avg_spend INTEGER DEFAULT 12          -- typical spend in USD
+);
+CREATE TABLE IF NOT EXISTS redemptions (
+    id TEXT PRIMARY KEY,
+    policy_id TEXT, partner_id TEXT, points INTEGER, code TEXT, created_at REAL
+);
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts REAL, policy_id TEXT, type TEXT, detail TEXT
@@ -94,6 +105,8 @@ MIGRATIONS = [
     ("decisions", "breakdown", "TEXT"), ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'USD'"),
     ("policies", "created_at", "REAL"), ("policies", "pnr", "TEXT"), ("flights", "cancelled", "INTEGER DEFAULT 0"),
     ("decisions", "trigger", "TEXT DEFAULT 'delay'"), ("decisions", "elapsed_ms", "INTEGER"), ("decisions", "message", "TEXT"), ("decisions", "context", "TEXT"), ("policies", "sched_at_purchase", "TEXT"),
+    ("flights", "stress", "INTEGER DEFAULT 0"), ("policies", "f_adverse", "INTEGER DEFAULT 0"),
+    ("policies", "risk_at_purchase", "REAL"), ("decisions", "points", "INTEGER DEFAULT 0"),
 ]
 
 
@@ -153,6 +166,7 @@ def seed(c):
     c.execute("UPDATE flights SET depart_label=REPLACE(depart_label, '{D}', ?)", (tomorrow,))
     c.execute("UPDATE policies SET pnr='K7M2QD' WHERE id='CL-44910'")
     c.execute("UPDATE policies SET pnr='R4T9XE' WHERE id='CL-45102'")
+    partners.seed(c)
 
 
 def seed_rules(c):
@@ -165,7 +179,7 @@ def seed_rules(c):
 def reset():
     """Wipe everything and reseed. Backs the Reset demo data button."""
     with conn() as c:
-        for t in ("decisions", "baggage", "events", "policies", "flights", "rules"):  # api_usage is kept
+        for t in ("decisions", "baggage", "events", "redemptions", "partners", "policies", "flights", "rules"):  # api_usage is kept
             c.execute(f"DELETE FROM {t}")
         seed(c)
 

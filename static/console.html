@@ -93,15 +93,16 @@
 </div>
 <script src="/static/ui.js"></script>
 <script>
+const usd2 = n => '$' + Number(n).toFixed(2);
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
-let LIVE = {};
+let LIVE = {}, EXP = null, COP = {}, CHAT = {}, DRAFT = {};
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
-  ['Book of business', [['policies', 'verified_user', 'Policies']]],
+  ['Book of business', [['exposure', 'bolt', 'Exposure forecast'], ['policies', 'verified_user', 'Policies']]],
   ['Governance', [['rules', 'tune', 'Rules'], ['compliance', 'balance', 'Markets and law'], ['audit', 'history', 'Audit log']]],
   ['Evidence', [['performance', 'monitoring', 'Performance']]],
 ];
-const TITLES = {overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log', performance: 'Performance'};
+const TITLES = {exposure: 'Exposure forecast', overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log', performance: 'Performance'};
 window.onhashchange = () => { route = location.hash.slice(1) || 'overview'; last = ''; FQ = ''; refresh(); };
 const flightOf = f => `${esc(f.origin)} to ${esc(f.dest)}`;
 const mk = code => (ov.markets.find(m => m.code === code) || {name: code, currency: ''});
@@ -115,11 +116,12 @@ async function refresh() {
   ov = await api('/api/console/overview?market=' + RM);
   const held = ov.stats.held, bags = ov.stats.bag_waiting, base = route.split('/')[0];
   try { LIVE = await api('/api/live/status'); } catch (e) { LIVE = {}; }
+  try { EXP = await api('/api/console/exposure'); } catch (e) { EXP = null; }
   $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
   $('#crumb').textContent = 'Orchid Insure  /  ' + (TITLES[page] || 'Overview');
   let html;
-  try { html = await ({overview: vOverview, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
+  try { html = await ({overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
   catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
   if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); typeAll($('#view')); }
 }
@@ -133,7 +135,7 @@ function vOverview() {
   const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
   return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars.') + `
-  ${aiDesk()}${bizStrip()}
+  ${aiDesk()}${exposureStrip()}${bizStrip()}
   <div class="panel kpis">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
     ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts'))}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
@@ -155,6 +157,34 @@ function vOverview() {
     <section class="panel"><div class="ph"><h2>Claim outcomes</h2></div><div class="pb">${outcomeBar(o)}</div></section>
     <section class="panel"><div class="ph"><h2>Paid out by market</h2></div><div class="pb">${ov.by_market.length ? barList(ov.by_market.map(m => ({label: mk(m.market).name, value: m.usd, text: usd(m.usd)}))) : '<p class="mute">No payouts yet.</p>'}</div></section>
   </div></div>`;
+}
+function exposureStrip() {
+  if (!EXP) return '';
+  const hot = EXP.flights.filter(f => f.level === 'high');
+  return `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Exposure forecast</h2>${aiChip('KODA AI')}<a class="push" href="#exposure">Open</a></div>
+    <div class="pb" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+      <div><div class="mute" style="font-size:12px">Expected payouts, covered trips</div><div class="disp" style="font-size:22px">${usd2(EXP.expected_usd)}</div></div>
+      <div><div class="mute" style="font-size:12px">Reserve to hold (about 9 in 10 cases)</div><div class="disp" style="font-size:22px">${usd(EXP.reserve_usd)}</div></div>
+      <div><div class="mute" style="font-size:12px">Flights at high delay risk</div><div class="disp" style="font-size:22px;color:${hot.length ? 'var(--amber-d)' : 'var(--green)'}">${hot.length ? hot.map(f => esc(f.flight)).join(', ') : 'None'}</div></div></div></section>`;
+}
+function vExposure() {
+  if (!EXP) return head('Exposure forecast', '') + empty('error', 'Not available', 'Try again in a moment.');
+  const e = EXP, covered = e.flights.filter(f => f.covered > 0);
+  const lvl = f => `<span class="chip ${f.level === 'high' ? 'held' : f.level === 'medium' ? 'blue' : 'paid'}"><i></i>${f.level === 'high' ? 'High' : f.level === 'medium' ? 'Medium' : 'Low'}</span>`;
+  const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
+  return head('Exposure forecast', 'What the book may pay out on trips that have not flown yet, and what each flight should cost today.') + `
+  <div class="panel kpis" style="margin-bottom:20px">${kpi('Expected payouts', 'payments', usd2(e.expected_usd), covered.length + (covered.length === 1 ? ' flight with cover' : ' flights with cover'))}
+    ${kpi('Reserve to hold', 'shield', usd(e.reserve_usd), 'Expected plus a safety margin')}
+    ${kpi('Premium written', 'verified_user', usd(e.premium_usd), 'All active policies')}
+    ${kpi('Flights at high risk', 'warning', e.flights.filter(f => f.level === 'high').length, 'Delay chance of 55% or more')}</div>
+  <section class="panel"><div class="ph"><h2>Flights by delay risk</h2>${aiChip('KODA AI')}<span class="push mute">${esc(e.method)}</span></div>
+    <div class="tbl"><table><thead><tr><th>Flight</th><th>Risk</th><th>Chance of delay</th><th class="r">Covered</th><th class="r">Expected payout</th><th class="r">Price now</th><th class="r">Suggested price</th></tr></thead><tbody>
+    ${e.flights.map(f => `<tr style="vertical-align:top"><td><b class="mono">${esc(f.flight)}</b><div class="mute" style="font-size:12px">${esc(f.route)}</div></td><td>${lvl(f)}</td>
+      <td style="min-width:180px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;border-radius:99px;background:var(--line2)"><i style="display:block;height:100%;width:${f.probability}%;border-radius:99px;background:${f.level === 'high' ? 'var(--amber-d)' : 'var(--cobalt)'}"></i></div><b class="mono">${f.probability}%</b></div>
+        <div class="mute" style="font-size:12px;margin-top:4px">${f.drivers.filter(d => d.points > 0).sort((a, b) => b.points - a.points).slice(0, 2).map(d => esc(d.text)).join('; ')}</div></td>
+      <td class="r mono">${f.covered}</td><td class="r mono">${usd2(f.expected_usd)}</td><td class="r mono">$${f.price_now}</td>
+      <td class="r mono"><b style="color:${f.move === 'raise' ? 'var(--amber-d)' : 'inherit'}">$${Number(f.price_suggested).toFixed(2)}</b>${f.move === 'raise' ? '<div class="mute" style="font-size:12px">raise</div>' : ''}</td></tr>`).join('')}</tbody></table></div>
+    <div class="pb mute" style="border-top:1px solid var(--line2);font-size:12px">The score informs reserves and pricing. It never decides a payout. Suggested price = expected payout divided by a 60% target loss ratio, never below the current price. Change prices under Rules.</div></section>`;
 }
 function bizStrip() {
   const p = ov.performance, saved = p.auto_paid * p.manual_cost_usd;
@@ -232,11 +262,21 @@ async function vReview(id) {
   if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the AI is unsure about appear here for a person to decide.');
   const d = q.find(x => x.id === id) || q[0];
   const info = await api('/api/console/decision/' + d.policy_id);
+  if (!COP[d.id]) COP[d.id] = await api('/api/console/copilot/' + d.id); const cp = COP[d.id]; if (DRAFT[d.id] == null) DRAFT[d.id] = cp.draft; CHAT[d.id] = CHAT[d.id] || [];
   const p = info.policy, f = info.flight, th = info.rules.risk_threshold, cur = p.currency, parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
   return head('Review queue', `${q.length} ${q.length === 1 ? 'claim needs' : 'claims need'} a person. The system never declines a claim on its own.`) + `
   <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b><span class="mono">${x.risk_score}</span></div><div class="mute" style="font-size:12px">Policy ${esc(x.policy_id)}</div></a>`).join('')}</div></section>
   <div class="stack"><section class="panel"><div class="ph"><h2>${esc(p.traveler)}</h2><span class="chip held push"><i></i>Needs a person</span></div><div class="pb">
       <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd><dt>Why it was held</dt><dd>${aiChip('AI')} ${esc(d.explanation)}</dd></dl></div></section>
+    <section class="panel"><div class="ph"><h2>Reviewer copilot</h2>${aiChip(cp.ai ? 'Gemini' : 'KODA AI')}<span class="push mute" style="font-size:12px">Advises only. Never declines.</span></div><div class="pb" style="display:grid;gap:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="chip ${cp.action === 'approve' ? 'paid' : cp.action === 'escalate' ? 'red' : 'held'}"><i></i>Suggests: ${esc(cp.label)}</span><b class="mono">${cp.confidence}% confident</b></div>
+      <p style="line-height:1.5">${esc(cp.why[0])}</p>
+      ${cp.evidence.length ? `<div class="mute" style="font-size:13px"><b style="color:var(--ink)">Evidence</b><br>${cp.evidence.map(esc).join('<br>')}</div>` : ''}
+      <div><label class="lbl" for="draft">Draft message to the traveler</label><textarea id="draft" data-d="${esc(d.id)}" rows="4" class="field">${esc(DRAFT[d.id])}</textarea>
+        <button class="btn sm" id="copyDraft" style="margin-top:8px">${ico('download')}Copy message</button></div>
+      <div><label class="lbl" for="ask">Ask about this claim</label>
+        ${CHAT[d.id].map(m => `<div class="note ${m.who === 'you' ? '' : 'info'}" style="margin-bottom:6px"><b>${m.who === 'you' ? 'You' : 'Copilot'}:</b> ${esc(m.text)}</div>`).join('')}
+        <div style="display:flex;gap:8px"><input id="ask" class="field" data-d="${esc(d.id)}" placeholder="Why was it held? What should I do?" maxlength="300"><button class="btn primary" id="askBtn">Ask</button></div></div></div></section>
     <section class="panel"><div class="ph"><h2>Your decision</h2></div><div class="pb"><label class="lbl" for="note">Reason, saved in the audit log</label><textarea id="note" rows="3" class="field" placeholder="Why you approve or decline"></textarea>
       <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div><p class="mute" style="font-size:12px;margin-top:10px">The KODA AI can pay or ask for help. Only a person can decline.</p></div></section>
     <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div></div></section></div></div>`;
@@ -317,6 +357,15 @@ function bindAll() {
     try { const r = await api('/api/flights/' + encodeURIComponent(b.dataset.f) + '/refresh', 'POST'); toast(`Checked ${r.flight.code}. Delay is ${r.flight.delay_minutes} min.`, 'ok'); } catch (e) { fail(e); }
     last = ''; refresh();
   });
+  const dr = $('#draft'); if (dr) dr.oninput = () => { DRAFT[dr.dataset.d] = dr.value; };
+  const cd = $('#copyDraft'); if (cd) cd.onclick = async () => { try { await navigator.clipboard.writeText(($('#draft') || {}).value || ''); toast('Message copied.', 'ok'); } catch (e) { toast('Select the text and copy it.', 'ok'); } };
+  const askGo = async () => {
+    const i = $('#ask'); if (!i || i.value.trim().length < 2) return;
+    const id = i.dataset.d, q = i.value.trim(); CHAT[id].push({who: 'you', text: q}); i.value = '';
+    try { const r = await api('/api/console/copilot', 'POST', {decision: id, question: q}); CHAT[id].push({who: 'ai', text: r.answer}); } catch (e) { fail(e); }
+    last = ''; refresh();
+  };
+  const ab = $('#askBtn'); if (ab) ab.onclick = askGo; const ak = $('#ask'); if (ak) ak.onkeydown = e => { if (e.key === 'Enter') askGo(); };
   const rm = $('#rmSel'); if (rm) rm.onchange = () => { RM = rm.value; last = ''; refresh(); };
   const fq = $('#fq'); if (fq) fq.oninput = () => { FQ = fq.value; last = ''; const pos = fq.selectionStart; refresh().then(() => { const n = $('#fq'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }); };
   document.querySelectorAll('.act').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note: ($('#note') || {}).value || ''}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });

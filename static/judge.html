@@ -86,10 +86,10 @@
 <section class="coach" aria-label="What to do now">
   <div class="dots" id="dots"><button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button><button data-d="4">4</button></div>
   <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a flight and adds cover.</span>
-    <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button></div>
+    <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button><button class="btn sm" data-do="1p">Take payout as points</button></div>
     <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Real flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
   <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The AI reacts on both sides.</span>
-    <div class="acts"><button class="btn primary sm" data-ev="delayed" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delayed" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
+    <div class="acts"><button class="btn sm" data-ev="storm">Storm builds</button><button class="btn sm" data-ev="clear">Weather clears</button><button class="btn primary sm" data-ev="delayed" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delayed" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
   <div class="stp" data-s="3"><span class="h">Try a risky traveler</span><span class="t">Same delay, suspicious profile. The AI asks a person instead of paying.</span>
     <div class="acts"><button class="btn primary sm" data-do="3">Run the risky case</button></div></div>
   <div class="stp" data-s="4"><span class="h">Decide as the insurer</span><span class="t">A person approves or declines in the review queue.</span>
@@ -148,7 +148,7 @@ async function poll() {
 }
 const WHERE = {
   1: ['Pick a flight, add your name, add cover', 'The new policy appears on the overview'],
-  2: ['Nothing to do. You get paid by itself', 'Watch the AI score the risk and decide'],
+  2: ['Storm gives an early alert. A delay pays by itself', 'Exposure rises, then the AI scores the risk and decides'],
   3: ['This traveler is told a person is checking', 'The AI holds the claim and shows why'],
   4: ['The traveler sees the result straight away', 'Approve or decline in the review queue'],
 };
@@ -176,10 +176,10 @@ function playPipeline(d) {
   }, 250 + nodes.length * 380);
 }
 
-async function coverTrip(name, last4, flights) {
+async function coverTrip(name, last4, flights, rail) {
   for (const f of flights) {
     try {
-      const q = await api('/api/policies', 'POST', {name, last4, flight: f});
+      const q = await api('/api/policies', 'POST', {name, last4, flight: f, rail: rail || null});
       await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true});
       return {pid: q.policy, flight: f};
     } catch (e) { /* that flight already has a delay or has left, try the next one */ }
@@ -188,6 +188,7 @@ async function coverTrip(name, last4, flights) {
 }
 const actions = {
   async 1() { const r = await coverTrip('Lena Fischer', '1234', FREE); store.set('calmy.pid', r.pid); toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); },
+  async '1p'() { const r = await coverTrip('Pim Wong', '0000', FREE, 'KODA points'); store.set('calmy.pid', r.pid); toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); },
   async 3() {
     try { await api('/api/traveler/CL-45102/checkout', 'POST', {delay: true, baggage: true, ack: true}); } catch (e) { if (!/already active/i.test(e)) throw e; }
     await api('/api/webhook/flight-event', 'POST', {flight: 'OA 108', event: 'delayed', minutes: 200});
@@ -207,6 +208,10 @@ document.querySelectorAll('[data-ev]').forEach(b => b.onclick = async () => {
   busy = true; b.disabled = true;
   try {
     const r = await api('/api/webhook/flight-event', 'POST', {flight: t.flight.code, event: b.dataset.ev, minutes: +b.dataset.min || 0});
+    if (b.dataset.ev === 'storm' || b.dataset.ev === 'clear') {
+      toast(b.dataset.ev === 'storm' ? 'Storm building. Covered travelers get an early alert, and the insurer sees exposure rise.' : 'Weather cleared. The forecast comes back down.', 'ok');
+      toPhone({tab: 'cover'}); goDesk('#exposure'); busy = false; b.disabled = false; return;
+    }
     if (b.dataset.ev === 'landed') toast(r.archived ? 'Landed on time. The trip was archived with no payout and no message.' : 'Nothing to archive.', 'ok');
     else if (!r.results.length) toast('Nothing new to pay at this level. Try a longer delay or a cancellation.', 'ok');
     toPhone({tab: 'claims'}); goDesk(b.dataset.ev === 'landed' ? '#policies' : '#decisions/' + pid); shown = '';
