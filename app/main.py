@@ -154,6 +154,7 @@ class NewPolicy(BaseModel):
     rail: str | None = None  # payout rail, must be one of the market's rails
     date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")  # day of the flight, up to a month ahead
     channel: str | None = Field(None, max_length=30)  # where the ticket was bought, for the sales story
+    booking_ref: str | None = Field(None, pattern=r"^[A-Za-z0-9]{5,10}$")  # the airline or booking site's own reference on the ticket
 
 
 @app.post("/api/policies")
@@ -200,7 +201,9 @@ def create_policy(body: NewPolicy):
         if not sample:
             live.upsert_flight(c, f)
         pid = engine._new_id("CL")
-        pnr = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))  # booking reference
+        # The booking reference belongs to the ticket, so the traveler's own is stored. A random one is only a
+        # fallback for callers that send none (the presenter panel and seed data).
+        pnr = (body.booking_ref or "").upper() or "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
         c.execute(
             "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr,channel) VALUES (?,?,?,?,'quote',?,?,?,?)",
             (pid, body.name.strip(), f["code"], (f"{rail} wallet" if rail == markets.POINTS_RAIL else f"{rail} ending {body.last4}"), market, info["currency"], pnr, (body.channel or "").strip() or None),
@@ -370,7 +373,10 @@ class BagClaim(BaseModel):
 @app.post("/api/traveler/{pid}/baggage")
 def bag_claim(pid: str, body: BagClaim):
     with db.conn() as c:
-        _policy(c, pid)
+        p = _policy(c, pid)
+        f = _flight(c, p["flight"])
+        if f and f.get("sched_ts") and f["sched_ts"] > time.time():  # a bag cannot be lost before the flight has left
+            raise HTTPException(400, "You can report a lost bag once your flight has left.")
         try:
             claim = engine.submit_bag_claim(
                 c, pid, body.report_id.strip(), body.bag_tag.strip(), [i.model_dump() for i in body.items]

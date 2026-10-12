@@ -92,3 +92,32 @@ def test_later_day_flight_is_not_refreshed_from_todays_live_status():
         finally:
             live.lookup = old
         assert out["results"] == [] and "closer to the day" in out["note"]
+
+
+def _book(ref=None, day=5):
+    body = {"name": "Lena Fischer", "last4": "1234", "flight": "TG 102", "date": _day(day), "channel": "Trip.com"}
+    if ref is not None:
+        body["booking_ref"] = ref
+    return client.post("/api/policies", json=body)
+
+
+def test_the_travelers_own_booking_reference_is_stored():
+    with client:
+        r = _book("k7m2qd")
+        assert r.status_code == 200
+        pid = r.json()["policy"]
+        assert client.get(f"/api/traveler/{pid}").json()["policy"]["pnr"] == "K7M2QD"  # kept, upper-cased
+
+
+def test_a_malformed_booking_reference_is_refused():
+    with client:
+        assert _book("ab").status_code == 422
+        assert _book("AB-12-34").status_code == 422
+
+
+def test_a_lost_bag_cannot_be_reported_before_the_flight_leaves():
+    with client:
+        pid = _book("K7M2QD").json()["policy"]
+        client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": True, "ack": True})
+        r = client.post(f"/api/traveler/{pid}/baggage", json={"report_id": "PIR12345", "bag_tag": "TG123456", "items": [{"name": "Shirt", "amount": 20}]})
+        assert r.status_code == 400 and "once your flight has left" in r.json()["detail"]

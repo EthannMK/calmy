@@ -230,7 +230,7 @@ function outcomeChip(d) {
 async function vPolicies() {
   const rows = (await api('/api/console/policies')).filter(p => matchQ(p.id, p.pnr, p.traveler, p.flight, p.market));
   return head('Policies', 'Every policy with active cover. Amounts are in each policy\'s own currency.', searchBox('Search policies')) +
-    (rows.length ? `<div class="panel tbl"><table><thead><tr><th>Policy</th><th>PNR</th><th>Traveler</th><th>Flight</th><th>Booked with</th><th>Market</th><th>Cover</th><th>Delay claim</th><th>Bag claim</th></tr></thead><tbody>
+    (rows.length ? `<div class="panel tbl"><table><thead><tr><th>Policy</th><th>Booking ref</th><th>Traveler</th><th>Flight</th><th>Booked with</th><th>Market</th><th>Cover</th><th>Delay claim</th><th>Bag claim</th></tr></thead><tbody>
     ${rows.map(p => { const d = p.decision, b = p.bag, c = p.currency;
       return `<tr class="${d ? 'click' : ''}" ${d ? `onclick="location.hash='decisions/${esc(p.id)}'"` : ''}><td class="mono">${esc(p.id)}${p.status === 'archived' ? ' <span class="chip">Archived</span>' : ''}</td><td class="mono">${esc(p.pnr || '')}</td><td>${esc(p.traveler)}</td><td class="mono">${esc(p.flight)}</td><td>${esc(p.channel || 'Direct')}</td><td>${esc(p.market)}, ${esc(c)}</td><td>${[p.delay_cover && 'Delay', p.baggage_cover && 'Baggage'].filter(Boolean).join(' and ') || 'None'}</td>
         <td>${d ? outcomeChip({status: d.status, decided_by: d.status === 'paid' ? 'x' : null}).replace('Approved by a person', 'Paid') + ' <span class="mono">' + money(d.amount, c) + '</span>' : '<span class="faint">None</span>'}</td><td>${b ? esc(b.status) + ' <span class="mono">' + money(b.amount, c) + '</span>' : '<span class="faint">None</span>'}</td></tr>`; }).join('')}</tbody></table></div>`

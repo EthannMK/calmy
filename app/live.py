@@ -197,7 +197,7 @@ def delayed_now(hub: str = "BKK", min_minutes: int = 30) -> list[dict]:
 def upcoming(hub: str = "BKK", limit: int = 12) -> list[dict]:
     """Next departures from an airport, soonest first. Shares one cached call with delayed_now."""
     now = time.time()
-    out = [f for f in _board(hub) if f["sched_ts"] and f["sched_ts"] > now - 3600 and f["status"] in ("scheduled", "active", "unknown")]
+    out = [f for f in _board(hub) if f["sched_ts"] and f["sched_ts"] > now and f["status"] in ("scheduled", "active", "unknown")]
     out.sort(key=lambda f: f["sched_ts"])
     seen, uniq = set(), []
     for f in out:  # one row per aircraft slot

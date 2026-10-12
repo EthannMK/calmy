@@ -171,7 +171,7 @@ let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid'
 let S = null, MK = {}, tab = ['cover', 'claims', 'wallet', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
 let W = null, voucher = null, otherOpen = false;
 let selDate = '', calOpen = false, calMonth = null, selFlight = null;
-let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app'}, ap = 'BKK';
+let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app', ref: ''}, ap = 'BKK';
 let ex = {open: false, what: 'Meal', amount: '', receipt: null, name: ''}, letter = null, letterOpen = false, edited = false;
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
 const cur = () => (S && S.policy && S.policy.currency) || 'USD';
@@ -220,7 +220,7 @@ function flightCard(withTrack) {
       <div style="text-align:right"><div class="bp-ap">${esc(f.dest)}</div><div class="bp-city" style="margin-left:auto">${esc(f.dest_city)}</div></div>
     </div>
     <div class="perf"></div>
-    <div class="bp-foot"><div><small>Departs</small><b>${esc(f.depart_label)}</b></div><div style="text-align:right"><small>Passenger</small><b>${esc(S.policy.traveler)}</b></div>${S.policy.pnr ? `<div style="text-align:right"><small>PNR</small><b class="mono">${esc(S.policy.pnr)}</b></div>` : ''}</div>
+    <div class="bp-foot"><div><small>Departs</small><b>${esc(f.depart_label)}</b></div><div style="text-align:right"><small>Passenger</small><b>${esc(S.policy.traveler)}</b></div>${S.policy.pnr ? `<div><small>Booking ref</small><b class="mono">${esc(S.policy.pnr)}</b></div>` : ''}</div>
     ${S.weather && S.weather.source.startsWith('Live') ? `<div class="bp-wx">${ico('info')}<span><b>${esc(S.flight.origin)} now:</b> ${esc(S.weather.text)}</span></div>` : ''}
     ${withTrack ? `<div class="bp-track">${delayTrack(f.delay_minutes, S.rules, cur(), true)}</div>` : ''}
     <div class="bp-status"><span style="display:flex;align-items:center;gap:10px"><span class="tag ${late ? 'late' : 'ok'}">${f.cancelled ? 'Cancelled' : late ? 'Delayed ' + hm(f.delay_minutes) : 'On time so far'}</span>${S.policy.status === 'active' && S.policy.delay_cover ? `<span class="radar" title="KODA AI is watching this flight"></span>${aiChip('Watching', true)}` : ''}</span>
@@ -348,12 +348,17 @@ function startView() {
     <section><div class="cap">1. Find your flight</div>
       ${LIVE.ready ? '' : `<div class="note" role="status"><b>Live flight data is not connected.</b> This app only covers real flights, so there is nothing to pick yet. ${esc(LIVE.last_error || 'Set the flight data key on the server and reload.')}</div>`}
       ${selFlight ? selectedFlight() : flightFinder()}</section>
-    <section><div class="cap">2. You</div>
+    <section><div class="cap">2. Your ticket</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-      <input id="fName" class="field" placeholder="Full name" maxlength="40" value="${esc(form.name)}">
-      <select id="fChan" class="field" aria-label="Where you booked the ticket">${['Airline website or app', 'Trip.com', 'Agoda', 'Another travel site', 'Not booked yet'].map(c => `<option ${c === form.channel ? 'selected' : ''}>${c}</option>`).join('')}</select>
+      <input id="fName" class="field" placeholder="Full name, as on your ticket" maxlength="40" autocomplete="name" value="${esc(form.name)}">
+      <select id="fChan" class="field" aria-label="Where you bought the ticket">${['Airline website or app', 'Trip.com', 'Agoda', 'Another travel site'].map(c => `<option value="${c}" ${c === form.channel ? 'selected' : ''}>${c === 'Airline website or app' ? 'Bought on the airline website or app' : c === 'Another travel site' ? 'Bought on another travel site' : 'Bought on ' + c}</option>`).join('')}</select>
+      <input id="fRef" class="field mono" placeholder="Booking reference" maxlength="10" autocapitalize="characters" autocomplete="off" value="${esc(form.ref)}">
+      <div class="mute" style="font-size:13px">The 6 letters or numbers on your e-ticket or booking email. You can buy your ticket anywhere. KODA only adds the cover.</div></div></section>
+    <section><div class="cap">3. Your payout</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+      ${rails.length ? `<select id="fRail" class="field" aria-label="Payout method">${rails.map(r => `<option ${r === form.rail ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>` : ''}
       ${form.rail === 'KODA points' ? '' : `<input id="fLast4" class="field mono" placeholder="Last 4 digits of your payout account" inputmode="numeric" maxlength="4" value="${esc(form.last4)}">`}
-      ${rails.length ? `<select id="fRail" class="field">${rails.map(r => `<option ${r === form.rail ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>${form.rail === 'KODA points' ? '<div class="note info">Get 25% more as points. Spend them at partner restaurants in your departure airport. No account needed.</div>' : `<div class="mute" style="font-size:13px">Payout in ${esc(m.currency)} to your own account.</div>`}` : '<div class="mute" style="font-size:13px">Payout options appear once you pick a flight.</div>'}</div></section>
+      ${rails.length ? (form.rail === 'KODA points' ? '<div class="note info">Get 25% more as points. Spend them at partner restaurants in your departure airport. No account needed.</div>' : `<div class="mute" style="font-size:13px">Payout in ${esc(m.currency)} to your own account.</div>`) : '<div class="mute" style="font-size:13px">Payout options appear once you pick a flight.</div>'}</div></section>
     <button id="quote" class="btn primary block">See price</button>`;
 }
 
@@ -382,7 +387,7 @@ function coverView() {
       <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>${p.delay_cover ? `${Math.round(r.delay_tier1_minutes / 60)}h late pays ${M(r.delay_tier1_payout)}. ${Math.round(r.delay_tier2_minutes / 60)}h late pays ${M(r.delay_tier2_payout)}. Cancelled pays ${M(r.cancel_payout)}.` : 'Delay cover was not added to this trip.'}</span></div>
       ${factsBlock()}
       <button class="btn block" data-newtrip>Add another trip</button>
-      ${p.baggage_cover && !S.baggage ? `<button id="bagStart" class="btn block">My bag is lost</button>` : ''}`;
+      ${p.baggage_cover && !S.baggage ? (S.flight.sched_ts && S.flight.sched_ts * 1000 > Date.now() ? `<div class="mute" style="font-size:13px">Lost bag? You can report it here once your flight has left.</div>` : `<button id="bagStart" class="btn block">My bag is lost</button>`) : ''}`;
   }
   const total = (sel.delay ? r.delay_premium : 0) + (sel.baggage ? r.baggage_premium : 0);
   const m = S.market, tax = m.tax_rate ? Math.round(total * m.tax_rate / (1 + m.tax_rate)) : 0;
@@ -458,7 +463,7 @@ function paidView(d) {
       <div class="kv"><span>Date</span><b>${esc((S.flight.depart_label || '').split(',')[0])}</b></div>
       <div class="kv"><span>${S.points ? 'Added to' : 'Sent to'}</span><b>${S.points ? 'KODA wallet' : acct(S.policy.payout_account)}</b></div>
       <div class="kv"><span>Policy</span><b class="mono">${esc(S.policy.id)}</b></div>
-      <div class="kv"><span>Booking (PNR)</span><b class="mono">${esc(S.policy.pnr || '')}</b></div>
+      <div class="kv"><span>Booking reference</span><b class="mono">${esc(S.policy.pnr || '')}</b></div>
       <div class="kv"><span>Reason</span><b>${d.trigger === 'cancel' ? 'Flight cancellation verified' : 'Flight delay verified'}</b></div>
 
       </div>
@@ -641,6 +646,7 @@ function bind() {
   document.querySelectorAll('.cd').forEach(b => b.onclick = () => { selDate = b.dataset.day; calMonth = null; calOpen = false; loadReal(); });
   on('#changeFlight', () => { selFlight = null; form.flight = ''; form.market = ''; render(true); });
   const fc = $('#fChan'); if (fc) fc.onchange = () => form.channel = fc.value;
+  const fref = $('#fRef'); if (fref) fref.oninput = () => { form.ref = fref.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(); fref.value = form.ref; };
   on('#fUse', async () => {
     const v = form.flight.replace(/\s/g, '').toUpperCase(); if (!v) return fail('Enter a flight number, for example TG 102.');
     const hit = [...SAMPLES, ...REAL].find(f => f.code.replace(/\s/g, '') === v);
@@ -651,11 +657,12 @@ function bind() {
   });
   on('#quote', async () => {
     if (!form.flight.trim()) return fail('Pick a flight first.');
-    if (form.name.trim().length < 2) return fail('Enter your name.');
+    if (form.name.trim().length < 2) return fail('Enter your name as it appears on your ticket.');
+    if (!/^[A-Za-z0-9]{5,10}$/.test(form.ref)) return fail('Enter the booking reference from your ticket. It is 5 to 10 letters or numbers.');
     if (form.rail !== 'KODA points' && !/^\d{4}$/.test(form.last4)) return fail('Enter the last 4 digits of your payout account.');
     $('#quote').disabled = true; $('#quote').textContent = 'Checking your flight...';
     try {
-      const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.rail === 'KODA points' ? '0000' : form.last4, flight: form.flight.trim(), rail: form.rail || null, date: (selFlight && selFlight.flight_date) || selDate || null, channel: form.channel || null});
+      const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.rail === 'KODA points' ? '0000' : form.last4, flight: form.flight.trim(), rail: form.rail || null, date: (selFlight && selFlight.flight_date) || selDate || null, channel: form.channel || null, booking_ref: form.ref});
       PID = r.policy; store.set('calmy.pid', PID); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false;
     } catch (e) { fail(e); $('#quote') && ($('#quote').disabled = false); return; }
     await load();
@@ -672,12 +679,12 @@ async function loadReal() {
   render(true);
 }
 
-function newTrip() { PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app'}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; load().then(() => loadReal()); }
+function newTrip() { PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app', ref: ''}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; load().then(() => loadReal()); }
 
 // The live demo page drives this app from outside: it can switch trip, switch tab or clear the app.
 window.addEventListener('message', e => {
   if (e.origin !== location.origin || !e.data) return;
-  if (e.data.reset) { PID = null; S = null; store.set('calmy.pid', null); form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app'}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; load().then(() => { if (LIVE.ready) loadReal(); }); return; }
+  if (e.data.reset) { PID = null; S = null; store.set('calmy.pid', null); form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app', ref: ''}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; load().then(() => { if (LIVE.ready) loadReal(); }); return; }
   if (e.data.pid) { PID = e.data.pid; store.set('calmy.pid', PID); }
   if (e.data.tab) tab = e.data.tab;
   load().then(() => { render(true); if (tab === 'wallet') loadWallet(); });

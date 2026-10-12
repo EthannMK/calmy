@@ -209,12 +209,13 @@ async function liveCandidates() {
   throw last || 'No upcoming real flights were found. Try the real flight box in More.';
 }
 /* Cover one real flight as the traveler, then add a second, suspicious traveler on the same flight in the background. */
+const refCode = () => Array.from({length: 6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
 async function coverTrip(name, last4, flights, rail) {
   let err = null;
   for (const f of flights) {
     try {
       const [code, date] = f.split('@');
-      const q = await api('/api/policies', 'POST', {name, last4, flight: code, rail: rail || null, date: date || null, channel: 'Demo'});
+      const q = await api('/api/policies', 'POST', {name, last4, flight: code, rail: rail || null, date: date || null, channel: 'Airline website or app', booking_ref: refCode()});
       await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true});
       store.set('koda.own', q.policy); store.set('calmy.pid', q.policy);
       try { const r = await api('/api/demo/cover-sample', 'POST', {flight: q.flight.code, risky: true}); store.set('koda.risky', r.policy); } catch (e) { store.set('koda.risky', null); }
