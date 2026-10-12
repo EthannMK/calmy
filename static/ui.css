@@ -152,3 +152,4 @@ th.r,td.r{text-align:right}
 .feed .ic{width:26px;height:26px;border-radius:8px;background:linear-gradient(120deg,var(--ai1),var(--ai2));display:flex;align-items:center;justify-content:center}
 .feed .ic svg{width:14px;height:14px}
 .feed small{display:block;color:var(--mute);font-size:12px}
+.field::placeholder{text-transform:none}

@@ -28,6 +28,8 @@ def refresh_flight(code: str) -> dict:
         raise live.LiveError("Flight not found.")
     if f["source"] != "live":
         raise live.LiveError("This is a sample flight, so there is no real status to check.")
+    if f.get("sim"):
+        return {"flight": f, "results": [], "note": "A demo event is set on this flight, so the live status is paused."}
     fresh = live.lookup(code, f["flight_date"])
     context.prefetch(fresh["origin"])  # network call, before the database lock
     with db.conn() as c:

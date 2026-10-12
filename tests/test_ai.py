@@ -2,6 +2,7 @@
 import os
 import tempfile
 
+os.environ["KODA_SAMPLE_DATA"] = "1"
 os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "a.db")
 os.environ.pop("AVIATIONSTACK_KEY", None)
 os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
@@ -102,3 +103,21 @@ def test_copilot_recommends_escalate_for_shared_account_and_never_declines():
         assert "OA 108" in rec["draft"]
         a = client.post("/api/console/copilot", json={"decision": r["decision"], "question": "Why was it held?"}).json()
         assert "signals" in a["answer"]
+
+
+def test_risky_cover_sample_is_held_when_the_same_delay_hits_both():
+    with client:
+        a = client.post("/api/demo/cover-sample", json={"flight": "OA 204"}).json()["policy"]
+        b = client.post("/api/demo/cover-sample", json={"flight": "OA 204", "risky": True}).json()["policy"]
+        out = {r["policy"]: r["status"] for r in _hook("delayed", 200, "OA 204")["results"]}
+        assert out[a] == "paid" and out[b] == "held"
+
+
+def test_demo_event_pauses_live_refresh_so_it_cannot_undo_the_delay():
+    from app import db, track
+    with client:
+        with db.conn() as c:
+            c.execute("UPDATE flights SET source='live', flight_date='x' WHERE code='OA 204'")
+        _hook("delayed", 200, "OA 204")
+        r = track.refresh_flight("OA 204")
+        assert r["flight"]["delay_minutes"] == 200 and "paused" in r["note"]

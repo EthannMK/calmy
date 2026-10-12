@@ -3,6 +3,7 @@ import os
 import tempfile
 import time
 
+os.environ["KODA_SAMPLE_DATA"] = "1"
 os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "x.db")
 os.environ.pop("AVIATIONSTACK_KEY", None)
 os.environ["KODA_NO_WEATHER"] = "1"
@@ -186,7 +187,7 @@ def test_wrong_rail_and_bad_input_rejected():
         assert _quote("Lena Fischer", "1234", "OA 420", rail="PromptPay").status_code == 400
         assert _quote("L", "1234", "OA 420").status_code == 422
         assert _quote("Lena Fischer", "12a4", "OA 420").status_code == 422
-        assert _quote("Lena Fischer", "1234", "ZZ 999").status_code == 400  # not a sample flight and no live key
+        assert _quote("Lena Fischer", "1234", "ZZ 999").status_code == 503  # not a sample flight and no live key
 
 
 def test_checkout_needs_acknowledgement():

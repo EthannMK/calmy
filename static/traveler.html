@@ -81,6 +81,7 @@
   .opt .c{font-family:'Geist Mono',monospace;font-weight:700;width:60px;flex-shrink:0}
   .opt .r{flex:1}
   .field.mono{font-family:'Geist Mono',monospace}
+  .field::placeholder{text-transform:none}
   .field{height:46px;border-radius:10px;font-size:15px}
   .btn{height:48px;border-radius:10px;font-size:15px}
   .btn.sm{height:36px;font-size:13px}
@@ -296,11 +297,12 @@ function startView() {
       <p>Pick your flight. If it runs late or your bag is lost, we pay you automatically.</p>
       ${routeArt()}</section>
     <section><div class="cap">1. Find your flight</div>
-      <div class="row2"><input id="fFlight" class="field mono" style="text-transform:uppercase" placeholder="Flight number, e.g. OA 310" maxlength="8" value="${esc(form.flight)}"><button id="fUse" class="btn primary" style="padding:0 20px">Find</button></div>
+      ${LIVE.enabled ? '' : `<div class="note" role="status"><b>Live flight data is not connected.</b> This app only covers real flights, so there is nothing to pick yet. ${esc(LIVE.last_error || 'Set the flight data key on the server and reload.')}</div>`}
+      <div class="row2" style="margin-top:${LIVE.enabled ? 0 : 10}px"><input id="fFlight" class="field mono" style="text-transform:uppercase" placeholder="Flight, e.g. TG 102" maxlength="8" value="${esc(form.flight)}" ${LIVE.enabled ? '' : 'disabled'}><button id="fUse" class="btn primary" style="padding:0 20px" ${LIVE.enabled ? '' : 'disabled'}>Find</button></div>
       ${LIVE.enabled ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" role="group" aria-label="Departure airport">${['BKK', 'LHR', 'JFK', 'SIN', 'DEL', 'SYD'].map(a => `<button data-ap="${a}" class="apq ${a === ap ? 'on' : ''}">${a}</button>`).join('')}</div>` : ''}
       ${realMsg ? `<div class="note" style="margin-top:10px">${esc(realMsg)}</div>` : ''}
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:16px 0 6px;color:var(--ink2);font-weight:600">${LIVE.enabled && REAL.length ? `<span class="radar"></span>Live departures from ${esc(ap)}` : 'Upcoming flights'}</div>
-      <div style="display:flex;flex-direction:column;gap:6px">${(LIVE.enabled && REAL.length ? REAL : SAMPLES).map(flightRow).join('')}</div></section>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:16px 0 6px;color:var(--ink2);font-weight:600">${LIVE.enabled && REAL.length ? `<span class="radar"></span>Live departures from ${esc(ap)}` : ''}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${(LIVE.enabled ? REAL : []).map(flightRow).join('')}</div></section>
     <section><div class="cap">2. You</div>
       <div style="display:flex;flex-direction:column;gap:8px">
       <input id="fName" class="field" placeholder="Full name" maxlength="40" value="${esc(form.name)}">
@@ -515,7 +517,14 @@ function bind() {
   const fr = $('#fRail'); if (fr) fr.onchange = () => { form.rail = fr.value; render(true); };
   document.querySelectorAll('.pick').forEach(b => b.onclick = () => pickFlight(b.dataset.pick, b.dataset.mk));
   document.querySelectorAll('.apq').forEach(b => b.onclick = () => { ap = b.dataset.ap; loadReal(); });
-  on('#fUse', () => { const v = form.flight.replace(/\s/g, '').toUpperCase(); const hit = [...SAMPLES, ...REAL].find(f => f.code.replace(/\s/g, '') === v); pickFlight(v, hit ? hit.market : ''); });
+  on('#fUse', async () => {
+    const v = form.flight.replace(/\s/g, '').toUpperCase(); if (!v) return fail('Enter a flight number, for example TG 102.');
+    const hit = [...SAMPLES, ...REAL].find(f => f.code.replace(/\s/g, '') === v);
+    if (hit) return pickFlight(hit.code, hit.market);
+    $('#fUse').disabled = true; realMsg = 'Looking up ' + v + '...';
+    try { const f = await api('/api/live/lookup?flight=' + encodeURIComponent(v)); realMsg = ''; REAL = [f, ...REAL.filter(x => x.code !== f.code)]; pickFlight(f.code, f.market); }
+    catch (e) { realMsg = String(e); render(true); }
+  });
   on('#quote', async () => {
     if (!form.flight.trim()) return fail('Pick a flight first.');
     if (form.name.trim().length < 2) return fail('Enter your name.');

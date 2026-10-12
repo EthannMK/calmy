@@ -71,8 +71,9 @@
   details.mk[open] summary::after{content:'expand_less'}
   details.mk .body{padding:0 18px 18px;display:grid;gap:14px;font-size:13px}
   .empty{text-align:center;padding:56px 20px;color:var(--mute)}.empty .ms{font-size:36px;color:var(--faint)}.empty h2{font-size:18px;color:var(--ink);margin:8px 0 4px}
+  .rulescols{grid-template-columns:minmax(0,420px) minmax(0,1fr)}
   .menu{display:none}
-  @media(max-width:1100px){.cols,.split{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kpis>div:nth-child(3){border-left:0}.kpis>div:nth-child(n+3){border-top:1px solid var(--line)}}
+  @media(max-width:1100px){.cols,.split,.rulescols{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kpis>div:nth-child(3){border-left:0}.kpis>div:nth-child(n+3){border-top:1px solid var(--line)}}
   @media(max-width:860px){.app{grid-template-columns:1fr}.rail{position:static;height:auto;flex-direction:row;align-items:center;gap:8px;padding:10px 12px;overflow-x:auto}
     .rail .grp h4,.rail .foot{display:none}.rail nav{display:flex;gap:2px}.rail .grp{display:flex}.nav a{white-space:nowrap;padding:0 12px}.nav a .ms{display:none}.nav a.on::before{display:none}
     .top{padding:0 16px}.page{padding:16px}.brow{grid-template-columns:1fr}.brow .meta,.brow .trk{grid-column:1}.brow .st{justify-self:start}}
@@ -81,7 +82,7 @@
 <body>
 <div class="app">
   <aside class="rail">
-    <div class="brand"><div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><small>Orchid Insure</small></div></div>
+    <div class="brand"><div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><small>Flightwise Insurance</small></div></div>
     <nav class="nav" id="nav" aria-label="Main"></nav>
     
   </aside>
@@ -119,7 +120,7 @@ async function refresh() {
   try { EXP = await api('/api/console/exposure'); } catch (e) { EXP = null; }
   $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
-  $('#crumb').textContent = 'Orchid Insure  /  ' + (TITLES[page] || 'Overview');
+  $('#crumb').textContent = 'Flightwise Insurance  /  ' + (TITLES[page] || 'Overview');
   let html;
   try { html = await ({overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
   catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
@@ -160,7 +161,7 @@ function vOverview() {
 }
 function exposureStrip() {
   if (!EXP) return '';
-  const hot = EXP.flights.filter(f => f.level === 'high');
+  const hot = EXP.flights.filter(f => f.level === 'high' && f.covered > 0);
   return `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Exposure forecast</h2>${aiChip('KODA AI')}<a class="push" href="#exposure">Open</a></div>
     <div class="pb" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
       <div><div class="mute" style="font-size:12px">Expected payouts, covered trips</div><div class="disp" style="font-size:22px">${usd2(EXP.expected_usd)}</div></div>
@@ -233,7 +234,8 @@ async function vDecisions(pid) {
       `<div class="panel tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${list.map(d => `<tr class="click" onclick="location.hash='decisions/${esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` :
       empty('gavel', 'No decisions yet', 'Decisions appear when a flight is delayed or cancelled.'));
   }
-  const {policy: p, flight: f, decision: d, rules, market: mkt} = await api('/api/console/decision/' + pid);
+  let info; try { info = await api('/api/console/decision/' + pid); } catch (e) { return head('Decisions') + empty('gavel', 'That policy is not here any more', 'It may have been cleared by a reset. <a href="#decisions">Back to all decisions</a>.'); }
+  const {policy: p, flight: f, decision: d, rules, market: mkt} = info;
   const cur = p.currency;
   if (!d) return head('Decisions') + empty('gavel', 'No decision for this policy yet', 'No delay has reached the payout rule.');
   if (d.status === 'held') return head('Decisions') + empty('schedule', 'This claim is waiting for a person', `Open it in the <a href="#review/${esc(d.id)}">review queue</a>.`);
@@ -303,7 +305,7 @@ function vRules() {
   const r = ov.rules, m = ov.rules_market, c = m.currency;
   const fields = [['delay_premium', `Delay cover price (${c})`], ['baggage_premium', `Baggage cover price (${c})`], ['delay_tier1_minutes', 'Tier 1 delay (minutes)'], ['delay_tier1_payout', `Tier 1 payout (${c})`], ['delay_tier2_minutes', 'Tier 2 delay (minutes)'], ['delay_tier2_payout', `Tier 2 payout (${c})`], ['cancel_payout', `Cancelled flight payout (${c})`], ['lost_bag_payout', `Lost bag payout (${c})`], ['risk_threshold', 'Pay automatically below risk score']];
   return head('Rules', 'Set by the insurer for each market. A change applies to the next flight delay, never to past decisions.') + `
-  <div class="cols" style="grid-template-columns:minmax(0,420px) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Rules for a market</h2></div><div class="pb" style="display:grid;gap:12px">
+  <div class="cols rulescols"><section class="panel"><div class="ph"><h2>Rules for a market</h2></div><div class="pb" style="display:grid;gap:12px">
       <div><label class="lbl" for="rmSel">Market</label><select id="rmSel" class="field">${ov.markets.map(x => `<option value="${x.code}" ${x.code === RM ? 'selected' : ''}>${esc(x.name)} (${esc(x.currency)})</option>`).join('')}</select></div>
       ${fields.map(([k, l]) => `<div style="display:grid;grid-template-columns:1fr 130px;gap:12px;align-items:center"><label for="r_${k}">${l}</label><input id="r_${k}" data-rule="${k}" type="number" min="0" value="${r[k]}" class="field mono" style="text-align:right"></div>`).join('')}
       <div style="display:flex;align-items:center;gap:12px;padding-top:6px;border-top:1px solid var(--line2)"><button id="saveRules" class="btn primary">Save rules</button><span id="saved" style="color:var(--green);font-size:13px"></span></div>

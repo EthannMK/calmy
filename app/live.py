@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 from . import db, markets
 
-BASE = "http://api.aviationstack.com/v1/flights"
+BASE = os.environ.get("AVIATIONSTACK_URL", "http://api.aviationstack.com/v1/flights")  # override only for local mocks
 MONTHLY_BUDGET = int(os.environ.get("AVIATIONSTACK_BUDGET", "80"))  # keep headroom under 100
 CACHE_SECONDS = 15 * 60
 HUBS = ["BKK", "LHR", "JFK", "SIN", "DEL", "SYD"]  # quick picks in the app; any airport code works
@@ -73,7 +73,7 @@ def _fetch(params: dict, key: str):
     if not enabled():
         raise LiveError("Live flight data is not switched on for this demo.")
     if usage()["used"] >= MONTHLY_BUDGET:
-        raise LiveError("The monthly free allowance for live flight data is used up. The simulator still works.")
+        raise LiveError("The monthly free allowance for live flight data is used up.")
     _count_call()  # counted before the request, so a failed call still uses allowance
     try:
         body = _http_get(params)
@@ -153,6 +153,19 @@ def lookup(flight_iata: str, flight_date: str | None = None) -> dict:
     # Nearest departure to now, so a number that flies daily returns today's or the next flight.
     flights.sort(key=lambda f: abs((f["sched_ts"] or now) - now))
     return flights[0]
+
+
+def from_cache(code: str) -> dict | None:
+    """A flight already fetched in the last 15 minutes (from a board or a lookup), so picking it costs no API call."""
+    q = code.replace(" ", "").upper()
+    for key, (ts, body) in list(_cache.items()):
+        if time.time() - ts >= CACHE_SECONDS:
+            continue
+        for r in body.get("data", []):
+            f = normalize(r)
+            if f and f["code"].replace(" ", "") == q:
+                return f
+    return None
 
 
 def _board(hub: str) -> list[dict]:

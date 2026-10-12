@@ -138,9 +138,9 @@ def create_policy(body: NewPolicy):
         f = sample
     else:
         if not live.enabled():
-            raise HTTPException(400, "We could not find that flight. Pick one from the list.")
+            raise HTTPException(503, "Live flight data is not connected, so flights cannot be searched right now.")
         try:
-            f = live.lookup(body.flight)
+            f = live.from_cache(code) or live.lookup(body.flight)  # a flight just shown in a list costs no new lookup
         except live.LiveError as e:
             raise HTTPException(502, str(e))
         if f["sched_ts"] and f["sched_ts"] < time.time():
@@ -171,7 +171,7 @@ def demo_sources():
     ai_on = bool(os.environ.get("GOOGLE_CLOUD_PROJECT"))
     flights = {"mode": "error" if u["last_error"] else "live" if u["enabled"] else "off",
                "detail": u["last_error"] or (f"{u['used']} of {u['budget']} lookups used this month" if u["enabled"]
-                                               else "No flight data key on the server, so built in flights are used.")}
+                                               else "No flight data key on the server. Travelers cannot search flights until one is set.")}
     wx = {"mode": "error" if context.LAST["error"] else "live" if context.LAST["ok"] else "idle",
           "detail": context.LAST["error"] or ("Live from Open-Meteo" if context.LAST["ok"] else "Fetched at the first event")}
     ai = {"mode": "error" if engine.AI_LAST["error"] else "live" if ai_on else "off",
@@ -346,6 +346,7 @@ def demo_delay(body: Delay):
             c, "SELECT COUNT(*) n FROM policies WHERE flight=? AND status='active' AND delay_cover=1", (body.flight,)
         )["n"]
         results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.cancelled)
+        c.execute("UPDATE flights SET sim=1 WHERE code=?", (body.flight,))  # a demo event now owns this flight's status
     _enrich_later(results)
     return {"results": results, "covered": covered}
 
@@ -368,6 +369,8 @@ def flight_event(body: FlightEvent):
         if not _flight(c, body.flight):
             raise HTTPException(404, "flight not found")
         db.log(c, None, "webhook_received", {"flight": body.flight, "event": body.event, "minutes": body.minutes})
+        if body.event in ("delayed", "cancelled", "on_time", "landed"):
+            c.execute("UPDATE flights SET sim=1 WHERE code=?", (body.flight,))
         if body.event in ("storm", "clear"):
             c.execute("UPDATE flights SET stress=? WHERE origin=(SELECT origin FROM flights WHERE code=?)", (2 if body.event == "storm" else 0, body.flight))
             return {"event": body.event, "results": [], "archived": 0, "forecast": forecast.compute(_flight(c, body.flight))}
@@ -438,6 +441,7 @@ def demo_live(body: LiveReplay):
 
 class SampleCover(BaseModel):
     flight: str
+    risky: bool = False   # a profile with several fraud signals, so the same delay is held for a person
 
 
 @app.post("/api/demo/cover-sample")
@@ -461,10 +465,12 @@ def demo_cover_sample(body: SampleCover):
         c.execute(
             "INSERT INTO policies (id,traveler,flight,payout_account,delay_cover,baggage_cover,premium,status,market,currency,"
             "created_at,sched_at_purchase,pnr) VALUES (?,?,?,?,1,1,?,'active',?,?,?,?,?)",
-            (pid, "Sample traveler", f["code"], f"{info['rails'][0]} ending 0000", total, market, info["currency"], time.time(), f["scheduled"],
+            (pid, "Anan T." if body.risky else "Sample traveler", f["code"], f"{info['rails'][0]} ending {'7730' if body.risky else '0000'}", total, market, info["currency"], time.time(), f["scheduled"],
              "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))),
         )
-        db.log(c, pid, "policy_active", {"delay": True, "baggage": True, "total": total, "currency": info["currency"], "added_by": "console test"})
+        if body.risky:  # preset signals the risk score reads: several covers, a changed flight time, a shared account, a prior claim
+            c.execute("UPDATE policies SET f_covers_2h=4, f_schedule_changed=1, f_shared_account=1, f_prior_claims=1 WHERE id=?", (pid,))
+        db.log(c, pid, "policy_active", {"delay": True, "baggage": True, "total": total, "currency": info["currency"], "added_by": "demo controls"})
         return {"policy": pid, "flight": f["code"]}
 
 

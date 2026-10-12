@@ -106,7 +106,7 @@ MIGRATIONS = [
     ("policies", "created_at", "REAL"), ("policies", "pnr", "TEXT"), ("flights", "cancelled", "INTEGER DEFAULT 0"),
     ("decisions", "trigger", "TEXT DEFAULT 'delay'"), ("decisions", "elapsed_ms", "INTEGER"), ("decisions", "message", "TEXT"), ("decisions", "context", "TEXT"), ("policies", "sched_at_purchase", "TEXT"),
     ("flights", "stress", "INTEGER DEFAULT 0"), ("policies", "f_adverse", "INTEGER DEFAULT 0"),
-    ("policies", "risk_at_purchase", "REAL"), ("decisions", "points", "INTEGER DEFAULT 0"),
+    ("policies", "risk_at_purchase", "REAL"), ("decisions", "points", "INTEGER DEFAULT 0"), ("flights", "sim", "INTEGER DEFAULT 0"),
 ]
 
 
@@ -128,6 +128,13 @@ def seed(c):
     """Fill the demo world. Two travelers share one flight so the same delay
     produces one clean payout and one held case."""
     seed_rules(c)
+    partners.seed(c)
+    if os.environ.get("KODA_SAMPLE_DATA"):  # test fixtures only: the product uses live flights
+        seed_samples(c)
+
+
+def seed_samples(c):
+    """Fictional flights and two travelers, used by the automated tests so they run offline."""
     c.executemany(
         "INSERT OR REPLACE INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,"
         "scheduled,delay_minutes,travelers,source) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -166,7 +173,6 @@ def seed(c):
     c.execute("UPDATE flights SET depart_label=REPLACE(depart_label, '{D}', ?)", (tomorrow,))
     c.execute("UPDATE policies SET pnr='K7M2QD' WHERE id='CL-44910'")
     c.execute("UPDATE policies SET pnr='R4T9XE' WHERE id='CL-45102'")
-    partners.seed(c)
 
 
 def seed_rules(c):

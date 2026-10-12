@@ -45,7 +45,7 @@
 
   /* Stage: the two real apps, plus the AI pipeline between them and the title */
   .stage{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:14px 20px 16px;gap:12px}
-  .ai{flex-shrink:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px}
+  .aibar{height:auto;border-radius:12px;font-size:inherit;font-weight:400;color:inherit;flex-shrink:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px}
   .pipe{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
   .pn{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--faint);padding:5px 10px;border-radius:99px;border:1px solid var(--line);background:#fff;transition:all .25s}
   .pn .ms{font-size:16px}.pn em{font-style:normal;font-family:'Geist Mono',monospace;font-size:11px}
@@ -55,7 +55,7 @@
   .cmp{display:flex;gap:16px;align-items:center;font-size:12.5px;color:var(--mute);white-space:nowrap}
   .cmp b{font-family:'Figtree',sans-serif;font-size:22px;color:var(--cobalt);display:block;line-height:1}
   .cmp .m b{color:var(--ink2)}
-  .ai .idle{font-size:13px;color:var(--mute)}.ai{min-height:58px}
+  .aibar .idle{font-size:13px;color:var(--mute)}.aibar{min-height:58px}
   .two{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:stretch}
   .side{display:flex;flex-direction:column;min-height:0;min-width:0}
   .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute);min-height:22px}
@@ -67,11 +67,16 @@
   .desk .url{height:30px;display:flex;align-items:center;padding:0 12px;background:#F8FAFC;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute);font-family:'Geist Mono',monospace}
   .desk iframe{flex:1;border:0;width:100%;min-height:0}
   .tabs{display:none}
+  #welcome{position:fixed;inset:0;z-index:90;background:rgba(7,28,63,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+  .wbox{background:#fff;border-radius:16px;max-width:560px;width:100%;padding:24px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto}
+  .wbox h2{font-size:22px;line-height:1.15}.wbox p{font-size:14px;color:var(--ink2);line-height:1.5}
+  .wgrid{display:grid;gap:10px}.wgrid div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}.wgrid b{display:block;margin-bottom:2px}.wgrid span{color:var(--mute)}
+  #liveWarn{margin:10px 20px 0;padding:10px 14px;border-radius:10px;background:var(--amber-t);border:1px solid #F3D68E;color:#5C3A00;font-size:13px}
   @media(max-width:1180px){
     body{overflow:auto}
     .coach{flex-wrap:wrap}.coach .tools{margin-left:0}
     .stage{padding:10px 12px 14px;min-height:900px}
-    .ai{grid-template-columns:1fr}.two{grid-template-columns:1fr}
+    .aibar{grid-template-columns:1fr}.two{grid-template-columns:1fr}
     .tabs{display:flex;gap:6px}.tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
     .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
     .side{display:none}.side.show{display:flex}.phone{max-width:400px;margin:0 auto;aspect-ratio:auto;height:760px;flex:none}.desk{height:760px;flex:none}
@@ -85,13 +90,13 @@
 
 <section class="coach" aria-label="What to do now">
   <div class="dots" id="dots"><button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button><button data-d="4">4</button></div>
-  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a flight and adds cover.</span>
+  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a real upcoming flight and adds cover. A second, suspicious traveler joins the same flight.</span>
     <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button><button class="btn sm" data-do="1p">Take payout as points</button></div>
-    <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Real flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
+    <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Cover a flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
   <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The AI reacts on both sides.</span>
     <div class="acts"><button class="btn sm" data-ev="storm">Storm builds</button><button class="btn sm" data-ev="clear">Weather clears</button><button class="btn primary sm" data-ev="delayed" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delayed" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
-  <div class="stp" data-s="3"><span class="h">Try a risky traveler</span><span class="t">Same delay, suspicious profile. The AI asks a person instead of paying.</span>
-    <div class="acts"><button class="btn primary sm" data-do="3">Run the risky case</button></div></div>
+  <div class="stp" data-s="3"><span class="h">Try a risky traveler</span><span class="t">The same delay hit the second traveler too. The AI asks a person instead of paying.</span>
+    <div class="acts"><button class="btn primary sm" data-do="3">Show the held case</button></div></div>
   <div class="stp" data-s="4"><span class="h">Decide as the insurer</span><span class="t">A person approves or declines in the review queue.</span>
     <div class="acts"><button class="btn primary sm" data-do="4">Open the review queue</button></div></div>
   <div class="tools"><button id="story" class="btn sm">Run the whole story</button><button id="menuBtn" class="btn sm" aria-expanded="false" aria-controls="menu">More</button></div>
@@ -102,12 +107,18 @@
       <a href="/console" target="_blank" rel="noopener"><span class="ms">monitoring</span>Insurer console</a>
       <a href="/api/demo/sources" target="_blank" rel="noopener"><span class="ms">info</span>Data source status (JSON)</a>
       <a href="https://github.com/EthannMK/calmy" target="_blank" rel="noopener"><span class="ms">receipt_long</span>Source code</a></div></div>
-    <div class="sec"><button id="reset" class="btn danger block">Reset demo data</button></div>
+    <div class="sec"><button id="how" class="btn block" style="margin-bottom:8px">How this demo works</button><button id="reset" class="btn danger block">Reset demo data</button></div>
   </div>
 </section>
 
+<div id="liveWarn" class="hidden" role="status"><b>Live flight data is not connected.</b> <span></span> Step 1 needs it, because KODA covers real flights only.</div>
+<div id="welcome" class="hidden" role="dialog" aria-modal="true" aria-labelledby="wt"><div class="wbox">
+  <h2 id="wt">A flight is late. The traveler is paid in seconds.</h2>
+  <p>KODA is cover that pays by itself when a flight is delayed or cancelled. Flightwise Insurance sells it, KODA AI runs it. This page shows both sides of one trip at the same time.</p>
+  <div class="wgrid"><div><b>Left: the traveler</b><span>The phone app. Pick a real flight, add cover, get paid.</span></div><div><b>Right: the insurer</b><span>Flightwise Insurance's desk. Every decision and the reason for it.</span></div><div><b>Top bar: your steps</b><span>Four steps. Each button does the step for you. Real flight data, simulated payout.</span></div></div>
+  <button id="wgo" class="btn primary">Start the demo</button></div></div>
 <main class="stage">
-  <section class="ai" aria-label="What the KODA AI did">
+  <section class="aibar" aria-label="What the KODA AI did">
     <div id="pipe" class="pipe"></div>
     <div class="cmp" id="cmp"></div>
   </section>
@@ -123,26 +134,26 @@
 const phone = $('#phone'), desk = $('#desk');
 const IDLE = ['Event detected', 'Policy matched', 'Risk checked', 'Paid or held', 'Traveler notified'];
 const idlePipe = () => { $('#pipe').innerHTML = IDLE.map((l, i) => `${i ? '<span class="pa">›</span>' : ''}<span class="pn">${ico(ICON[l] || 'paid')}${l}</span>`).join(''); $('#cmp').innerHTML = '<span class="idle">Waiting for a flight event</span>'; };
-const FREE = ['OA 310', 'OA 530', 'OA 640', 'OA 750', 'OA 860', 'OA 970', 'OA 204', 'OA 420'];
 let st = {1: false, 2: false, 3: false, 4: false}, busy = false, shown = '';
 
 const toPhone = msg => { try { phone.contentWindow.postMessage(msg, location.origin); } catch (e) {} };
 const goDesk = h => { try { desk.contentWindow.location.hash = h; } catch (e) {} };
-const myPid = () => store.get('calmy.pid');
+const myPid = () => store.get('koda.own'), riskyPid = () => store.get('koda.risky');
+let LIVEOK = null;  // null until the data sources are known
 
 /* Which step is the presenter on? Read from real state, so tapping the apps by hand also counts. */
 async function poll() {
   if (busy) return;
   try {
-    const pid = myPid(); let own = null, risky = null;
-    if (pid) { try { own = await api('/api/traveler/' + pid); } catch (e) {} }
-    try { risky = await api('/api/traveler/CL-45102'); } catch (e) {}
+    const pid = myPid(), rid = riskyPid(); let own = null, risky = null;
+    if (pid) { try { own = await api('/api/traveler/' + pid); } catch (e) { store.set('koda.own', null); } }
+    if (rid) { try { risky = await api('/api/traveler/' + rid); } catch (e) { store.set('koda.risky', null); } }
     st[1] = !!(own && own.policy.status !== 'quote');
     st[2] = !!(own && (own.delay_decision || own.policy.status === 'archived'));
     st[3] = !!(risky && risky.delay_decision);
     st[4] = !!(risky && risky.delay_decision && risky.delay_decision.status !== 'held');
     paintSteps(!!(own && own.policy.status === 'active'));
-    const d = (own && own.delay_decision) || (risky && risky.delay_decision && pid === 'CL-45102' ? risky.delay_decision : null);
+    const d = (own && own.delay_decision) || null;
     if (d && d.id !== shown) { shown = d.id; playPipeline(d); }
   } catch (e) {}
 }
@@ -176,23 +187,46 @@ function playPipeline(d) {
   }, 250 + nodes.length * 380);
 }
 
+/* Next real departures, soonest first, skipping flights that are too close to leave or already late. */
+async function liveCandidates() {
+  let last = null;
+  for (const hub of ['BKK', 'SIN', 'LHR']) {
+    try {
+      const list = await api('/api/live/upcoming?airport=' + hub);
+      const ok = list.filter(f => f.sched_ts * 1000 - Date.now() > 3600e3 && f.delay_minutes < 30).slice(0, 4).map(f => f.code);
+      if (ok.length) return ok;
+    } catch (e) { last = e; }
+  }
+  throw last || 'No upcoming real flights were found. Try the real flight box in More.';
+}
+/* Cover one real flight as the traveler, then add a second, suspicious traveler on the same flight in the background. */
 async function coverTrip(name, last4, flights, rail) {
+  let err = null;
   for (const f of flights) {
     try {
       const q = await api('/api/policies', 'POST', {name, last4, flight: f, rail: rail || null});
       await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true});
-      return {pid: q.policy, flight: f};
-    } catch (e) { /* that flight already has a delay or has left, try the next one */ }
+      store.set('koda.own', q.policy); store.set('calmy.pid', q.policy);
+      try { const r = await api('/api/demo/cover-sample', 'POST', {flight: q.flight.code, risky: true}); store.set('koda.risky', r.policy); } catch (e) { store.set('koda.risky', null); }
+      toast(`Covering ${q.flight.airline} ${q.flight.code}, ${q.flight.origin} to ${q.flight.dest}.`, 'ok');
+      return {pid: q.policy, flight: q.flight.code};
+    } catch (e) { err = e; }  // that flight cannot be covered now, try the next one
   }
-  throw 'No flight is free for a new trip. Reset the demo data and try again.';
+  throw err || 'No flight could be covered.';
 }
+const start = async (rail, flights) => {
+  if (LIVEOK === false) throw 'Live flight data is not connected. Open More for details.';
+  const r = await coverTrip(rail ? 'Pim Wong' : 'Lena Fischer', rail ? '0000' : '1234', flights || await liveCandidates(), rail);
+  toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); return r;
+};
 const actions = {
-  async 1() { const r = await coverTrip('Lena Fischer', '1234', FREE); store.set('calmy.pid', r.pid); toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); },
-  async '1p'() { const r = await coverTrip('Pim Wong', '0000', FREE, 'KODA points'); store.set('calmy.pid', r.pid); toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); },
+  async 1() { await start(); },
+  async '1p'() { await start('KODA points'); },
   async 3() {
-    try { await api('/api/traveler/CL-45102/checkout', 'POST', {delay: true, baggage: true, ack: true}); } catch (e) { if (!/already active/i.test(e)) throw e; }
-    await api('/api/webhook/flight-event', 'POST', {flight: 'OA 108', event: 'delayed', minutes: 200});
-    store.set('calmy.pid', 'CL-45102'); toPhone({pid: 'CL-45102', tab: 'claims'}); goDesk('#review'); shown = '';
+    const rp = riskyPid();
+    if (!rp) throw 'Cover a trip first (step 1).';
+    if (!st[2]) throw 'Break the flight first (step 2). The same delay holds this second traveler.';
+    store.set('calmy.pid', rp); toPhone({pid: rp, tab: 'claims'}); goDesk('#review'); shown = '';
   },
   async 4() { goDesk('#review'); showTab('desk'); },
 };
@@ -222,7 +256,7 @@ document.querySelectorAll('[data-ev]').forEach(b => b.onclick = async () => {
 $('#story').onclick = async () => {
   const b = $('#story'); b.disabled = true; busy = true;
   try {
-    const r = await coverTrip('Lena Fischer', '1234', FREE); store.set('calmy.pid', r.pid); toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview');
+    const r = await start();
     await new Promise(x => setTimeout(x, 2200));
     await api('/api/webhook/flight-event', 'POST', {flight: r.flight, event: 'delayed', minutes: 192});
     shown = ''; toPhone({tab: 'claims'}); goDesk('#overview'); busy = false; await poll(); busy = true;
@@ -234,19 +268,18 @@ $('#story').onclick = async () => {
 $('#reset').onclick = async () => {
   if (!confirm('Reset all demo data? Trips, decisions and the audit log are cleared.')) return;
   try { await api('/api/demo/reset', 'POST'); } catch (e) { return fail(e); }
-  store.set('calmy.pid', null); st = {1: false, 2: false, 3: false, 4: false}; shown = '';
+  store.set('calmy.pid', null); store.set('koda.own', null); store.set('koda.risky', null); st = {1: false, 2: false, 3: false, 4: false}; shown = '';
   idlePipe();
   toPhone({reset: true}); goDesk('#overview'); try { desk.contentWindow.location.reload(); } catch (e) {}
   toast('Demo data reset.', 'ok'); poll();
 };
 
-/* Real flight: shown only when live flight data is on. */
+/* Real flight: cover a specific number instead of the next departure. */
 $('#rfGo').onclick = async () => {
   const v = $('#rfNo').value.trim(); if (!v) return fail('Enter a flight number.');
   busy = true;
-  try { const q = await api('/api/policies', 'POST', {name: 'Lena Fischer', last4: '1234', flight: v}); await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true}); store.set('calmy.pid', q.policy); toPhone({pid: q.policy, tab: 'cover'}); }
-  catch (e) { fail(e); }
-  busy = false; poll();
+  try { await start(null, [v]); $('#menu').classList.remove('open'); } catch (e) { fail(e); }
+  busy = false; picked = 0; poll();
 };
 
 /* Data sources, with the reason when one is not live. */
@@ -256,7 +289,10 @@ async function sources() {
     const s = await api('/api/demo/sources');
     $('#sources').innerHTML = [['Flight status', s.flights], ['Weather', s.weather], ['AI reasons', s.ai], ['Payouts', s.payments]].map(([n, x]) =>
       `<div class="src"><i class="${x.mode}"></i><span><b>${n}: ${MODE[x.mode]}</b><small>${esc(x.detail)}</small></span></div>`).join('');
-    $('#rf').classList.toggle('hidden', s.flights.mode !== 'live');
+    LIVEOK = s.flights.mode === 'live';
+    $('#rf').classList.toggle('hidden', !LIVEOK);
+    $('#liveWarn').classList.toggle('hidden', LIVEOK);
+    $('#liveWarn span').textContent = s.flights.detail;
   } catch (e) {}
 }
 
@@ -265,6 +301,10 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab
 $('#menuBtn').onclick = e => { e.stopPropagation(); const o = $('#menu').classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', o); };
 document.addEventListener('click', e => { if (!e.target.closest('#menu') && !e.target.closest('#menuBtn')) { $('#menu').classList.remove('open'); $('#menuBtn').setAttribute('aria-expanded', 'false'); } });
 if (matchMedia('(max-width:1180px)').matches) showTab('phone');
+const showWelcome = v => $('#welcome').classList.toggle('hidden', !v);
+$('#wgo').onclick = () => { showWelcome(false); try { localStorage.setItem('koda.welcome', '1'); } catch (e) {} };
+$('#how').onclick = () => { $('#menu').classList.remove('open'); showWelcome(true); };
+try { if (!localStorage.getItem('koda.welcome')) showWelcome(true); } catch (e) { showWelcome(true); }
 idlePipe();
 /* A judge opening this page for the first time starts from a clean story. A refresh keeps the current run. */
 (async () => {
