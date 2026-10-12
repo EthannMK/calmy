@@ -98,12 +98,12 @@ const usd2 = n => '$' + Number(n).toFixed(2);
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
 let refreshing = false, liveAt = 0, LIVE = {}, EXP = null, COP = {}, CHAT = {}, DRAFT = {};
 const GROUPS = [
-  ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
+  ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims'], ['extra', 'receipt_long', 'Extra costs']]],
   ['Book of business', [['exposure', 'bolt', 'Exposure forecast'], ['policies', 'verified_user', 'Policies']]],
   ['Governance', [['rules', 'tune', 'Rules'], ['compliance', 'balance', 'Markets and law'], ['audit', 'history', 'Audit log']]],
   ['Evidence', [['performance', 'monitoring', 'Performance']]],
 ];
-const TITLES = {exposure: 'Exposure forecast', overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log', performance: 'Performance'};
+const TITLES = {exposure: 'Exposure forecast', overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', extra: 'Extra costs', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log', performance: 'Performance'};
 window.onhashchange = () => { route = location.hash.slice(1) || 'overview'; last = ''; FQ = ''; refresh(); };
 const flightOf = f => `${esc(f.origin)} to ${esc(f.dest)}`;
 const mk = code => (ov.markets.find(m => m.code === code) || {name: code, currency: ''});
@@ -127,11 +127,11 @@ async function paint() {
   ]);
   ov = o; LIVE = lv; EXP = ex; if (Date.now() - liveAt > 20000) liveAt = Date.now();
   const held = ov.stats.held, bags = ov.stats.bag_waiting;
-  $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
+  $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : k === 'extra' ? ov.stats.extra_waiting : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
   $('#crumb').textContent = 'Flightwise Insurance  /  ' + (TITLES[page] || 'Overview');
   let html;
-  try { html = await ({overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
+  try { html = await ({overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, review: vReview, baggage: vBaggage, extra: vExtra, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
   catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
   if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); typeAll($('#view')); }
 }
@@ -144,12 +144,13 @@ function vOverview() {
   const covered = tracked.filter(f => f.travelers > 0).length;
   const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
+  const oc = ov.outcomes, decidedAll = oc.auto + oc.reviewed + oc.held + oc.declined, fastPct = decidedAll ? Math.round(oc.auto * 100 / decidedAll) : 0;
   const secs = ov.decisions.filter(d => d.kind === 'delay' && d.status === 'paid' && d.seconds != null).map(d => d.seconds), avg = secs.length ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : null;
   return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars.') + `
   <div class="panel kpis" style="margin-bottom:20px">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
     ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts'))}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
-    ${kpi('Auto-paid claims', 'bolt', share, avg == null ? 'Decision time appears with the first claim' : 'Average decision ' + avg + ' seconds')}</div>
+    ${kpi('Auto-paid claims', 'bolt', share, avg == null ? 'Decision time appears with the first claim' : 'Average decision ' + avg + ' seconds, ' + fastPct + '% of decisions paid with no human step')}</div>
   ${exposureStrip()}
   <div class="cols"><div class="stack">
     <section class="board" aria-label="Flight watch"><div class="bh"><h2>Flight watch</h2><span>${covered} ${covered === 1 ? 'flight has' : 'flights have'} cover</span></div>
@@ -211,8 +212,8 @@ function aiDesk() {
   const auto = ov.decisions.filter(d => d.decided_by === 'system' && d.status === 'paid').length;
   const feed = ov.decisions.slice(0, 5).map(d => {
     const m = d.status === 'held' ? 'sent to a person' : d.status === 'declined' ? 'declined by a person' : d.decided_by === 'system' ? 'paid with no human step' : 'approved by a person';
-    const href = d.status === 'held' ? '#review/' + esc(d.id) : d.kind === 'baggage' ? '#baggage/' + esc(d.id.replace('-D', '')) : '#decisions/' + esc(d.policy_id);
-    return `<a href="${href}"><span class="ic">${STAR}</span><span><b>${esc(d.flight)}${d.kind === 'delay' ? ', ' + hm(d.delay_minutes || 0) + ' late' : ', lost bag'}</b><small>Risk ${d.risk_score ?? '-'}, ${m}</small></span><span class="mono">${d.status === 'held' ? 'review' : money(d.amount, d.currency)}</span></a>`;
+    const href = d.status === 'held' ? '#review/' + esc(d.id) : d.kind === 'baggage' ? '#baggage/' + esc(d.id.replace('-D', '')) : d.kind === 'expense' ? '#extra/' + esc(d.id.replace('-D', '')) : '#decisions/' + esc(d.policy_id);
+    return `<a href="${href}"><span class="ic">${STAR}</span><span><b>${esc(d.flight)}${d.kind === 'delay' ? ', ' + hm(d.delay_minutes || 0) + ' late' : d.kind === 'expense' ? ', extra costs' : ', lost bag'}</b><small>Risk ${d.risk_score ?? '-'}, ${m}</small></span><span class="mono">${d.status === 'held' ? 'review' : money(d.amount, d.currency)}</span></a>`;
   }).join('');
   return `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>KODA AI at work</h2>${aiChip(ov.ai_live ? 'Gemini on Vertex AI' : 'KODA AI')}<span class="push mute">${auto} ${auto === 1 ? 'claim' : 'claims'} paid with no human step</span></div>
     <div class="pb" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:32px" id="aiDesk">
@@ -318,6 +319,23 @@ async function vBaggage(id) {
       ${done ? '' : `<div style="display:flex;gap:10px"><button class="btn primary bact" data-id="${esc(b.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger bact" data-id="${esc(b.id)}" data-a="decline">${ico('close')}Decline</button></div>`}</div></section></div></div>`;
 }
 
+/* ---------- Extra costs ---------- */
+async function vExtra(id) {
+  const list = await api('/api/console/extra');
+  if (!list.length) return head('Extra costs', 'Receipts for costs above the instant payout.') + empty('receipt_long', 'No extra cost claims yet', 'After a delay payout, the traveler can claim a meal, transport or hotel with a receipt. Small clean claims are paid at once.');
+  const e = list.find(x => x.id === id) || list[0], d = e.decision, p = e.policy, th = e.rules.risk_threshold, cur = p.currency, done = d.status === 'paid' || d.status === 'declined', auto = d.decided_by === 'system';
+  const parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
+  const chip = x => x.status === 'paid' ? '<span class="chip paid"><i></i>Paid</span>' : x.status === 'declined' ? '<span class="chip red"><i></i>Declined</span>' : '<span class="chip held"><i></i>Needs a person</span>';
+  return head('Extra costs', `Receipts for costs above the instant payout. Up to ${money(e.limits.fast, cur)} is paid at once when nothing looks unusual. Up to ${money(e.limits.cap, cur)} in total.`) + `
+  <div class="split"><section class="panel"><div class="qlist">${list.map(x => `<a class="qitem ${x.id === e.id ? 'on' : ''}" href="#extra/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b>${chip(x.decision)}</div><div class="mute" style="font-size:12px">${esc(x.policy.traveler)}, ${esc(x.what)}, ${money(x.amount, x.policy.currency)}</div></a>`).join('')}</div></section>
+  <div class="stack"><section class="panel"><div class="ph"><h2>${esc(e.what)}, ${esc(p.traveler)}</h2><span class="push">${chip(d)}</span></div><div class="pb">
+      <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd class="mono">${esc(p.flight)}</dd><dt>Claimed</dt><dd class="mono">${money(e.amount, cur)}</dd><dt>Payable</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd></dl></div></section>
+    ${e.receipt ? `<section class="panel"><div class="ph"><h2>Receipt photo</h2></div><div class="pb"><img src="${esc(e.receipt)}" alt="Receipt uploaded by the traveler" style="max-width:100%;max-height:340px;border-radius:8px;border:1px solid var(--line)"></div></section>` : `<section class="panel"><div class="pb mute">The traveler did not attach a receipt photo.</div></section>`}
+    ${!done && d.reasons.length ? `<div class="note info"><b>Why a person checks this.</b> ${d.reasons.map(esc).join(' ')}</div>` : ''}
+    <section class="panel"><div class="ph"><h2>${done ? (auto ? 'Paid automatically' : 'Decided by a person') : 'Recommendation'}</h2><span class="push">${aiChip('KODA AI')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div>
+      ${done ? '' : `<div style="display:flex;gap:10px"><button class="btn primary eact" data-id="${esc(e.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger eact" data-id="${esc(e.id)}" data-a="decline">${ico('close')}Decline</button></div>`}</div></section></div></div>`;
+}
+
 /* ---------- Rules ---------- */
 function vRules() {
   const r = ov.rules, m = ov.rules_market, c = m.currency;
@@ -389,6 +407,7 @@ function bindAll() {
   const rm = $('#rmSel'); if (rm) rm.onchange = () => { RM = rm.value; last = ''; refresh(); };
   const fq = $('#fq'); if (fq) fq.oninput = () => { FQ = fq.value; last = ''; const pos = fq.selectionStart; refresh().then(() => { const n = $('#fq'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }); };
   document.querySelectorAll('.act').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note: ($('#note') || {}).value || ''}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
+  document.querySelectorAll('.eact').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/extra/' + b.dataset.id, 'POST', {action: b.dataset.a}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
   document.querySelectorAll('.bact').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/baggage/' + b.dataset.id, 'POST', {action: b.dataset.a}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
   const sv = $('#saveRules');
   if (sv) sv.onclick = async () => {

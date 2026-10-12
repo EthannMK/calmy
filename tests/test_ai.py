@@ -121,3 +121,56 @@ def test_demo_event_pauses_live_refresh_so_it_cannot_undo_the_delay():
         _hook("delayed", 200, "OA 204")
         r = track.refresh_flight("OA 204")
         assert r["flight"]["delay_minutes"] == 200 and "paused" in r["note"]
+
+
+def _paid_delay(pid="CL-44910"):
+    _buy(pid)
+    _hook("delayed", 192)
+    return client.get(f"/api/traveler/{pid}").json()
+
+
+def test_extra_costs_need_a_paid_delay_first():
+    with client:
+        _buy("CL-44910")
+        r = client.post("/api/traveler/CL-44910/extra-claim", json={"what": "Meal", "amount": 10})
+        assert r.status_code == 400 and "delay payout" in r.json()["detail"]
+
+
+def test_small_extra_claim_is_paid_at_once_and_only_once():
+    with client:
+        s = _paid_delay()
+        fast = s["extra_limits"]["fast"]
+        r = client.post("/api/traveler/CL-44910/extra-claim", json={"what": "Meal", "amount": max(1, fast - 1)})
+        assert r.status_code == 200
+        x = r.json()["decision"]
+        assert x["status"] == "paid" and x["decided_by"] == "system" and x["kind"] == "expense"
+        assert client.post("/api/traveler/CL-44910/extra-claim", json={"what": "Hotel", "amount": 5}).status_code == 400
+        assert client.get("/api/traveler/CL-44910").json()["extra"]["decision"]["status"] == "paid"
+
+
+def test_large_extra_claim_waits_for_a_person_and_is_capped():
+    with client:
+        s = _paid_delay()
+        cap = s["extra_limits"]["cap"]
+        r = client.post("/api/traveler/CL-44910/extra-claim", json={"what": "Hotel", "amount": cap * 5, "receipt": "data:image/jpeg;base64,AAAA"})
+        d = r.json()["decision"]
+        assert d["status"] == "pending" and d["amount"] == cap
+        queue = client.get("/api/console/extra").json()
+        assert queue[0]["receipt"].startswith("data:image/") and queue[0]["limits"]["cap"] == cap
+        assert client.get("/api/console/overview").json()["stats"]["extra_waiting"] == 1
+        ok = client.post(f"/api/console/extra/{r.json()['id']}", json={"action": "approve"}).json()
+        assert ok["status"] == "paid" and "approved" in ok["message"]
+
+
+def test_bad_receipt_is_rejected():
+    with client:
+        _paid_delay()
+        r = client.post("/api/traveler/CL-44910/extra-claim", json={"what": "Meal", "amount": 5, "receipt": "http://evil/x.png"})
+        assert r.status_code == 400
+
+
+def test_airline_letter_names_the_flight_and_airline():
+    with client:
+        _paid_delay()
+        t = client.get("/api/traveler/CL-44910/airline-letter").json()
+        assert "OA 108" in t["text"] and "[add yours]" in t["text"] and t["ai"] is False

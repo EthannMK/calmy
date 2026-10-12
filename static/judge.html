@@ -93,11 +93,11 @@
   <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a real upcoming flight and adds cover. A second, suspicious traveler joins the same flight.</span>
     <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button><button class="btn sm" data-do="1p">Take payout as points</button></div>
     <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Cover a flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
-  <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The AI reacts on both sides.</span>
+  <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The phone gets a notification at the delay limit, then the payout. The traveler can also claim extra costs and draft a letter to the airline.</span>
     <div class="acts"><button class="btn sm" data-ev="storm">Storm builds</button><button class="btn sm" data-ev="clear">Weather clears</button><button class="btn primary sm" data-ev="delayed" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delayed" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
   <div class="stp" data-s="3"><span class="h">Try a risky traveler</span><span class="t">The same delay hit the second traveler too. The AI asks a person instead of paying.</span>
     <div class="acts"><button class="btn primary sm" data-do="3">Show the held case</button></div></div>
-  <div class="stp" data-s="4"><span class="h">Decide as the insurer</span><span class="t">A person approves or declines in the review queue.</span>
+  <div class="stp" data-s="4"><span class="h">Decide as the insurer</span><span class="t">A person approves or declines in the review queue. Receipts for extra costs are in Extra costs.</span>
     <div class="acts"><button class="btn primary sm" data-do="4">Open the review queue</button></div></div>
   <div class="tools"><button id="story" class="btn sm">Run the whole story</button><button id="menuBtn" class="btn sm" aria-expanded="false" aria-controls="menu">More</button></div>
   <div class="menu" id="menu" role="dialog" aria-label="More demo tools">
@@ -116,7 +116,7 @@
   <h2 id="wt">A flight is late. The traveler is paid in seconds.</h2>
   <p>KODA is cover that pays by itself when a flight is delayed or cancelled. Flightwise Insurance sells it, KODA AI runs it. This page shows both sides of one trip at the same time.</p>
   <div class="wgrid"><div><b>Left: the traveler</b><span>The phone app. Pick a real flight, add cover, get paid.</span></div><div><b>Right: the insurer</b><span>Flightwise Insurance's desk. Every decision and the reason for it.</span></div><div><b>Top bar: your four steps</b><span>Each button does the step for you. Real flight data, simulated payout.</span></div></div>
-  <ol class="wsteps"><li><b>Cover a trip</b><span>Pick a real upcoming flight and add cover. A second traveler with a suspicious profile joins the same flight.</span></li><li><b>Break the flight</b><span>Act as the airline's status feed: build a storm, delay or cancel. The first traveler gets an early alert, then is paid in seconds.</span></li><li><b>See the held claim</b><span>The same delay hits the suspicious traveler. It is not paid. It goes to a person with the reason.</span></li><li><b>Decide as the insurer</b><span>Open the review queue, read the copilot's advice, then approve or decline.</span></li></ol>
+  <ol class="wsteps"><li><b>Cover a trip</b><span>Pick a real upcoming flight and add cover. A second traveler with a suspicious profile joins the same flight.</span></li><li><b>Break the flight</b><span>Act as the airline's status feed: build a storm, delay or cancel. The first traveler gets an early alert, a notification and a payout in seconds, then can claim extra costs with a receipt and draft a letter to the airline.</span></li><li><b>See the held claim</b><span>The same delay hits the suspicious traveler. It is not paid. It goes to a person with the reason.</span></li><li><b>Decide as the insurer</b><span>Open the review queue, read the copilot's advice, then approve or decline. Extra cost receipts are in Extra costs.</span></li></ol>
   <button id="wgo" class="btn primary">Start the demo</button></div></div>
 <main class="stage">
   <section class="aibar" aria-label="What the KODA AI did">
@@ -160,9 +160,9 @@ async function poll() {
 }
 const WHERE = {
   1: ['Pick a flight, add your name, add cover', 'The new policy appears on the overview'],
-  2: ['Storm gives an early alert. A delay pays by itself', 'Exposure rises, then the AI scores the risk and decides'],
+  2: ['Storm gives an early alert. A delay sends a notification and pays by itself. Then try Claim extra costs', 'Exposure rises, then the AI scores the risk and decides'],
   3: ['This traveler is told a person is checking', 'The AI holds the claim and shows why'],
-  4: ['The traveler sees the result straight away', 'Approve or decline in the review queue'],
+  4: ['The traveler sees the result straight away', 'Approve or decline in the review queue or in Extra costs'],
 };
 let picked = 0, canEv = false;
 function paintSteps(canEvent) {

@@ -18,9 +18,9 @@ Open http://localhost:8000. Pages: `/traveler` (mobile app), `/console` (insurer
 Open `/judge`. A welcome card explains the page. Then follow the four steps in the top bar.
 
 1. Cover a trip. The app picks a real upcoming departure (for example Thai Airways from BKK), adds cover for a traveler and, in the background, a second suspicious traveler on the same flight.
-2. Break the flight. You act as the status feed: Storm builds, Delay 3h 12m, Cancel it. The first traveler is paid in seconds.
+2. Break the flight. You act as the status feed: Storm builds, Delay 3h 12m, Cancel it. The first traveler gets a phone notification at the delay limit and is paid in seconds. Then the traveler can claim extra costs with a receipt and draft a letter to the airline.
 3. Show the held case. The same delay is held for a person because the second profile scores 91.
-4. Decide as the insurer in the review queue, with the reviewer copilot.
+4. Decide as the insurer in the review queue, with the reviewer copilot. Extra cost receipts are decided under Extra costs.
 
 Flights are real and need a live key (below). The delay, storm and payout are simulated and labelled as demo events.
 The insurer in the demo is Flightwise Insurance. KODA is the product it runs.
@@ -93,5 +93,8 @@ status colors always carry a label, one axis only, values labeled directly.
 | Fraud | Adverse selection check | Cover bought while the forecast was already 55% or more adds 35 points to the risk score, so the claim goes to a person. It is never declined by the system. |
 | Insurer | Exposure forecast and dynamic price | `GET /api/console/exposure`: expected payout, reserve (expected plus a safety margin) and a suggested delay price per flight. Informs only. |
 | Insurer | Reviewer copilot | `GET /api/console/copilot/{id}` and `POST /api/console/copilot`: recommendation with confidence, evidence, an editable draft message and a question box. It advises approve, ask for proof or escalate. It never declines. |
+| Traveler | Extra costs claim | `POST /api/traveler/{pid}/extra-claim`: after the delay payout, a meal, transport or hotel receipt can be claimed. Under the tier 1 payout and with a clean score it is paid at once. Above it, or with a raised score, it waits in the console under Extra costs. Total is capped at twice the top payout. |
+| Traveler | Airline letter | `GET /api/traveler/{pid}/airline-letter`: a ready letter asking the airline for what it owes in that market. Gemini polishes it when connected. |
+| Traveler | Delay notification | A banner appears on the phone the moment the payout or hold lands, with the same message as the Claims tab. |
 
 The forecast is a transparent score, not a trained model. In production the same inputs feed BigQuery ML.

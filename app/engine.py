@@ -15,6 +15,7 @@ from . import context, db, markets, partners
 CLAUSE_DELAY = "Clause 3.1, delay over 3 hours"
 CLAUSE_CANCEL = "Clause 3.2, flight cancelled"
 CLAUSE_BAG = "Clause 4.2, lost baggage"
+CLAUSE_EXTRA = "Clause 3.4, extra delay costs"
 CLAUSE_BAG_TEXT = "Benefit paid when a checked bag is declared lost by the airline."
 
 # Timeline offsets in seconds, matching the 8 second promise in the demo.
@@ -375,11 +376,82 @@ def submit_bag_claim(c, policy_id: str, report_id: str, bag_tag: str, items: lis
 
 
 def decide_baggage(c, claim_id: str, approve: bool, reviewer: str) -> dict:
+    return _decide_simple(c, claim_id, approve, reviewer, "baggage")
+
+
+def _decide_simple(c, claim_id: str, approve: bool, reviewer: str, tag: str) -> dict:
+    """A person approves or declines a claim that waits as 'pending' or 'held' (baggage and extra costs)."""
     d = db.one(c, "SELECT * FROM decisions WHERE id=?", (claim_id + "-D",))
     if not d or d["status"] not in ("pending", "held"):
         raise ValueError("claim is not waiting for a decision")
     status = "paid" if approve else "declined"
     c.execute("UPDATE decisions SET status=?, decided_by=? WHERE id=?", (status, reviewer, claim_id + "-D"))
-    db.log(c, d["policy_id"], f"baggage_{status}", {"claim": claim_id, "by": reviewer})
+    db.log(c, d["policy_id"], f"{tag}_{status}", {"claim": claim_id, "by": reviewer})
     partners.sync(c, d["policy_id"])
     return db.one(c, "SELECT * FROM decisions WHERE id=?", (claim_id + "-D",))
+
+
+# ---------------------------------------------------------------- extra delay costs
+
+def extra_limits(rules: dict) -> tuple[int, int]:
+    """(fast track limit, total cap). Small, clean claims are paid at once. Anything above waits for a person."""
+    return int(rules["delay_tier1_payout"]), int(rules["delay_tier2_payout"]) * 2
+
+
+def submit_extra_claim(c, policy_id: str, what: str, amount: int, receipt: str | None) -> dict:
+    """Costs above the instant payout, claimed with a receipt. Only after the delay payout has been made."""
+    p = db.one(c, "SELECT * FROM policies WHERE id=?", (policy_id,))
+    if not p or p["status"] != "active" or not p["delay_cover"]:
+        raise ValueError("this policy has no delay cover")
+    paid = db.one(c, "SELECT 1 FROM decisions WHERE policy_id=? AND kind='delay' AND status='paid'", (policy_id,))
+    if not paid:
+        raise ValueError("Extra costs can be claimed once your delay payout has been made.")
+    if db.one(c, "SELECT 1 FROM expenses WHERE policy_id=?", (policy_id,)):
+        raise ValueError("an extra costs claim already exists for this policy")
+    if receipt and (not receipt.startswith("data:image/") or len(receipt) > 400_000):
+        raise ValueError("the receipt photo is not valid or is too large")
+    market = p.get("market") or "TH"
+    cur = currency_of(market)
+    rules = get_rules(c, market)
+    fast, cap = extra_limits(rules)
+    payable = min(int(amount), cap)
+    eid = _new_id("EX")
+    c.execute("INSERT INTO expenses VALUES (?,?,?,?,?,?)", (eid, policy_id, what, int(amount), receipt, time.time()))
+    feats = {**features(c, p), "f_covers_2h": 1}
+    score, reasons = risk_score(feats)
+    score += 6  # claim loading: amounts are self declared
+    reasons = list(reasons)
+    if payable > fast:
+        reasons.append(f"Above the fast track limit of {money(fast, cur)}, so a person checks the receipt")
+    auto = score < rules["risk_threshold"] and payable <= fast
+    status = "paid" if auto else "pending"
+    acct = p["payout_account"] or "your account"
+    msg = (f"We paid {money(payable, cur)} for your {what.lower()}. It went to {acct}. No forms, no waiting."
+           if auto else f"We have your {what.lower()} receipt. A person is checking it and will pay you here once it is approved.")
+    expl = (f"Extra cost of {money(int(amount), cur)} for {what.lower()}. Fast track limit {money(fast, cur)}, total cap {money(cap, cur)}. "
+            + ("Paid at once because it was under the fast track limit and nothing looked unusual." if auto
+               else "A person checks it because it is above the fast track limit or the risk score was raised."))
+    c.execute(
+        "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
+        "delay_minutes,created_at,decided_by,note,message) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (eid + "-D", policy_id, "expense", status, payable, score,
+         json.dumps(reasons if not auto else clean_checks()), json.dumps([]), CLAUSE_EXTRA, expl, 0, time.time(),
+         "system" if auto else None, None, msg))
+    c.execute("UPDATE decisions SET breakdown=? WHERE id=?",
+              (json.dumps(risk_parts(feats) + [("Loading for self declared amounts", 6)]), eid + "-D"))
+    db.log(c, policy_id, "extra_claim", {"claim": eid, "amount": int(amount), "status": status})
+    partners.sync(c, policy_id)
+    return db.one(c, "SELECT * FROM expenses WHERE id=?", (eid,))
+
+
+def decide_extra(c, claim_id: str, approve: bool, reviewer: str) -> dict:
+    d = _decide_simple(c, claim_id, approve, reviewer, "extra")
+    if approve:
+        pol = db.one(c, "SELECT payout_account, currency FROM policies WHERE id=?", (d["policy_id"],)) or {}
+        e = db.one(c, "SELECT what FROM expenses WHERE id=?", (claim_id,)) or {"what": "costs"}
+        c.execute("UPDATE decisions SET message=? WHERE id=?",
+                  (f"A person approved your {e['what'].lower()} claim. {money(d['amount'], pol.get('currency', 'USD'))} went to {pol.get('payout_account', 'your account')}.", d["id"]))
+    else:
+        c.execute("UPDATE decisions SET message=? WHERE id=?",
+                  ("After review, this receipt could not be approved. Your delay payout is not affected.", d["id"]))
+    return db.one(c, "SELECT * FROM decisions WHERE id=?", (d["id"],))

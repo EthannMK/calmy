@@ -78,6 +78,14 @@ def _flight(c, code):
     return db.one(c, "SELECT * FROM flights WHERE code=?", (code,))
 
 
+def _extra(c, pid):
+    e = db.one(c, "SELECT * FROM expenses WHERE policy_id=?", (pid,))
+    if e:
+        e["has_receipt"] = bool(e.pop("receipt"))
+        e["decision"] = _decision(db.one(c, "SELECT * FROM decisions WHERE id=?", (e["id"] + "-D",)))
+    return e
+
+
 def _bag(c, pid):
     b = db.one(c, "SELECT * FROM baggage WHERE policy_id=?", (pid,))
     if b:
@@ -133,6 +141,8 @@ def traveler_state(pid: str):
             "rules": rules,
             "delay_decision": delay,
             "baggage": _bag(c, pid),
+            "extra": _extra(c, pid),
+            "extra_limits": dict(zip(("fast", "cap"), engine.extra_limits(rules))),
         }
 
 
@@ -332,6 +342,48 @@ def bag_claim(pid: str, body: BagClaim):
     return claim
 
 
+class ExtraClaim(BaseModel):
+    what: str = Field(..., min_length=2, max_length=40)       # meal, transport, hotel, other
+    amount: int = Field(..., gt=0, le=100000)
+    receipt: str | None = Field(None, max_length=400000)      # optional photo as a data URL
+
+
+@app.post("/api/traveler/{pid}/extra-claim")
+def extra_claim(pid: str, body: ExtraClaim):
+    """Costs above the instant payout, claimed with a receipt."""
+    with db.conn() as c:
+        _policy(c, pid)
+        try:
+            engine.submit_extra_claim(c, pid, body.what.strip(), body.amount, body.receipt)
+        except (ValueError, KeyError, TypeError) as e:
+            raise HTTPException(400, str(e))
+        return _extra(c, pid)
+
+
+@app.get("/api/traveler/{pid}/airline-letter")
+def airline_letter(pid: str, ai: int = 0):
+    """A ready letter asking the airline for what it owes. Plain text first, Gemini polish on request."""
+    with db.conn() as c:
+        p = _policy(c, pid)
+        f = _flight(c, p["flight"])
+        m = markets.public(p["market"])
+    if not f:
+        raise HTTPException(400, "flight not found")
+    late = "was cancelled" if f.get("cancelled") else f"was delayed by {f['delay_minutes'] // 60} hours {f['delay_minutes'] % 60:02d} minutes"
+    law = (m.get("statutory") or "").strip()
+    text = (f"To {f['airline']} customer relations,\n\n"
+            f"I was booked on flight {f['code']} from {f['origin']} to {f['dest']}, scheduled for {f.get('scheduled') or 'the date shown on my booking'}. "
+            f"The flight {late}.\n\n"
+            f"Please confirm what you owe me for this disruption" + (f" under the rules in {m['name']}: {law}" if law else "") +
+            ". I also ask for a refund of reasonable meal and transport costs, and I am keeping my receipts.\n\n"
+            f"Booking reference: [add yours]\nName: {p['traveler']}\n\nThank you. Please reply in writing.")
+    better = None
+    if ai and os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        better = copilot.ask_gemini("Polish this letter so it is clear, polite and firm. Keep every fact, add nothing new, no legal claims beyond the text, "
+                                    "keep the [add yours] placeholder, plain text only.\n\n" + text)
+    return {"text": better or text, "ai": bool(better)}
+
+
 # ----------------------------------------------------------- demo controls
 
 class Delay(BaseModel):
@@ -513,6 +565,7 @@ def overview(market: str = "TH"):
                "WHERE d.status='paid'")
         held = db.one(c, "SELECT COUNT(*) n FROM decisions WHERE status='held' AND kind='delay'")["n"]
         bag_waiting = db.one(c, "SELECT COUNT(*) n FROM decisions WHERE status IN ('held','pending') AND kind='baggage'")["n"]
+        extra_waiting = db.one(c, "SELECT COUNT(*) n FROM decisions WHERE status='pending' AND kind='expense'")["n"]
         flights = db.rows(
             c,
             "SELECT f.*, (SELECT COUNT(*) FROM policies p WHERE p.flight=f.code AND p.status='active') AS covered "
@@ -561,6 +614,7 @@ def overview(market: str = "TH"):
             "auto_paid": auto,
             "held": held,
             "bag_waiting": bag_waiting,
+            "extra_waiting": extra_waiting,
         },
         "flights": flights,
         "outcomes": outcomes,
@@ -705,6 +759,29 @@ def baggage_decide(claim_id: str, body: Review):
     with db.conn() as c:
         try:
             return _decision(engine.decide_baggage(c, claim_id, body.action == "approve", "Nok P."))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+
+@app.get("/api/console/extra")
+def extra_list():
+    with db.conn() as c:
+        out = db.rows(c, "SELECT * FROM expenses ORDER BY created_at DESC")
+        for e in out:
+            e["decision"] = _decision(db.one(c, "SELECT * FROM decisions WHERE id=?", (e["id"] + "-D",)))
+            e["policy"] = db.one(c, "SELECT * FROM policies WHERE id=?", (e["policy_id"],))
+            e["rules"] = engine.get_rules(c, e["policy"]["market"])
+            e["limits"] = dict(zip(("fast", "cap"), engine.extra_limits(e["rules"])))
+        return out
+
+
+@app.post("/api/console/extra/{claim_id}")
+def extra_decide(claim_id: str, body: Review):
+    if body.action not in ("approve", "decline"):
+        raise HTTPException(400, "action must be approve or decline")
+    with db.conn() as c:
+        try:
+            return _decision(engine.decide_extra(c, claim_id, body.action == "approve", "Nok P."))
         except ValueError as e:
             raise HTTPException(400, str(e))
 

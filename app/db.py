@@ -69,6 +69,12 @@ CREATE TABLE IF NOT EXISTS baggage (
     policy_id TEXT, report_id TEXT, bag_tag TEXT, status TEXT,
     items TEXT, total INTEGER, created_at REAL
 );
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    policy_id TEXT, what TEXT, amount INTEGER,
+    receipt TEXT,                          -- small receipt photo as a data URL, optional
+    created_at REAL
+);
 CREATE TABLE IF NOT EXISTS partners (
     id TEXT PRIMARY KEY,
     airport TEXT, name TEXT, kind TEXT, terminal TEXT, walk_min INTEGER,
@@ -185,7 +191,7 @@ def seed_rules(c):
 def reset():
     """Wipe everything and reseed. Backs the Reset demo data button."""
     with conn() as c:
-        for t in ("decisions", "baggage", "events", "redemptions", "partners", "policies", "flights", "rules"):  # api_usage is kept
+        for t in ("decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules"):  # api_usage is kept
             c.execute(f"DELETE FROM {t}")
         seed(c)
 

@@ -115,6 +115,10 @@
   .fcbar{height:8px;border-radius:99px;background:var(--line2,#E8ECF2);overflow:hidden;margin:6px 0 8px}
   .fcbar i{display:block;height:100%;border-radius:99px;background:var(--cobalt)}
   .fc.high .fcbar i{background:#E08A00}.fc.medium .fcbar i{background:var(--cyan,#0DC5FB)}
+  .pushbn{position:fixed;z-index:80;left:10px;right:10px;top:10px;display:flex;gap:10px;align-items:flex-start;background:rgba(10,20,36,.96);color:#fff;border-radius:16px;padding:11px 13px;font-size:13px;line-height:1.4;box-shadow:0 10px 30px rgba(7,28,63,.35);transform:translateY(-140%);transition:transform .45s cubic-bezier(.2,.8,.2,1);cursor:pointer;text-align:left;width:calc(100% - 20px)}
+  .pushbn.in{transform:none}.pushbn b{display:block;font-size:12px;color:#FFC93C;margin-bottom:1px}.pushbn .ms{font-size:20px;color:#FFC93C;flex-shrink:0}
+  .exform{display:grid;gap:8px;margin-top:10px}.exform select,.exform input[type=text]{height:40px}
+  .letter{width:100%;min-height:210px;font-size:13px;line-height:1.5;resize:vertical}
   .alertbox{display:flex;gap:10px;align-items:flex-start;background:var(--amber-t);border:1px solid #F3D68E;color:#5C3A00;border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.45}
   .alertbox .ms{font-size:22px;color:#B26A00;flex-shrink:0}
   .rt{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line2,#E8ECF2);font-size:13px}
@@ -162,6 +166,7 @@ let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid'
 let S = null, MK = {}, tab = ['cover', 'claims', 'wallet', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
 let W = null, voucher = null, otherOpen = false;
 let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
+let ex = {open: false, what: 'Meal', amount: '', receipt: null, name: ''}, letter = null, letterOpen = false, edited = false;
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
 const cur = () => (S && S.policy && S.policy.currency) || 'USD';
 const M = n => money(n, cur());
@@ -179,6 +184,7 @@ async function load() {
   $('#avatar').textContent = pol ? pol.traveler.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   $('#mkt').innerHTML = pol ? `${esc(S.market.name)}<br>${esc(S.market.currency)}` : '';
   if (tab === 'wallet' && S && S.points) { try { W = await api(`/api/airport/${S.flight.origin}/partners?pid=${PID}`); } catch (e) {} }
+  if (S && S.delay_decision && S.delay_decision.status !== 'held') pushBanner(S.delay_decision);
   if (!typing()) render();
 }
 function setTab(t) { tab = t; bagForm = false; render(true); if (t === 'wallet') loadWallet(); }
@@ -219,6 +225,7 @@ function paidTotal() {
   let t = 0;
   if (S.delay_decision?.status === 'paid') t += S.delay_decision.amount;
   if (S.baggage?.decision?.status === 'paid') t += S.baggage.decision.amount;
+  if (S.extra?.decision?.status === 'paid') t += S.extra.decision.amount;
   return t;
 }
 const pts = n => Number(n || 0).toLocaleString() + ' points';
@@ -419,7 +426,7 @@ function paidView(d) {
     ${msgCard(d)}
     <div class="aicard">${aiChip('KODA AI explains')}${aiText(d.explanation)}</div>
     ${steps(d.timeline)}
-    ${rightsCard()}
+    ${rightsCard()}${extraCard()}${airlineCard()}
     <button id="done" class="btn primary block">Done</button>`;
 }
 function reviewView(d) {
@@ -456,6 +463,56 @@ function bagView(b) {
       ${bagOpen ? '<p class="mute" style="padding:0 14px 14px;font-size:13px;line-height:1.5">Under the Montreal Convention the airline is liable first for lost checked bags, up to 1,519 SDR. Keep your Property Irregularity Report. This cover tops up what the airline does not pay.</p>' : ''}</div>`;
 }
 
+
+/* ---------------- extra costs and airline letter ---------------- */
+function extraCard() {
+  const d = S.delay_decision, e = S.extra, L = S.extra_limits || {};
+  if (!d || d.status !== 'paid' || !S.policy.delay_cover) return '';
+  if (e) {
+    const x = e.decision, paid = x.status === 'paid', declined = x.status === 'declined';
+    return `<section class="card"><div class="cap">Extra costs</div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip ${paid ? 'paid' : declined ? 'red' : 'held'}"><i></i>${paid ? 'Paid' : declined ? 'Not approved' : 'Under review'}</span><b class="mono" style="font-size:18px">${M(x.amount)}</b></div>
+      <p style="margin-top:8px;line-height:1.5">${esc(x.message || '')}</p><small class="mute">${esc(e.what)}, ${M(e.amount)}${e.has_receipt ? ', receipt attached' : ''}</small></section>`;
+  }
+  if (!ex.open) return `<section class="card"><div class="cap">Spent more than the payout?</div>
+      <p style="line-height:1.5">Claim a meal, transport or a hotel with a receipt. Up to ${M(L.cap || 0)}. Claims under ${M(L.fast || 0)} are paid at once.</p>
+      <button id="exStart" class="btn block" style="margin-top:10px">${ico('receipt_long')}Claim extra costs</button></section>`;
+  return `<section class="card"><div class="cap">Claim extra costs</div>
+    <div class="exform"><select id="exWhat" class="field" aria-label="What did you pay for">${['Meal', 'Transport', 'Hotel', 'Other'].map(w => `<option ${ex.what === w ? 'selected' : ''}>${w}</option>`).join('')}</select>
+      <input id="exAmt" class="field mono" type="text" inputmode="numeric" placeholder="Amount on the receipt (${esc(cur())})" maxlength="7" value="${esc(ex.amount)}">
+      <label class="btn" style="cursor:pointer">${ico('add')}<span id="exPhotoTxt">${ex.receipt ? 'Receipt attached: ' + esc(ex.name) : 'Add a receipt photo'}</span><input id="exPhoto" type="file" accept="image/*" capture="environment" hidden></label>
+      <div class="row2"><button id="exCancel" class="btn" style="flex:1">Cancel</button><button id="exSend" class="btn primary" style="flex:1">Send claim</button></div></div></section>`;
+}
+function airlineCard() {
+  const d = S.delay_decision, f = S.flight;
+  if (!d || d.status !== 'paid' || !(f.cancelled || f.delay_minutes >= 120)) return '';
+  if (!letterOpen) return `<section class="card"><div class="cap">The airline may owe you too</div>
+      <p style="line-height:1.5">Your KODA payout is separate. We can write the letter that asks ${esc(f.airline)} for what it owes you.</p>
+      <button id="letterStart" class="btn block" style="margin-top:10px">${ico('support_agent')}Draft my letter</button></section>`;
+  return `<section class="card"><div class="cap">Letter to ${esc(f.airline)}</div>
+    <textarea id="letterTxt" class="field letter" aria-label="Letter to the airline">${esc(letter ? letter.text : 'Writing your letter...')}</textarea>
+    <p class="mute" style="font-size:12px;margin:6px 0 10px">Add your booking reference, then send it from the airline's website or email. This is not legal advice.</p>
+    <div class="row2"><button id="letterClose" class="btn" style="flex:1">Close</button><button id="letterCopy" class="btn primary" style="flex:1">Copy letter</button></div></section>`;
+}
+function compress(file) {
+  return new Promise((ok, no) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, 900 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL('image/jpeg', .6)); };
+    img.onerror = () => no(new Error('That photo could not be read.')); img.src = u;
+  });
+}
+function pushBanner(d) {
+  if (!d || !d.message) return;
+  const key = 'koda.push.' + d.id + d.status; let seen = false;
+  try { seen = sessionStorage.getItem(key); sessionStorage.setItem(key, '1'); } catch (e) {}
+  if (seen) return;
+  let b = $('#pushbn'); if (!b) { b = document.createElement('button'); b.id = 'pushbn'; b.className = 'pushbn'; document.body.appendChild(b); }
+  b.innerHTML = `${ico('bolt')}<span><b>KODA, now</b>${esc(d.message)}</span>`;
+  b.onclick = () => { b.classList.remove('in'); setTab('claims'); };
+  requestAnimationFrame(() => b.classList.add('in')); setTimeout(() => b.classList.remove('in'), 9000);
+}
+
 /* ---------------- Help tab ---------------- */
 function helpView() {
   return `<h1>Help</h1>
@@ -488,6 +545,26 @@ function bind() {
   });
   on('#why', () => { showWhy = !showWhy; render(true); });
   on('#done', () => setTab('cover'));
+  on('#exStart', () => { ex.open = true; render(true); });
+  on('#exCancel', () => { ex = {open: false, what: 'Meal', amount: '', receipt: null, name: ''}; render(true); });
+  const xw = $('#exWhat'); if (xw) xw.onchange = () => ex.what = xw.value;
+  const xa = $('#exAmt'); if (xa) xa.oninput = () => { ex.amount = xa.value.replace(/\D/g, ''); xa.value = ex.amount; };
+  const xp = $('#exPhoto'); if (xp) xp.onchange = async () => { const f = xp.files[0]; if (!f) return; try { ex.receipt = await compress(f); ex.name = f.name.slice(0, 24); $('#exPhotoTxt').textContent = 'Receipt attached: ' + ex.name; } catch (e) { fail(e); } };
+  on('#exSend', async () => {
+    const amount = parseInt(ex.amount, 10); if (!(amount > 0)) return fail('Enter the amount on the receipt.');
+    try { await api(`/api/traveler/${PID}/extra-claim`, 'POST', {what: ex.what, amount, receipt: ex.receipt}); ex = {open: false, what: 'Meal', amount: '', receipt: null, name: ''}; }
+    catch (e) { return fail(e); }
+    await load();
+  });
+  on('#letterStart', async () => {
+    letterOpen = true; letter = null; edited = false; render(true);
+    try { letter = await api(`/api/traveler/${PID}/airline-letter`); } catch (e) { letter = {text: 'The letter could not be written. Try again in a moment.'}; }
+    render(true);
+    api(`/api/traveler/${PID}/airline-letter?ai=1`).then(r => { if (r.ai && !edited && letterOpen) { letter = r; render(true); } }).catch(() => {});
+  });
+  on('#letterClose', () => { letterOpen = false; render(true); });
+  const lt = $('#letterTxt'); if (lt) lt.oninput = () => { edited = true; if (letter) letter.text = lt.value; };
+  on('#letterCopy', async () => { try { await navigator.clipboard.writeText($('#letterTxt').value); toast('Letter copied.', 'ok'); } catch (e) { $('#letterTxt').select(); toast('Select the text and copy it.', 'ok'); } });
   on('#bagToggle', () => { bagOpen = !bagOpen; render(true); });
   on('#bagStart', () => { bagForm = true; render(true); });
   on('#bagCancel', () => { bagForm = false; render(true); });
