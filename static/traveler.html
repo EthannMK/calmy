@@ -85,6 +85,11 @@
   .field{height:46px;border-radius:10px;font-size:15px}
   .btn{height:48px;border-radius:10px;font-size:15px}
   .btn.sm{height:36px;font-size:13px}
+  .daybtn{display:flex;align-items:center;gap:8px;width:100%;margin-top:10px;padding:10px 12px;border:1px solid var(--line);background:#fff;border-radius:10px;font-weight:600;font-size:14px;text-align:left}.daybtn span{flex:1;white-space:nowrap;text-align:left}.daybtn .ms{font-size:20px;color:var(--cobalt)}
+  .cal{margin-top:8px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px}
+  .calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.calh .cn{width:32px;height:32px;border-radius:50%;display:grid;place-items:center}.calh .cn:disabled{opacity:.3}.calh .cn:not(:disabled):hover{background:var(--line2)}
+  .calw,.calg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}.calw span{font-size:11px;color:var(--mute);padding:2px 0}
+  .cd{height:34px;border-radius:50%;font-size:13px;font-weight:600}.cd:disabled{color:var(--faint);font-weight:400;cursor:default}.cd:not(:disabled):hover{background:var(--cobalt-t)}.cd.today{border:1px solid var(--line)}.cd.on{background:var(--navy);color:#fff;border-color:var(--navy)}
   .apq.on{background:var(--navy);color:#fff;border-color:var(--navy)}
   .apq{font-family:'Geist Mono',monospace;font-size:12px;padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:99px}
   .row2{display:flex;gap:8px}
@@ -165,7 +170,8 @@ const EMBED = new URLSearchParams(location.search).has('embed'); if (EMBED) docu
 let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid');
 let S = null, MK = {}, tab = ['cover', 'claims', 'wallet', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
 let W = null, voucher = null, otherOpen = false;
-let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: ''}, ap = 'BKK';
+let selDate = '', calOpen = false, calMonth = null, selFlight = null;
+let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app'}, ap = 'BKK';
 let ex = {open: false, what: 'Meal', amount: '', receipt: null, name: ''}, letter = null, letterOpen = false, edited = false;
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
 const cur = () => (S && S.policy && S.policy.currency) || 'USD';
@@ -205,9 +211,9 @@ function render(force) {
 
 /* ---------------- shared pieces ---------------- */
 function flightCard(withTrack) {
-  const f = S.flight, live = f.source === 'live', late = f.delay_minutes > 0 || !!f.cancelled;
+  const f = S.flight, sched = f.source === 'live' && !f.fetched_at, live = f.source === 'live' && !sched, late = f.delay_minutes > 0 || !!f.cancelled;
   return `<section class="bp" aria-label="Flight ${esc(f.code)}">
-    <div class="bp-top"><span>${esc(f.airline)}</span><span style="display:flex;gap:8px;align-items:center">${live ? '<span class="tag live">Live status</span>' : ''}<span class="bp-code">${esc(f.code)}</span></span></div>
+    <div class="bp-top"><span>${esc(f.airline)}</span><span style="display:flex;gap:8px;align-items:center">${live ? '<span class="tag live">Live status</span>' : sched ? '<span class="tag">Scheduled flight</span>' : ''}<span class="bp-code">${esc(f.code)}</span></span></div>
     <div class="bp-route">
       <div><div class="bp-ap">${esc(f.origin)}</div><div class="bp-city">${esc(f.origin_city)}</div></div>
       <div class="bp-mid"><hr>${ico('flight')}<hr></div>
@@ -218,7 +224,7 @@ function flightCard(withTrack) {
     ${S.weather && S.weather.source.startsWith('Live') ? `<div class="bp-wx">${ico('info')}<span><b>${esc(S.flight.origin)} now:</b> ${esc(S.weather.text)}</span></div>` : ''}
     ${withTrack ? `<div class="bp-track">${delayTrack(f.delay_minutes, S.rules, cur(), true)}</div>` : ''}
     <div class="bp-status"><span style="display:flex;align-items:center;gap:10px"><span class="tag ${late ? 'late' : 'ok'}">${f.cancelled ? 'Cancelled' : late ? 'Delayed ' + hm(f.delay_minutes) : 'On time so far'}</span>${S.policy.status === 'active' && S.policy.delay_cover ? `<span class="radar" title="KODA AI is watching this flight"></span>${aiChip('Watching', true)}` : ''}</span>
-      ${live ? `<span>Updated ${ago(f.fetched_at)} <button id="checkNow">Refresh</button></span>` : '<span>We check this flight for you</span>'}</div>
+      ${live ? `<span>Updated ${ago(f.fetched_at)} <button id="checkNow">Refresh</button></span>` : sched ? '<span>Live status starts closer to the day</span>' : '<span>We check this flight for you</span>'}</div>
   </section>`;
 }
 function paidTotal() {
@@ -296,6 +302,42 @@ function flightRow(f) {
     <span class="c">${esc(f.code)}</span><span class="r">${esc(f.origin)} to ${esc(f.dest)}<span class="mute"> · ${esc(f.depart_label)}</span></span>
     <span class="mute" style="font-size:12px">${esc(f.airline || '')}</span></button>`;
 }
+
+/* ---------------- calendar: pick a day up to a month ahead ---------------- */
+const ISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const fromISO = t => { const [y, m, d] = t.split('-').map(Number); return new Date(y, m - 1, d); };
+const WINDOW = () => LIVE.window || [ISO(new Date()), ISO(new Date())];
+const dayLabel = t => (t === WINDOW()[0] ? 'Today, ' : '') + fromISO(t).toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'}).replace(',', '');
+function calendar() {
+  const [lo, hi] = WINDOW(), cur = calMonth || fromISO(selDate || lo), y = cur.getFullYear(), m = cur.getMonth();
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+  const canPrev = ISO(new Date(y, m, 0)) >= lo, canNext = ISO(new Date(y, m + 1, 1)) <= hi;
+  let cells = '<i></i>'.repeat(lead);
+  for (let d = 1; d <= days; d++) {
+    const t = ISO(new Date(y, m, d)), off = t < lo || t > hi;
+    cells += `<button class="cd ${t === selDate ? 'on' : ''} ${t === lo ? 'today' : ''}" data-day="${t}" ${off ? 'disabled' : ''} aria-label="${esc(dayLabel(t))}" ${t === selDate ? 'aria-pressed="true"' : ''}>${d}</button>`;
+  }
+  return `<div class="cal" role="group" aria-label="Choose a day, up to a month ahead">
+    <div class="calh"><button class="cn" id="calPrev" ${canPrev ? '' : 'disabled'} aria-label="Previous month"><span aria-hidden="true" style="font-size:22px;line-height:1">&lsaquo;</span></button><b>${cur.toLocaleDateString('en-GB', {month: 'long', year: 'numeric'})}</b><button class="cn" id="calNext" ${canNext ? '' : 'disabled'} aria-label="Next month"><span aria-hidden="true" style="font-size:22px;line-height:1">&rsaquo;</span></button></div>
+    <div class="calw">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<span>${x}</span>`).join('')}</div>
+    <div class="calg">${cells}</div></div>`;
+}
+function flightFinder() {
+  const ok = !!LIVE.ready, day = selDate || WINDOW()[0];
+  return `<div class="row2"><input id="fFlight" class="field mono" style="text-transform:uppercase" placeholder="Flight, e.g. TG 102" maxlength="8" value="${esc(form.flight)}" ${ok ? '' : 'disabled'}><button id="fUse" class="btn primary" style="padding:0 20px" ${ok ? '' : 'disabled'}>Find</button></div>
+    ${ok ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" role="group" aria-label="Departure airport">${['BKK', 'LHR', 'JFK', 'SIN', 'DEL', 'SYD'].map(a => `<button data-ap="${a}" class="apq ${a === ap ? 'on' : ''}">${a}</button>`).join('')}</div>
+    <button id="dayBtn" class="daybtn" aria-expanded="${calOpen}">${ico('flight_takeoff')}<span>${esc(dayLabel(day))}</span>${ico(calOpen ? 'expand_less' : 'expand_more')}</button>
+    ${calOpen ? calendar() : ''}` : ''}
+    ${realMsg ? `<div class="note" style="margin-top:10px">${esc(realMsg)}</div>` : ''}
+    ${ok && REAL.length ? `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:14px 0 6px;color:var(--ink2);font-weight:600">${day === WINDOW()[0] ? '<span class="radar"></span>Departures from ' + esc(ap) + ' today' : 'Scheduled flights from ' + esc(ap)}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${REAL.map(flightRow).join('')}</div>` : ''}
+    ${ok ? '<div class="mute" style="font-size:12px;margin-top:10px;line-height:1.4">Booked on Trip.com, Agoda or with the airline? Pick the same flight and day here to add cover.</div>' : ''}`;
+}
+function selectedFlight() {
+  const f = selFlight;
+  return `<div class="opt on" aria-label="Selected flight"><span class="c">${esc(f.code)}</span><span class="r">${esc(f.origin)} to ${esc(f.dest)}<span class="mute"> · ${esc(f.depart_label)}</span></span><span class="mute" style="font-size:12px">${esc(f.airline || '')}</span></div>
+    <button id="changeFlight" style="color:var(--cobalt);font-weight:600;font-size:13px;margin-top:8px">Change flight or day</button>`;
+}
 function startView() {
   const m = MK[form.market];
   const rails = m ? m.rails : [];
@@ -304,15 +346,12 @@ function startView() {
       <p>Pick your flight. If it runs late or your bag is lost, we pay you automatically.</p>
       ${routeArt()}</section>
     <section><div class="cap">1. Find your flight</div>
-      ${LIVE.enabled ? '' : `<div class="note" role="status"><b>Live flight data is not connected.</b> This app only covers real flights, so there is nothing to pick yet. ${esc(LIVE.last_error || 'Set the flight data key on the server and reload.')}</div>`}
-      <div class="row2" style="margin-top:${LIVE.enabled ? 0 : 10}px"><input id="fFlight" class="field mono" style="text-transform:uppercase" placeholder="Flight, e.g. TG 102" maxlength="8" value="${esc(form.flight)}" ${LIVE.enabled ? '' : 'disabled'}><button id="fUse" class="btn primary" style="padding:0 20px" ${LIVE.enabled ? '' : 'disabled'}>Find</button></div>
-      ${LIVE.enabled ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" role="group" aria-label="Departure airport">${['BKK', 'LHR', 'JFK', 'SIN', 'DEL', 'SYD'].map(a => `<button data-ap="${a}" class="apq ${a === ap ? 'on' : ''}">${a}</button>`).join('')}</div>` : ''}
-      ${realMsg ? `<div class="note" style="margin-top:10px">${esc(realMsg)}</div>` : ''}
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:16px 0 6px;color:var(--ink2);font-weight:600">${LIVE.enabled && REAL.length ? `<span class="radar"></span>Live departures from ${esc(ap)}` : ''}</div>
-      <div style="display:flex;flex-direction:column;gap:6px">${(LIVE.enabled ? REAL : []).map(flightRow).join('')}</div></section>
+      ${LIVE.ready ? '' : `<div class="note" role="status"><b>Live flight data is not connected.</b> This app only covers real flights, so there is nothing to pick yet. ${esc(LIVE.last_error || 'Set the flight data key on the server and reload.')}</div>`}
+      ${selFlight ? selectedFlight() : flightFinder()}</section>
     <section><div class="cap">2. You</div>
       <div style="display:flex;flex-direction:column;gap:8px">
       <input id="fName" class="field" placeholder="Full name" maxlength="40" value="${esc(form.name)}">
+      <select id="fChan" class="field" aria-label="Where you booked the ticket">${['Airline website or app', 'Trip.com', 'Agoda', 'Another travel site', 'Not booked yet'].map(c => `<option ${c === form.channel ? 'selected' : ''}>${c}</option>`).join('')}</select>
       ${form.rail === 'KODA points' ? '' : `<input id="fLast4" class="field mono" placeholder="Last 4 digits of your payout account" inputmode="numeric" maxlength="4" value="${esc(form.last4)}">`}
       ${rails.length ? `<select id="fRail" class="field">${rails.map(r => `<option ${r === form.rail ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>${form.rail === 'KODA points' ? '<div class="note info">Get 25% more as points. Spend them at partner restaurants in your departure airport. No account needed.</div>' : `<div class="mute" style="font-size:13px">Payout in ${esc(m.currency)} to your own account.</div>`}` : '<div class="mute" style="font-size:13px">Payout options appear once you pick a flight.</div>'}</div></section>
     <button id="quote" class="btn primary block">See price</button>`;
@@ -525,7 +564,9 @@ function helpView() {
 }
 
 /* ---------------- events ---------------- */
-function pickFlight(code, market) { form.flight = code; form.market = market; form.rail = ''; render(true); }
+function pickFlight(code, market) {
+  const hit = [...REAL, ...SAMPLES].find(f => f.code === code); form.flight = code; form.market = market; form.rail = ''; selFlight = hit || {code, origin: '', dest: '', depart_label: '', airline: ''}; calOpen = false; render(true);
+}
 function bind() {
   document.querySelectorAll('[data-sel]').forEach(el => el.onclick = () => { sel[el.dataset.sel] = !sel[el.dataset.sel]; render(true); });
   const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
@@ -594,12 +635,18 @@ function bind() {
   const fr = $('#fRail'); if (fr) fr.onchange = () => { form.rail = fr.value; render(true); };
   document.querySelectorAll('.pick').forEach(b => b.onclick = () => pickFlight(b.dataset.pick, b.dataset.mk));
   document.querySelectorAll('.apq').forEach(b => b.onclick = () => { ap = b.dataset.ap; loadReal(); });
+  on('#dayBtn', () => { calOpen = !calOpen; render(true); });
+  on('#calPrev', () => { const c = calMonth || fromISO(selDate || WINDOW()[0]); calMonth = new Date(c.getFullYear(), c.getMonth() - 1, 1); render(true); });
+  on('#calNext', () => { const c = calMonth || fromISO(selDate || WINDOW()[0]); calMonth = new Date(c.getFullYear(), c.getMonth() + 1, 1); render(true); });
+  document.querySelectorAll('.cd').forEach(b => b.onclick = () => { selDate = b.dataset.day; calMonth = null; calOpen = false; loadReal(); });
+  on('#changeFlight', () => { selFlight = null; form.flight = ''; form.market = ''; render(true); });
+  const fc = $('#fChan'); if (fc) fc.onchange = () => form.channel = fc.value;
   on('#fUse', async () => {
     const v = form.flight.replace(/\s/g, '').toUpperCase(); if (!v) return fail('Enter a flight number, for example TG 102.');
     const hit = [...SAMPLES, ...REAL].find(f => f.code.replace(/\s/g, '') === v);
     if (hit) return pickFlight(hit.code, hit.market);
     $('#fUse').disabled = true; realMsg = 'Looking up ' + v + '...';
-    try { const f = await api('/api/live/lookup?flight=' + encodeURIComponent(v)); realMsg = ''; REAL = [f, ...REAL.filter(x => x.code !== f.code)]; pickFlight(f.code, f.market); }
+    try { const f = await api('/api/live/lookup?flight=' + encodeURIComponent(v) + (selDate && selDate !== WINDOW()[0] ? '&date=' + selDate : '')); realMsg = ''; REAL = [f, ...REAL.filter(x => x.code !== f.code)]; pickFlight(f.code, f.market); }
     catch (e) { realMsg = String(e); render(true); }
   });
   on('#quote', async () => {
@@ -608,7 +655,7 @@ function bind() {
     if (form.rail !== 'KODA points' && !/^\d{4}$/.test(form.last4)) return fail('Enter the last 4 digits of your payout account.');
     $('#quote').disabled = true; $('#quote').textContent = 'Checking your flight...';
     try {
-      const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.rail === 'KODA points' ? '0000' : form.last4, flight: form.flight.trim(), rail: form.rail || null});
+      const r = await api('/api/policies', 'POST', {name: form.name.trim(), last4: form.rail === 'KODA points' ? '0000' : form.last4, flight: form.flight.trim(), rail: form.rail || null, date: (selFlight && selFlight.flight_date) || selDate || null, channel: form.channel || null});
       PID = r.policy; store.set('calmy.pid', PID); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false;
     } catch (e) { fail(e); $('#quote') && ($('#quote').disabled = false); return; }
     await load();
@@ -616,20 +663,21 @@ function bind() {
 }
 async function loadReal() {
   realMsg = ''; REAL = [];
+  if (!selDate) selDate = WINDOW()[0];
   if (ap.length !== 3) { realMsg = 'Enter a three letter airport code such as BKK or LHR.'; return render(true); }
-  realMsg = 'Loading real departures...'; render(true);
-  try { REAL = await api('/api/live/upcoming?airport=' + encodeURIComponent(ap)); realMsg = REAL.length ? '' : 'No upcoming departures found for ' + ap + '.'; }
-  catch (e) { realMsg = 'Live departures are not available right now. Showing scheduled flights.'; REAL = []; }
+  realMsg = 'Loading flights...'; render(true);
+  try { REAL = await api('/api/live/schedule?airport=' + encodeURIComponent(ap) + '&date=' + selDate); realMsg = REAL.length ? '' : 'No departures found from ' + ap + ' on this day.'; }
+  catch (e) { realMsg = String(e).replace(/^Error:\s*/, '') || 'Flights are not available right now.'; REAL = []; }
   try { LIVE = await api('/api/live/status'); } catch (e) {}
   render(true);
 }
 
-function newTrip() { PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); form = {name: '', last4: '', flight: '', rail: '', market: ''}; tab = 'cover'; load(); }
+function newTrip() { PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app'}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; load().then(() => loadReal()); }
 
 // The live demo page drives this app from outside: it can switch trip, switch tab or clear the app.
 window.addEventListener('message', e => {
   if (e.origin !== location.origin || !e.data) return;
-  if (e.data.reset) { PID = null; S = null; store.set('calmy.pid', null); form = {name: '', last4: '', flight: '', rail: '', market: ''}; tab = 'cover'; load(); return; }
+  if (e.data.reset) { PID = null; S = null; store.set('calmy.pid', null); form = {name: '', last4: '', flight: '', rail: '', market: '', channel: 'Airline website or app'}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; load().then(() => { if (LIVE.ready) loadReal(); }); return; }
   if (e.data.pid) { PID = e.data.pid; store.set('calmy.pid', PID); }
   if (e.data.tab) tab = e.data.tab;
   load().then(() => { render(true); if (tab === 'wallet') loadWallet(); });
@@ -642,7 +690,7 @@ setInterval(() => { if (!document.hidden && PID) load().catch(() => {}); }, EMBE
   try { LIVE = await api('/api/live/status'); } catch (e) {}
   await load().catch(e => fail(e));
   render(true);
-  if (LIVE.enabled && !PID) loadReal();
+  if (LIVE.ready && !PID) loadReal();
 })();
 </script>
 </body>

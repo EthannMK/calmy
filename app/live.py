@@ -17,6 +17,7 @@ import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from . import db, markets
 
@@ -110,6 +111,16 @@ def delay_minutes(dep: dict) -> int:
         return 0
 
 
+def _local_ts(sched: datetime | None, tz: str | None) -> float | None:
+    """The API tags airport local clock times with +00:00. Read the clock time in the airport's own zone."""
+    if not sched:
+        return None
+    try:
+        return sched.replace(tzinfo=ZoneInfo(tz)).timestamp() if tz else sched.timestamp()
+    except Exception:
+        return sched.timestamp()
+
+
 def normalize(rec: dict) -> dict | None:
     """Turn one API record into the shape the flights table uses."""
     dep, arr = rec.get("departure") or {}, rec.get("arrival") or {}
@@ -130,7 +141,7 @@ def normalize(rec: dict) -> dict | None:
         "delay_minutes": delay_minutes(dep),
         "status": rec.get("flight_status") or "unknown",
         "flight_date": rec.get("flight_date"),
-        "sched_ts": sched.timestamp() if sched else None,
+        "sched_ts": _local_ts(sched, dep.get("timezone")),
         "market": markets.market_for_timezone(dep.get("timezone")),  # departure country decides the rules
     }
 
@@ -207,6 +218,6 @@ def upsert_flight(c, f: dict):
         "delay_minutes=excluded.delay_minutes, source='live', fetched_at=excluded.fetched_at, "
         "flight_date=excluded.flight_date, sched_ts=excluded.sched_ts, market=excluded.market",
         (f["code"], f["airline"], f["origin"], f["origin_city"], f["dest"], f["dest_city"], f["depart_label"],
-         f["scheduled"], f["delay_minutes"], 0, "live", time.time(), f.get("flight_date"), f.get("sched_ts"),
+         f["scheduled"], f["delay_minutes"], 0, "live", f["fetched_at"] if "fetched_at" in f else time.time(), f.get("flight_date"), f.get("sched_ts"),
          f.get("market", "GLOBAL")),
     )

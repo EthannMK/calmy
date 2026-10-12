@@ -112,7 +112,7 @@ MIGRATIONS = [
     ("policies", "created_at", "REAL"), ("policies", "pnr", "TEXT"), ("flights", "cancelled", "INTEGER DEFAULT 0"),
     ("decisions", "trigger", "TEXT DEFAULT 'delay'"), ("decisions", "elapsed_ms", "INTEGER"), ("decisions", "message", "TEXT"), ("decisions", "context", "TEXT"), ("policies", "sched_at_purchase", "TEXT"),
     ("flights", "stress", "INTEGER DEFAULT 0"), ("policies", "f_adverse", "INTEGER DEFAULT 0"),
-    ("policies", "risk_at_purchase", "REAL"), ("decisions", "points", "INTEGER DEFAULT 0"), ("flights", "sim", "INTEGER DEFAULT 0"),
+    ("policies", "risk_at_purchase", "REAL"), ("decisions", "points", "INTEGER DEFAULT 0"), ("flights", "sim", "INTEGER DEFAULT 0"), ("policies", "channel", "TEXT"),
 ]
 
 

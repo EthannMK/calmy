@@ -31,6 +31,9 @@ def refresh_flight(code: str) -> dict:
     if f.get("sim"):
         return {"flight": f, "results": [], "note": "A demo event is set on this flight, so the live status is paused."}
     fresh = live.lookup(code, f["flight_date"])
+    if f.get("flight_date") and fresh.get("flight_date") != f["flight_date"]:
+        # The live plan only knows flights that fly today, so a later day has no status yet. Never apply another day's delay.
+        return {"flight": f, "results": [], "note": "Live status for that day is not available yet. It is checked closer to the day."}
     context.prefetch(fresh["origin"])  # network call, before the database lock
     with db.conn() as c:
         live.upsert_flight(c, fresh)

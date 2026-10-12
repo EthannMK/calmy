@@ -22,7 +22,7 @@ from typing import Literal
 import re
 import time
 
-from . import context, copilot, db, engine, forecast, live, markets, partners, rights, track
+from . import context, copilot, db, engine, forecast, live, markets, partners, rights, schedule, track
 
 STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 @asynccontextmanager
@@ -152,6 +152,8 @@ class NewPolicy(BaseModel):
     last4: str = Field(..., pattern=r"^\d{4}$")
     flight: str = Field(..., min_length=3, max_length=8)
     rail: str | None = None  # payout rail, must be one of the market's rails
+    date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")  # day of the flight, up to a month ahead
+    channel: str | None = Field(None, max_length=30)  # where the ticket was bought, for the sales story
 
 
 @app.post("/api/policies")
@@ -163,16 +165,30 @@ def create_policy(body: NewPolicy):
     code = re.sub(r"\s+", " ", body.flight.strip().upper())
     with db.conn() as c:
         sample = db.one(c, "SELECT * FROM flights WHERE source='sim' AND REPLACE(code,' ','')=?", (code.replace(" ", ""),))
+    today = time.strftime("%Y-%m-%d")
     if sample:
         f = sample
+    elif body.date and body.date > today:
+        # A later day: live data cannot answer yet, so the saved real schedule is used. Status is checked closer to the day.
+        if schedule.valid_date(body.date) is None:
+            raise HTTPException(400, f"Pick a day between today and {schedule.window()[1]}.")
+        f = schedule.find(code, body.date)
+        if not f:
+            raise HTTPException(400, f"{code} is not in the saved schedule for {body.date}. Pick a flight from the list.")
     else:
-        if not live.enabled():
-            raise HTTPException(503, "Live flight data is not connected, so flights cannot be searched right now.")
-        try:
-            f = live.from_cache(code) or live.lookup(body.flight)  # a flight just shown in a list costs no new lookup
-        except live.LiveError as e:
-            raise HTTPException(502, str(e))
-        if f["sched_ts"] and f["sched_ts"] < time.time():
+        f, err = None, None
+        if live.enabled():
+            try:
+                f = live.from_cache(code) or live.lookup(body.flight)  # a flight just shown in a list costs no new lookup
+            except live.LiveError as e:
+                err = e
+        if f is None:
+            f = schedule.find(code, body.date or today)  # offline fallback so a live outage never stops the demo
+            if f is None:
+                if not live.enabled():
+                    raise HTTPException(503, "Live flight data is not connected, so flights cannot be searched right now.")
+                raise HTTPException(502, str(err))
+        elif f["sched_ts"] and f["sched_ts"] < time.time():
             raise HTTPException(400, f"{f['code']} has already left. Pick a flight that has not departed yet.")
     context.warm(f["origin"])  # weather is fetched now, in the background, so the later event never waits on it
     market = f.get("market") or "GLOBAL"
@@ -186,8 +202,8 @@ def create_policy(body: NewPolicy):
         pid = engine._new_id("CL")
         pnr = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))  # booking reference
         c.execute(
-            "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr) VALUES (?,?,?,?,'quote',?,?,?)",
-            (pid, body.name.strip(), f["code"], (f"{rail} wallet" if rail == markets.POINTS_RAIL else f"{rail} ending {body.last4}"), market, info["currency"], pnr),
+            "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr,channel) VALUES (?,?,?,?,'quote',?,?,?,?)",
+            (pid, body.name.strip(), f["code"], (f"{rail} wallet" if rail == markets.POINTS_RAIL else f"{rail} ending {body.last4}"), market, info["currency"], pnr, (body.channel or "").strip() or None),
         )
         db.log(c, pid, "quote_created", {"flight": f["code"], "market": market})
     return {"policy": pid, "flight": f, "market": info}
@@ -199,9 +215,14 @@ def demo_sources():
     u = live.usage()
     context.warm("BKK")  # so the weather status is real the first time the panel opens
     ai_on = bool(os.environ.get("GOOGLE_CLOUD_PROJECT"))
-    flights = {"mode": "error" if u["last_error"] else "live" if u["enabled"] else "off",
-               "detail": u["last_error"] or (f"{u['used']} of {u['budget']} lookups used this month" if u["enabled"]
-                                               else "No flight data key on the server. Travelers cannot search flights until one is set.")}
+    snap = schedule.info()
+    if snap["available"] and u["last_error"]:
+        u = {**u, "last_error": "Live service is not answering right now, so the saved real schedule is used."}
+    saved = f" Saved schedule: {snap['flights']} real flights from {snap['generated_at'][:10]}." if snap["available"] and snap.get("generated_at") else (" Saved schedule loaded." if snap["available"] else "")
+    flights = {"mode": "snapshot" if snap["available"] and (u["last_error"] or not u["enabled"]) else "error" if u["last_error"] else "live" if u["enabled"] else "off",
+               "detail": (u["last_error"] or (f"{u['used']} of {u['budget']} lookups used this month" if u["enabled"]
+                                               else "No live flight key. Using the saved real schedule." if snap["available"]
+                                               else "No flight data key on the server. Travelers cannot search flights until one is set.")) + (saved if u["enabled"] or u["last_error"] else "")}
     wx = {"mode": "error" if context.LAST["error"] else "live" if context.LAST["ok"] else "idle",
           "detail": context.LAST["error"] or ("Live from Open-Meteo" if context.LAST["ok"] else "Fetched at the first event")}
     ai = {"mode": "error" if engine.AI_LAST["error"] else "live" if ai_on else "off",
@@ -223,7 +244,24 @@ def live_upcoming(airport: str = Query("BKK", min_length=3, max_length=3)):
     try:
         return live.upcoming(airport)
     except live.LiveError as e:
+        saved = schedule.for_date(airport, time.strftime("%Y-%m-%d"), 12)  # offline fallback
+        if saved:
+            return saved
         raise HTTPException(502, str(e))
+
+
+@app.get("/api/live/schedule")
+def flights_on(airport: str = Query(..., min_length=3, max_length=3), date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
+    """Real flights leaving an airport on one day, from today up to a month ahead.
+    Today comes from live data (real status) and falls back to the saved schedule. Later days use the saved schedule."""
+    if schedule.valid_date(date) is None:
+        raise HTTPException(400, f"Pick a day between today and {schedule.window()[1]}.")
+    if date <= time.strftime("%Y-%m-%d"):
+        return live_upcoming(airport)
+    out = schedule.for_date(airport, date, 30)
+    if not out:
+        raise HTTPException(404, "No saved schedule for that day yet." if schedule.available() else "Flights for later days need the saved schedule, which is not loaded.")
+    return out
 
 
 @app.post("/api/flights/{code}/refresh")
@@ -466,14 +504,26 @@ class LiveReplay(BaseModel):
 
 @app.get("/api/live/status")
 def live_status():
-    return live.usage()
+    u = live.usage()
+    snap = schedule.info()
+    # ready: travelers can search. True with a live key or with a saved schedule, so an outage does not stop the demo.
+    return {**u, "snapshot": snap, "ready": bool(u["enabled"] or snap["available"]), "window": schedule.window()}
 
 
 @app.get("/api/live/lookup")
-def live_lookup(flight: str = Query(..., min_length=3, max_length=8)):
+def live_lookup(flight: str = Query(..., min_length=3, max_length=8), date: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$")):
+    today = time.strftime("%Y-%m-%d")
+    if date and date > today:  # a later day: only the saved schedule knows it
+        f = schedule.find(flight, date)
+        if not f:
+            raise HTTPException(404, f"{flight.upper()} is not in the saved schedule for {date}.")
+        return f
     try:
         return live.lookup(flight)
     except live.LiveError as e:
+        f = schedule.find(flight, date or today)  # offline fallback
+        if f:
+            return f
         raise HTTPException(502, str(e))
 
 
