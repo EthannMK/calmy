@@ -94,6 +94,43 @@
   .form{display:grid;gap:12px}.form label{display:grid;gap:5px;font-size:13px;font-weight:600}.form label small{font-weight:400;color:var(--mute)}
   .sw{display:flex;align-items:center;gap:10px;font-size:14px}.sw input{width:18px;height:18px}
   .mini{display:grid;gap:2px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:#fff}.mini b{font:700 24px Figtree,sans-serif;letter-spacing:-.02em}.mini span{font-size:12px;color:var(--mute)}
+  /* review workspace */
+  .split.rq{grid-template-columns:330px minmax(0,1fr)}
+  .rq .qlist{max-height:calc(100vh - 230px);overflow-y:auto}
+  .qitem{display:grid;gap:4px}
+  .qitem .q1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.qitem .q1 b{font-size:14px}.qitem .q1 .mono{font-size:13px;font-weight:600}
+  .qitem .q2{font-size:12.5px;color:var(--mute)}
+  .qitem .q3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .qitem .q4{font-size:12px;color:var(--cobalt);font-weight:600}
+  .qitem .rk{font-size:12px;font-weight:600;color:var(--ink2)}.qitem .rk.hi{color:var(--amber-d)}
+  .qitem .wait{margin-left:auto;font-size:12px;color:var(--mute);display:inline-flex;align-items:center;gap:3px}.qitem .wait .ms,.wst .ms{font-size:15px}
+  .tabsx .cnt{display:inline-block;min-width:18px;margin-left:4px;font-size:11.5px;color:var(--mute)}.tabsx button.on .cnt{color:#C9D6E8}
+  .ws{display:grid;gap:20px;min-width:0}
+  .wst{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wst h2{font-size:20px}.wst .mono{font-size:12.5px}.wst .push{margin-left:auto;font-size:13px;display:inline-flex;align-items:center;gap:4px}
+  .facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:14px;border:1px solid var(--line2);border-radius:var(--r)}
+  .facts>div{padding:12px 14px;border-left:1px solid var(--line2);display:grid;gap:3px;min-width:0}.facts>div:first-child{border-left:0}
+  .facts small{font-size:12px;color:var(--mute)}.facts b{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.facts span{font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wsgrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+  .wsgrid .side{position:sticky;top:76px}
+  .srcchip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:4px;font-size:12px;font-weight:600;background:var(--line2);color:var(--ink2)}
+  .srcchip .ms{font-size:14px}.srcchip.you{background:var(--navy);color:#fff}
+  .ws .panel>.ph .srcchip,.ws .panel>.ph .ai{margin-left:auto}
+  .rc{list-style:none;margin:0 0 10px;padding:0;display:grid}
+  .rc li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line2);font-size:13.5px}.rc li:first-child{border-top:0}
+  .rc li .ms{font-size:18px}.rc li.na .ms{color:var(--faint)}.rc li.na b{font-weight:400;color:var(--mute)}
+  .dbtns .btn{white-space:nowrap}.rc li.ok .ms{color:var(--green)}.rc li.no .ms{color:var(--amber-d)}.rc li b{font-weight:600;font-size:13px}.rc li.no b{color:var(--amber-d)}
+  .small{font-size:12px;line-height:1.5}
+  .quote{border-left:3px solid var(--cobalt);padding:4px 0 4px 12px;font-size:14px;line-height:1.5}
+  .hist{list-style:none;margin:0;padding:0;display:grid}
+  .hist li{display:grid;grid-template-columns:1fr auto;gap:12px;padding:8px 0 8px 18px;border-top:1px solid var(--line2);font-size:13px;position:relative}.hist li:first-child{border-top:0}
+  .hist li::before{content:'';position:absolute;left:2px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--cobalt)}
+  .hist time{font-family:'Geist Mono',monospace;font-size:12px;color:var(--mute);white-space:nowrap}
+  .decide{border-color:var(--navy);box-shadow:0 6px 18px rgba(7,28,63,.08)}
+  .dbtns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.dbtns .btn.primary{flex:1}
+  #decHint.err{color:var(--red)}
+  details.inv summary{gap:10px}
+  @media(max-width:1280px){.wsgrid{grid-template-columns:1fr}.wsgrid .side{position:static}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.facts>div:nth-child(3){border-left:0}.facts>div:nth-child(n+3){border-top:1px solid var(--line2)}}
+  @media(max-width:1100px){.split.rq{grid-template-columns:1fr}.rq .qlist{max-height:320px}}
   @media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
   @media(max-width:520px){.pop{right:8px;left:8px;width:auto}}
   @media(max-width:1100px){.cols,.split,.rulescols{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kpis>div:nth-child(3){border-left:0}.kpis>div:nth-child(n+3){border-top:1px solid var(--line)}}
@@ -195,7 +232,7 @@ function vOverview() {
       }).join('') : '<div class="boardempty">No flights loaded.</div>'}
 </section>
     <section class="panel"><div class="ph"><h2>Recent decisions</h2><a class="push" href="#decisions">All decisions</a></div>
-      ${recent.length ? `<div class="tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${recent.map(d => `<tr class="click" onclick="location.hash='${d.status === 'held' ? 'review/' + esc(d.id) : 'decisions/' + esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="pb mute">No decisions yet. A delay or cancellation that reaches a payout rule creates one.</div>'}</section>
+      ${recent.length ? `<div class="tbl"><table><thead><tr><th>Traveler</th><th>Flight</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${recent.map(d => `<tr class="click" onclick="location.hash='${d.status === 'held' ? 'review/' + esc(d.id) : 'decisions/' + esc(d.policy_id)}'"><td>${esc(d.traveler || '')}<div class="mono mute" style="font-size:12px">${esc(d.id)}</div></td><td class="mono">${esc(d.flight || '')}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="pb mute">No decisions yet. A delay or cancellation that reaches a payout rule creates one.</div>'}</section>
   </div><div class="stack">
     <section class="panel"><div class="ph"><h2>Claim outcomes</h2></div><div class="pb">${outcomeBar(o)}</div></section>
     <section class="panel"><div class="ph"><h2>Paid out by market</h2></div><div class="pb">${ov.by_market.length ? barList(ov.by_market.map(m => ({label: mk(m.market).name, value: m.usd, text: usd(m.usd)}))) : '<p class="mute">No payouts yet.</p>'}</div></section>
@@ -320,9 +357,9 @@ async function vDecisions(pid) {
   <div class="panel" style="margin-bottom:20px"><div class="ph"><h2>${cx ? 'Cancellation event' : 'Delay against the payout rules'}</h2><span class="push mute">${esc(mkt.name)}, ${esc(cur)}</span></div><div class="pb">${cx ? `<div class="note info"><b>${esc(f.code)} was cancelled.</b> Rule: cancelled flights pay ${money(rules.cancel_payout, cur)} at once, with no waiting tier.</div>` : delayTrack(d.delay_minutes, rules, cur)}</div></div>
   <div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Decision timeline</h2>${auto ? `<span class="chip push mono">${d.elapsed_ms ? 'Scoring step: ' + d.elapsed_ms + ' ms' : '8s'}</span>` : ''}</div><div class="pb tl">
       ${d.timeline.map(s => `<div><span class="dot ${s.pending ? 'wait' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span><div><b>${esc(s.label)}</b><div class="mute" style="font-size:13px">${sub[s.label] || ''}</div></div><span class="mono mute" style="font-size:12px">${s.sec}s</span></div>`).join('')}</div></section>
-    <div class="stack"><section class="panel"><div class="ph"><h2>Risk score</h2><span class="push">${aiChip('AI scored')}</span></div><div class="pb">${gauge(d.risk_score, th)}<div style="height:12px"></div>${scoreBreakdown(parts, th)}</div></section>
-      <section class="panel"><div class="ph"><h2>${declined ? 'Why it was declined' : 'Why it was paid'}</h2><span class="push">${aiChip('AI explained')}</span></div><div class="pb" style="display:grid;gap:12px">
-        <div class="note info"><b>${esc(d.clause)}</b></div><div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div>
+    <div class="stack"><section class="panel"><div class="ph"><h2>Risk score</h2><span class="push">${src('rules')}</span></div><div class="pb">${gauge(d.risk_score, th)}<div style="height:12px"></div>${scoreBreakdown(parts, th)}</div></section>
+      <section class="panel"><div class="ph"><h2>${declined ? 'Why it was declined' : 'Why it was paid'}</h2><span class="push">${explainChip()}</span></div><div class="pb" style="display:grid;gap:12px">
+        <div class="note info"><b>${esc(d.clause)}</b></div><div class="aicard">${explainChip()}${aiText(d.explanation)}</div>
         ${mkt.statutory ? `<div class="note"><b>Airline obligations in ${esc(mkt.name)}.</b> ${esc(mkt.statutory)} KODA pays on top of this.</div>` : ''}
         ${d.context ? `<div class="note"><b>Ground conditions at ${esc(d.context.airport)}.</b> ${esc(d.context.text || d.context.weather)}. ${esc(d.context.operations)}. ${d.context.fits ? 'Conditions are consistent with the event.' : 'Conditions look normal, so the cause is not weather.'} <span class="mute">${esc(d.context.source)}${d.context.ops_source ? '; ' + esc(d.context.ops_source).toLowerCase() : ''}. Context for the reviewer only, it never changes the payout.</span></div>` : ''}
         ${d.message ? `<div class="note info"><b>Message sent to the traveler.</b> ${esc(d.message)}</div>` : ''}
@@ -337,44 +374,89 @@ function upgradeCopilot(id) {
   }).catch(() => {});
 }
 
-/* ---------- Review queue ---------- */
+/* ---------- Review queue ----------
+   Left: every claim waiting for a person, longest wait first, with why it is here and what to do next.
+   Right: one workspace per claim. Facts and rule checks on the left column, the decision and the AI on the right,
+   each labelled for where it comes from: Rules (fixed), AI (advice only) or You (the decision). */
+let QF = 'all'; const NOTE = {};  // reasons being typed, kept across refreshes
+const waited = ts => { const m = Math.max(0, Math.round((Date.now() / 1000 - ts) / 60)); return m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'; };
+const why = x => x.asked ? ['Waiting on traveler', ''] : x.source === 'recheck' ? [x.second_review ? 'Second review' : 'Traveler asked', 'blue'] : ['Risk check', 'held'];
+const nextStep = x => x.asked ? 'Read the reply in Conversations' : x.source === 'recheck' ? 'Check the airline record' : 'Weigh the risk signals';
+const explainChip = () => ov && ov.ai_status === 'live' ? aiChip('Worded by Gemini') : `<span class="srcchip">${ico('rule')}Template wording</span>`;
+const src = (k) => k === 'rules' ? `<span class="srcchip">${ico('rule')}Rules</span>` : k === 'you' ? `<span class="srcchip you">${ico('person')}You decide</span>` : aiChip('AI · advice only');
 async function vReview(id) {
-  const q = await api('/api/console/review');
-  if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the AI is unsure about appear here for a person to decide.');
-  const d = q.find(x => x.id === id) || q[0];
+  const all = await api('/api/console/review');
+  if (!all.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the system holds, and re-checks travelers ask for, appear here for a person to decide.');
+  const n = {all: all.length, recheck: all.filter(x => x.source === 'recheck').length, risk: all.filter(x => x.source === 'risk').length, waiting: all.filter(x => x.asked).length};
+  const q = all.filter(x => QF === 'all' || (QF === 'waiting' ? x.asked : x.source === QF))
+    .filter(x => matchQ(x.id, x.policy.traveler, x.flight.code, x.policy.pnr, (x.customer || {}).name))
+    .sort((a, b) => a.created_at - b.created_at);
+  const d = all.find(x => x.id === id) || q[0] || all[0];
   const info = await api('/api/console/decision/' + d.policy_id);
-  const srcChip = x => (x.source === 'recheck' ? '<span class="chip blue"><i></i>Traveler asked</span>' : '<span class="chip held"><i></i>Risk check</span>')
-    + (x.second_review ? ' <span class="chip blue"><i></i>Second review</span>' : '') + (x.asked ? ' <span class="chip"><i></i>Waiting on traveler</span>' : '');
   if (!COP[d.id]) { COP[d.id] = await api('/api/console/copilot/' + d.id); upgradeCopilot(d.id); } const cp = COP[d.id]; if (DRAFT[d.id] == null) DRAFT[d.id] = cp.draft; CHAT[d.id] = CHAT[d.id] || [];
-  const p = info.policy, f = info.flight, th = info.rules.risk_threshold, cur = p.currency, parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
-  return head('Review queue', `${q.length} ${q.length === 1 ? 'claim needs' : 'claims need'} a person. The system never declines a claim on its own.`) + `
-  <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc((x.customer && x.customer.name) || x.policy.traveler)}</b>${srcChip(x)}</div>
-    <div class="mute" style="font-size:12px"><span class="mono">${esc(x.flight.code)}</span> ${esc(x.flight.origin)} to ${esc(x.flight.dest)} · ${hm(x.delay_minutes || 0)} late · ${money(x.amount, x.policy.currency)}</div>
-    <div class="mute" style="font-size:12px">Booking <span class="mono">${esc(x.policy.pnr || '-')}</span> · ${esc(x.policy.channel || 'direct')}</div></a>`).join('')}</div></section>
-  <div class="stack"><section class="panel"><div class="ph"><h2>${esc(p.traveler)}</h2><span class="push">${srcChip(d)}</span></div><div class="pb">
-      <dl class="kv">${d.customer ? `<dt>Customer</dt><dd>${esc(d.customer.name)}, ${esc(d.customer.email || '')}${d.customer.phone ? ', ' + esc(d.customer.phone) : ''}</dd>` : ''}
-        <dt>Booking</dt><dd><span class="mono">${esc(p.pnr || '-')}</span> ${p.ref_verified ? '<span class="chip paid"><i></i>Matches the airline record</span>' : '<span class="chip">Reference not matched</span>'}, bought ${esc(p.channel || 'direct')}</dd>
-        ${d.trigger === 'recheck' ? `<dt>Traveler asked</dt><dd>${esc(d.note || 'No note left.')}</dd>` : ''}
-        <dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd><dt>Why it was held</dt><dd>${aiChip('AI')} ${esc(d.explanation)}</dd></dl></div></section>
-    <section class="panel"><div class="ph"><h2>Reviewer copilot</h2>${aiChip(cp.ai ? 'Gemini' : 'KODA AI')}<span class="push mute" style="font-size:12px">Advises only. Never declines.</span></div><div class="pb" style="display:grid;gap:14px">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="chip ${cp.action === 'approve' ? 'paid' : cp.action === 'escalate' ? 'red' : 'held'}"><i></i>Suggests: ${esc(cp.label)}</span><b class="mono">${cp.confidence}% confident</b></div>
-      <p style="line-height:1.5">${esc(cp.why[0])}</p>
-      ${cp.evidence.length ? `<div class="mute" style="font-size:13px"><b style="color:var(--ink)">Evidence</b><br>${cp.evidence.map(esc).join('<br>')}</div>` : ''}
-      <div><label class="lbl" for="draft">Draft message to the traveler</label><textarea id="draft" data-d="${esc(d.id)}" rows="4" class="field">${esc(DRAFT[d.id])}</textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm primary act-ask" id="sendDraft" data-id="${esc(d.id)}">${ico('arrow_forward')}Send to the traveler</button><button class="btn sm" id="copyDraft">${ico('download')}Copy message</button></div>
-        ${d.asked ? `<p class="mute" style="font-size:12px;margin-top:6px">${esc(d.asked.by)} asked the traveler: ${esc(d.asked.text)} Their reply arrives in Conversations.</p>` : `<p class="mute" style="font-size:12px;margin-top:6px">Sends to the traveler's Messages under your name. The claim stays here until you decide.</p>`}</div>
-      <div><label class="lbl" for="ask">Ask about this claim</label>
-        ${CHAT[d.id].map(m => `<div class="note ${m.who === 'you' ? '' : 'info'}" style="margin-bottom:6px"><b>${m.who === 'you' ? 'You' : 'Copilot'}:</b> ${esc(m.text)}</div>`).join('')}
-        <div style="display:flex;gap:8px"><input id="ask" class="field" data-d="${esc(d.id)}" placeholder="Why was it held? What should I do?" maxlength="300"><button class="btn primary" id="askBtn">Ask</button></div></div></div></section>
-    <section class="panel"><div class="ph"><h2>Case investigation</h2>${aiChip('Agent')}<span class="push mute" style="font-size:12px">Reads the claim, flight, forecast, weather, policy terms and history.</span></div><div class="pb" style="display:grid;gap:10px">
-      ${INV[d.id] ? `<ol style="margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px">${INV[d.id].steps.map(x => `<li><b>${esc(x.label)}.</b> <span class="mute">${esc(Object.entries(x.result).map(([k, v]) => k.replace(/_/g, ' ') + ': ' + (Array.isArray(v) ? v.join(', ') : v)).join('; '))}</span></li>`).join('')}</ol>
-        <p style="line-height:1.5;margin:4px 0 0">${esc(INV[d.id].summary)}</p><div class="mute" style="font-size:12px">${esc(INV[d.id].note)}</div>`
-        : `<button class="btn" id="invGo" data-d="${esc(d.id)}">${ico('search')}Investigate this claim</button>`}</div></section>
-    <section class="panel"><div class="ph"><h2>Your decision</h2></div><div class="pb"><label class="lbl" for="note">Reason, saved in the audit log</label><textarea id="note" rows="3" class="field" placeholder="Why you approve or decline"></textarea>
-      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div><p class="mute" style="font-size:12px;margin-top:10px">The KODA AI can pay or ask for help. Only a person can decline.</p></div></section>
-    <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div></div></section>
-    ${info.history && info.history.length ? `<section class="panel"><div class="ph"><h2>Case history</h2><span class="push mute" style="font-size:12px">The traveler sees the same steps, without the risk score.</span></div><div class="pb"><ol style="margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px">${info.history.map(x => `<li><span class="mono mute">${esc(new Date(x.ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</span> ${esc(x.what)}</li>`).join('')}</ol></div></section>` : ''}</div></div>`;
+  const p = info.policy, f = info.flight || {}, R = info.rules, th = R.risk_threshold, cur = p.currency;
+  const parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
+  const t1 = +R.delay_tier1_minutes, late = d.delay_minutes || 0, cx = !!f.cancelled;
+  const [wl, wc] = why(d);
+  const checks = [
+    [!!p.delay_cover, 'Delay cover is active on this booking', p.delay_cover ? 'Yes' : 'No'],
+    [cx || late >= t1, `Delay meets the ${hm(t1)} rule`, cx ? 'Flight cancelled' : hm(late) + ' recorded'],
+    d.source === 'recheck' ? [null, 'Risk score', 'Not scored: a re-check always goes to a person'] : [d.risk_score < th, `Risk score under the auto-pay limit of ${th}`, 'Score ' + d.risk_score],
+    [!!p.ref_verified, 'Booking matches the airline record', p.ref_verified ? 'Matched' : 'Not matched'],
+  ];
+  const fil = [['all', 'All'], ['recheck', 'Traveler asked'], ['risk', 'Risk check'], ['waiting', 'Waiting on traveler']];
+  return head('Review queue', `${all.length} ${all.length === 1 ? 'claim needs' : 'claims need'} a person. Longest wait first. The system never declines on its own.`, searchBox('Search claims')) + `
+  <div class="tabsx" style="margin-bottom:14px">${fil.map(([k, t]) => `<button data-qf="${k}" class="${QF === k ? 'on' : ''}">${t} <span class="cnt">${n[k]}</span></button>`).join('')}</div>
+  <div class="split rq"><section class="panel"><div class="qlist">${q.length ? q.map(x => { const [l, c] = why(x); return `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}">
+      <div class="q1"><b>${esc((x.customer && x.customer.name) || x.policy.traveler)}</b><span class="mono">${money(x.amount, x.policy.currency)}</span></div>
+      <div class="q2"><span class="mono">${esc(x.flight.code)}</span> ${esc(x.flight.origin)} to ${esc(x.flight.dest)} · ${x.flight.cancelled ? 'cancelled' : hm(x.delay_minutes || 0) + ' late'}</div>
+      <div class="q3"><span class="chip ${c}"><i></i>${l}</span>${x.source === 'risk' ? `<span class="rk ${x.risk_score >= th ? 'hi' : ''}">Risk ${x.risk_score}</span>` : ''}<span class="wait">${ico('schedule')}${waited(x.created_at)}</span></div>
+      <div class="q4">${esc(nextStep(x))}</div></a>`; }).join('') : '<p class="mute" style="padding:16px">No claim matches this filter.</p>'}</div></section>
+
+  <div class="ws">
+    <section class="panel wshead"><div class="pb">
+      <div class="wst"><h2>${esc(p.traveler)}</h2><span class="chip ${wc}"><i></i>${wl}</span><span class="mono mute">${esc(d.id)}</span><span class="push mute">${ico('schedule')} Waiting ${waited(d.created_at)}</span></div>
+      <div class="facts">
+        <div><small>If approved</small><b class="mono">${money(d.amount, cur)}</b><span>to ${esc(p.payout_account)}</span></div>
+        <div><small>Flight</small><b><span class="mono">${esc(f.code || '')}</span> ${esc(f.origin || '')} to ${esc(f.dest || '')}</b><span>${esc(f.airline || '')}, ${esc(f.depart_label || '')}</span></div>
+        <div><small>${cx ? 'Event' : 'Delay'}</small><b>${cx ? 'Cancelled' : hm(late)}</b><span>Rule pays from ${hm(t1)}</span></div>
+        <div><small>Booking</small><b class="mono">${esc(p.pnr || '-')}</b><span>${esc(p.channel || 'direct')}${p.ref_verified ? ', matched' : ''}</span></div>
+      </div></div></section>
+
+    <div class="wsgrid">
+      <div class="stack">
+        <section class="panel"><div class="ph"><h2>Rule check</h2>${src('rules')}</div><div class="pb"><ul class="rc">${checks.map(([okv, t, v]) =>
+          `<li class="${okv === null ? 'na' : okv ? 'ok' : 'no'}">${ico(okv === null ? 'info' : okv ? 'check' : 'warning_amber')}<span>${esc(t)}</span><b>${esc(v)}</b></li>`).join('')}</ul>
+          <p class="mute small">${d.source === 'recheck' ? 'The recorded delay is under the rule, which is why nothing was paid. The traveler says the airline record differs.' : d.risk_score >= th ? 'The delay qualifies. The risk score is over the limit, so the system held it for you instead of paying.' : 'Every rule passes.'}</p></div></section>
+        ${d.source === 'recheck' ? `<section class="panel"><div class="ph"><h2>What the traveler says</h2></div><div class="pb"><p class="quote">${esc(d.note || 'No note left.')}</p></div></section>`
+          : `<section class="panel"><div class="ph"><h2>Risk signals</h2>${src('rules')}</div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}</div></section>`}
+        ${info.history && info.history.length ? `<section class="panel"><div class="ph"><h2>Case history</h2><span class="push mute small">Shared with the traveler</span></div><div class="pb"><ol class="hist">${info.history.map(x => `<li><span>${esc(x.what)}</span><time>${esc(new Date(x.ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></li>`).join('')}</ol></div></section>` : ''}
+      </div>
+      <div class="stack side">
+        <section class="panel decide"><div class="ph"><h2>Your decision</h2>${src('you')}</div><div class="pb">
+          <label class="lbl" for="note">Reason <span class="mute" style="font-weight:400">kept in the audit log; a decline reason is shown to the traveler</span></label>
+          <textarea id="note" data-d="${esc(d.id)}" rows="3" class="field" placeholder="For example: airline record confirms 3h 20m">${esc(NOTE[d.id] || '')}</textarea>
+          <div class="dbtns"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button>
+            <button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div>
+          <p class="mute small" id="decHint">Approving pays ${money(d.amount, cur)} at once and tells the traveler. Declining needs a reason and a second click.</p></div></section>
+        <section class="panel"><div class="ph"><h2>Ask the traveler</h2></div><div class="pb" style="display:grid;gap:8px">
+          <textarea id="draft" data-d="${esc(d.id)}" rows="4" class="field" aria-label="Message to the traveler">${esc(DRAFT[d.id])}</textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm primary act-ask" id="sendDraft" data-id="${esc(d.id)}">${ico('arrow_forward')}Send to the traveler</button><button class="btn sm" id="copyDraft">${ico('download')}Copy</button></div>
+          <p class="mute small">${d.asked ? `${esc(d.asked.by)} asked: ${esc(d.asked.text)} The reply arrives in Conversations.` : 'Goes to the traveler\'s Messages under your name. The claim stays here until you decide.'}</p></div></section>
+        <section class="panel"><div class="ph"><h2>Copilot</h2>${src('ai')}</div><div class="pb" style="display:grid;gap:10px">
+          <div><span class="chip ${cp.action === 'approve' ? 'paid' : cp.action === 'escalate' ? 'red' : 'held'}"><i></i>Suggests: ${esc(cp.label)}</span></div>
+          <p style="line-height:1.5">${esc(cp.why[0])}</p>
+          ${cp.evidence.length ? `<div class="mute small"><b style="color:var(--ink)">Based on</b><br>${cp.evidence.map(esc).join('<br>')}</div>` : ''}
+          <p class="mute small">The draft above was written by the copilot${cp.ai ? ' and reworded by Gemini' : ''}. Edit it before sending.</p>
+          ${CHAT[d.id].map(m => `<div class="note ${m.who === 'you' ? '' : 'info'}"><b>${m.who === 'you' ? 'You' : 'Copilot'}:</b> ${esc(m.text)}</div>`).join('')}
+          <div style="display:flex;gap:8px"><input id="ask" class="field" data-d="${esc(d.id)}" placeholder="Ask about this claim" maxlength="300"><button class="btn" id="askBtn">Ask</button></div></div></section>
+        <details class="panel mk inv" ${INV[d.id] ? 'open' : ''}><summary><h2 style="font-size:16px">Case investigation</h2>${aiChip('Agent · advice only')}</summary><div class="body">
+          ${INV[d.id] ? `<ol style="margin:0;padding-left:18px;display:grid;gap:4px">${INV[d.id].steps.map(x => `<li><b>${esc(x.label)}.</b> <span class="mute">${esc(Object.entries(x.result).map(([k, v]) => k.replace(/_/g, ' ') + ': ' + (Array.isArray(v) ? v.join(', ') : v)).join('; '))}</span></li>`).join('')}</ol>
+            <p style="line-height:1.5;margin:0">${esc(INV[d.id].summary)}</p><div class="mute small">${esc(INV[d.id].note)}</div>`
+            : `<p class="mute">Reads the claim, flight, forecast, weather, policy terms and the traveler's history, and writes a short summary.</p><button class="btn" id="invGo" data-d="${esc(d.id)}">${ico('search')}Investigate this claim</button>`}</div></details>
+      </div>
+    </div>
+  </div></div>`;
 }
 
 /* ---------- Baggage ---------- */
@@ -389,7 +471,7 @@ async function vBaggage(id) {
       <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd class="mono">${esc(p.flight)}</dd><dt>Airline report</dt><dd class="mono">${esc(b.report_id)}</dd><dt>Bag tag</dt><dd class="mono">${esc(b.bag_tag)}</dd><dt>Payout to</dt><dd>${esc(p.payout_account)}</dd></dl></div></section>
     <section class="panel"><div class="ph"><h2>Items claimed</h2><span class="push mono">${money(b.total, cur)}</span></div><div class="tbl"><table><tbody>${b.items.map((i, n) => `<tr><td>${n + 1}. ${esc(i.name)}</td><td class="r mono">${money(i.amount, cur)}</td></tr>`).join('')}</tbody></table></div>
       <div class="pb mute" style="border-top:1px solid var(--line2)">Pays up to ${money(b.rules.lost_bag_payout, cur)}. Item values are declared by the traveler, so a person checks them.</div></section>
-    <section class="panel"><div class="ph"><h2>Recommendation</h2></div><div class="pb" style="display:grid;gap:14px"><div class="disp" style="font-size:26px">${d.status === 'paid' ? 'Approved' : d.status === 'declined' ? 'Declined' : 'Approve'} ${money(d.amount, cur)}</div>${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="note info"><b>${esc(d.clause)}</b>. Benefit paid when a checked bag is declared lost by the airline.</div><div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div>
+    <section class="panel"><div class="ph"><h2>${done ? 'Decision' : 'Rule-based suggestion'}</h2>${done ? `<span class="push mute small">${d.decided_by ? 'By ' + esc(d.decided_by) : ''}</span>` : `<span class="push">${src('rules')}</span>`}</div><div class="pb" style="display:grid;gap:14px"><div class="disp" style="font-size:26px">${d.status === 'paid' ? 'Approved' : d.status === 'declined' ? 'Declined' : 'Approve'} ${money(d.amount, cur)}</div>${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="note info"><b>${esc(d.clause)}</b>. Benefit paid when a checked bag is declared lost by the airline.</div><div class="aicard">${explainChip()}${aiText(d.explanation)}</div>
       ${done ? '' : `<div style="display:flex;gap:10px"><button class="btn primary bact" data-id="${esc(b.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger bact" data-id="${esc(b.id)}" data-a="decline">${ico('close')}Decline</button></div>`}</div></section></div></div>`;
 }
 
@@ -443,7 +525,7 @@ async function vChats(id) {
       </dl></div></section>
     <section class="panel"><div class="ph"><h2>Transcript</h2><span class="push mute" style="font-size:12px">${c.messages.length} messages</span></div>
       <div class="pb" id="ctrans" style="display:grid;gap:9px;max-height:430px;overflow-y:auto">${c.messages.map(m => {
-        const when = new Date(m.ts * 1000).toLocaleString();
+        const when = new Date(m.ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
         if (m.role === 'system') return `<div class="note info" style="font-size:12.5px">${esc(m.text)}</div>`;
         const mine = m.role === 'staff';
         return `<div style="justify-self:${m.role === 'traveler' ? 'start' : 'end'};max-width:82%;background:${m.role === 'traveler' ? '#fff' : mine ? 'var(--cobalt-t)' : '#F4F6F9'};border:1px solid ${mine ? '#CBDCFB' : 'var(--line)'};border-radius:12px;padding:9px 12px;font-size:13.5px;line-height:1.45">
@@ -484,7 +566,7 @@ async function vAudit() {
   const rows = await api('/api/console/audit?limit=200&q=' + encodeURIComponent(FQ));
   if (!rows.length) return head('Audit log', 'Every action by the system and by reviewers.', searchBox('Search the log')) + empty('history', FQ ? 'No entries match' : 'Nothing logged yet', FQ ? 'Try a policy id, a booking ref or an event name.' : 'Actions appear here as they happen.');
   return head('Audit log', 'The latest ' + rows.length + ' actions by the system and by reviewers.', searchBox('Search the log')) + `<div class="panel tbl"><table><thead><tr><th>Time</th><th>Policy</th><th>Event</th><th>Detail</th></tr></thead><tbody>
-    ${rows.map(e => `<tr style="vertical-align:top"><td class="nowrap">${esc(new Date(e.ts * 1000).toLocaleString())}</td><td class="mono">${esc(e.policy_id || '')}</td><td><b>${esc(eventName(e.type))}</b><br><small class="mute mono" style="font-size:11px">${esc(e.type)}</small></td><td class="mono" style="font-size:12px;word-break:break-all">${esc(e.detail)}</td></tr>`).join('')}</tbody></table></div>`;
+    ${rows.map(e => `<tr style="vertical-align:top"><td class="nowrap">${esc(new Date(e.ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</td><td class="mono">${esc(e.policy_id || '')}</td><td><b>${esc(eventName(e.type))}</b><br><small class="mute mono" style="font-size:11px">${esc(e.type)}</small></td><td class="mono" style="font-size:12px;word-break:break-all">${esc(e.detail)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 
@@ -584,6 +666,7 @@ function bindAll() {
     last = ''; refresh();
   });
   const dr = $('#draft'); if (dr) dr.oninput = () => { DRAFT[dr.dataset.d] = dr.value; };
+  const nt = $('#note'); if (nt && nt.dataset.d) nt.oninput = () => { NOTE[nt.dataset.d] = nt.value; };
   const cm = $('#cmsg'); if (cm) cm.oninput = () => { CDRAFT[cm.dataset.c] = cm.value; };
   const ct = $('#ctrans'); if (ct) ct.scrollTop = ct.scrollHeight;   // newest message in view
   document.querySelectorAll('.creply').forEach(b => b.onclick = async () => {
@@ -614,7 +697,16 @@ function bindAll() {
   const ab = $('#askBtn'); if (ab) ab.onclick = askGo; const ak = $('#ask'); if (ak) ak.onkeydown = e => { if (e.key === 'Enter') askGo(); };
   const rm = $('#rmSel'); if (rm) rm.onchange = () => { RM = rm.value; last = ''; refresh(); };
   const fq = $('#fq'); if (fq) fq.oninput = () => { FQ = fq.value; last = ''; const pos = fq.selectionStart; refresh().then(() => { const n = $('#fq'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }); };
-  document.querySelectorAll('.act').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note: ($('#note') || {}).value || ''}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
+  document.querySelectorAll('.act').forEach(b => b.onclick = async () => {
+    const note = (($('#note') || {}).value || '').trim(), hint = $('#decHint');
+    if (b.dataset.a === 'decline' && !note) { if (hint) { hint.textContent = 'Write the reason first. The traveler will see it.'; hint.classList.add('err'); } $('#note').focus(); return; }
+    if (b.dataset.a === 'decline' && !b.dataset.sure) { b.dataset.sure = '1'; b.innerHTML = ico('close') + 'Confirm decline'; if (hint) hint.textContent = 'Click again to decline. This tells the traveler now.'; return; }
+    document.querySelectorAll('.act').forEach(x => x.disabled = true); b.innerHTML = b.dataset.a === 'approve' ? 'Approving…' : 'Declining…';
+    try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note}); delete NOTE[b.dataset.id]; toast(b.dataset.a === 'approve' ? 'Approved and paid. The traveler has been told.' : 'Declined. The traveler has been told why.', 'ok'); }
+    catch (e) { fail(e); }
+    last = ''; refresh();
+  });
+  document.querySelectorAll('[data-qf]').forEach(b => b.onclick = () => { QF = b.dataset.qf; last = ''; location.hash = 'review'; refresh(); });
   document.querySelectorAll('.bact').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('/api/console/baggage/' + b.dataset.id, 'POST', {action: b.dataset.a}); toast(b.dataset.a === 'approve' ? 'Approved and paid.' : 'Declined.', 'ok'); } catch (e) { fail(e); } last = ''; refresh(); });
   document.querySelectorAll('[data-cu]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.cu.split(':'); CU[k] = v; last = ''; refresh(); });
   document.querySelectorAll('[data-ptab]').forEach(b => b.onclick = () => { PTAB = b.dataset.ptab; last = ''; refresh(); });
@@ -695,7 +787,7 @@ function start() {
   $('#gate').hidden = true; last = '';
   refresh().catch(() => {});
   clearInterval(timer);
-  timer = setInterval(() => { if ($('#gate').hidden && !document.hidden && !['rules', 'profile'].includes(route.split('/')[0]) && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
+  timer = setInterval(() => { if ($('#gate').hidden && !document.hidden && !['rules', 'profile'].includes(route.split('/')[0]) && !document.activeElement?.matches('textarea,input,select') && !document.querySelector('.act[data-sure]')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
 }
 let DEMO = {demo: false};
 async function autoSignIn() {

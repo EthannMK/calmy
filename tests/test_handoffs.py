@@ -176,3 +176,24 @@ def test_both_apps_read_the_same_case_history():
         assert any("email confirms" in x["what"] for x in desk)
         other = client.post("/api/policies", json={"name": "Someone Else", "flight": "OA 108"}).json()["customer"]
         assert client.get(f"/api/app/history/{pid}", headers={"x-customer": other}).status_code == 404
+
+
+def test_add_a_booking_bought_elsewhere_joins_the_account_once():
+    with client:
+        q = client.post("/api/policies", json={"name": "Nok Lee", "flight": "OA 204"}).json()
+        me, other = q["customer"], client.post("/api/policies", json={"name": "Ploy Lee", "flight": "OA 108"}).json()["customer"]
+        with db.conn() as c:
+            c.execute("INSERT INTO bookings (ref,leg,passenger,flight,trip,channel,customer_id) VALUES ('AGD123',1,'Nok Lee','OA 204','One way','Agoda',NULL)")
+            c.execute("INSERT INTO bookings (ref,leg,passenger,flight,trip,channel,customer_id) VALUES ('THEIRS',1,'Ploy Lee','OA 108','One way','Agoda',?)", (other,))
+        H = {"x-customer": me}
+        assert client.post("/api/app/link-booking", json={"ref": "AGD123", "surname": "Wrong"}, headers=H).status_code == 404
+        r = client.post("/api/app/link-booking", json={"ref": "agd-123", "surname": "Lee"}, headers=H).json()
+        assert r["added"] and r["customer_id"] == me and r["legs"][0]["missing_addable"] == ["delay", "baggage"]
+        assert client.post("/api/app/link-booking", json={"ref": "AGD123", "surname": "Lee"}, headers=H).json()["added"] is False
+        # Someone else's booking looks exactly like a wrong reference.
+        theirs = client.post("/api/app/link-booking", json={"ref": "THEIRS", "surname": "Lee"}, headers=H)
+        wrong = client.post("/api/app/link-booking", json={"ref": "NOPE99", "surname": "Lee"}, headers=H)
+        assert theirs.status_code == wrong.status_code == 404 and theirs.json() == wrong.json()
+        # Once linked, cover can be added through the normal add-cover path.
+        a = client.post("/api/app/add-cover", json={"ref": "AGD123", "flight": "OA 204", "delay": True, "baggage": False, "ack": True}, headers=H)
+        assert a.status_code == 200

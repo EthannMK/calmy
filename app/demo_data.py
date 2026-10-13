@@ -53,6 +53,7 @@ ROUTES = [
     {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "CGK", "bc": "Jakarta", "t1": "13:20", "t2": "18:45", "n": 946},
 ]
 GEORGE, GEORGE_ID = "George", "CU-GEORGE"
+UNLINKED_REF = "AG4T7Q"  # George's Agoda ticket that is not in his account yet"
 # Where the ticket was bought. Our own checkout means the traveler bought the ticket and the cover together;
 # the others mean they already had a ticket and bought cover only.
 PARTNER_CHECKOUT = "KODA partner checkout"
@@ -248,6 +249,10 @@ def _demo_george(w: _World):
     w.booking("JK5N6W", 1, GEORGE, f["code"], "One way", "Trip.com", cid)
     w.policy(cid, GEORGE, f, "JK5N6W", "Trip.com", 1, 0, f["sched_ts"] - 5 * DAY)
     w.event(f["code"], 150)
+    # 5. A ticket he bought on Agoda that is not in his KODA account yet. "Add a booking" in the Cover tab brings it in
+    #    with the reference and his last name, and then he can cover it.
+    f = w.flight(r[("SIN", "KUL")], 1, 9, "15:40")
+    w.booking(UNLINKED_REF, 1, GEORGE, f["code"], "One way", "Agoda", None)
 
 
 def seed_history(w: _World):

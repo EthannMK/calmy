@@ -210,6 +210,45 @@ def cashout(body: Cash, request: Request):
         return {**fx, "balance": r["balance"], "id": r["id"]}
 
 
+# ----------------------------------------------------------------------------- add a booking bought elsewhere
+
+class LinkBooking(BaseModel):
+    ref: str = Field(..., min_length=5, max_length=12)
+    surname: str = Field(..., min_length=2, max_length=40)
+
+
+@router.post("/api/app/link-booking")
+def link_booking(body: LinkBooking, request: Request):
+    """A ticket bought elsewhere joins the signed-in traveler's trips, found by reference and last name.
+
+    A booking that already belongs to another account gets the same "not found" answer as a wrong reference, so the
+    form cannot be used to find out who else has booked what."""
+    from . import bookings
+    cid = _cid(request)
+    with db.conn() as c:
+        b = bookings.lookup(c, body.ref, body.surname)
+        if not b or (b["customer_id"] and b["customer_id"] != cid):
+            raise HTTPException(404, "We could not find that booking. Check the reference and the last name on the ticket.")
+        added = not b["customer_id"]
+        if added:
+            c.execute("UPDATE bookings SET customer_id=? WHERE ref=? AND customer_id IS NULL", (cid, b["ref"]))
+            db.log(c, None, "booking_linked", {"customer": cid, "ref": b["ref"]})
+            b = bookings.lookup(c, body.ref, body.surname)
+        return {**b, "added": added}
+
+
+@router.get("/api/app/demo-hint")
+def demo_hint(request: Request):
+    """In demo mode, the reference of the signed-in traveler's booking that is not in the account yet, so a judge can try it."""
+    from . import auth as _auth
+    cid = _cid(request)
+    if not _auth.demo_codes():
+        return {"ref": None}
+    with db.conn() as c:
+        b = db.one(c, "SELECT ref, passenger FROM bookings WHERE customer_id IS NULL AND LOWER(passenger)=(SELECT LOWER(name) FROM customers WHERE id=?) LIMIT 1", (cid,))
+    return {"ref": b["ref"], "surname": b["passenger"].split(" ")[-1]} if b else {"ref": None}
+
+
 # ----------------------------------------------------------------------------- partner checkout
 
 class PartnerBooking(BaseModel):

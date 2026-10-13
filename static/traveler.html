@@ -225,6 +225,13 @@
   .cap{font-size:12px;letter-spacing:.01em;color:var(--mute);font-weight:700}
   .sh{font-size:13px;font-weight:700;color:var(--ink2);margin:2px 2px 8px}
   .stack{display:grid;gap:9px}
+  .hint{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-size:13px;background:var(--cobalt-t);color:#08409B;border:1px dashed #9DBDF5;border-radius:12px;padding:9px 12px}
+  .hint .ms{font-size:17px}
+  .nocover{display:grid;gap:8px}
+  .pays{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+  .pays span{background:#F4F7FB;border-radius:12px;padding:10px;display:grid;gap:2px}
+  .pays b{font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--navy)}
+  .pays small{font-size:11.5px;color:var(--mute);line-height:1.3}
   .claimref{font-size:12px;color:var(--mute);margin-top:6px}
   .rcpt .st{justify-self:start}
   .tl{display:grid;gap:0}
@@ -335,7 +342,13 @@ const sgd = n => 'S$' + Number(n).toLocaleString('en-US', {minimumFractionDigits
 const pts = n => Number(n).toLocaleString('en-US') + ' pts';
 const cur_screen = () => stack[stack.length - 1] || null;
 const go = s => { stack.push(s); form = {}; render(); };
-const back = () => { stack.pop(); form = {}; render(); };
+const back = () => {
+  const s = cur_screen();
+  if (s && s.name === 'buy' && form.step === 'confirm') { form.step = 'results'; return render(); }
+  if (s && s.name === 'buy' && form.step === 'results') { form.step = null; form.results = null; return render(); }
+  if (s && s.name === 'check' && form.res) { form.res = null; return render(); }
+  stack.pop(); form = {}; render();
+};
 const root = () => { stack = []; form = {}; render(); };
 const initials = n => (n || '?').split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
 const dayLabel = ts => new Date(ts * 1000).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
@@ -470,8 +483,8 @@ TABS.home = () => {
       <p>Check a booking you already have, or book a flight with cover.</p></div>`}
   ${todo.length ? `<section><div class="sh">Needs you</div><div class="list">${todo.join('')}</div></section>` : ''}
   <section class="qa">
-    <button data-cmode="check"><span class="ic">${ico('search')}</span>Check a booking</button>
-    <button data-cmode="buy"><span class="ic">${ico('flight_takeoff')}</span>Book with cover</button>
+    <button data-go="check"><span class="ic">${ico('search')}</span>Add a booking</button>
+    <button data-go="buy"><span class="ic">${ico('flight_takeoff')}</span>Book with cover</button>
     <button data-go="chat"><span class="ic">${ico('support_agent')}</span>Ask us</button>
   </section>
   ${up.length > 1 ? `<section><div class="sh">Also coming up</div><div class="list">${up.slice(1).map(tripLine).join('')}</div></section>` : ''}
@@ -521,18 +534,28 @@ function attention() {
 /* ---------------------------------------------------------------- tab: cover */
 TABS.cover = () => {
   const legs = H.trips.filter(t => t.upcoming).flatMap(t => t.legs.filter(g => !g.departed).map(g => ({...g, ref: t.ref})));
-  const mode = form.mode || 'check';
-  return `${legs.length ? `<section><div class="sh">Your upcoming flights</div><div class="list">${legs.map(coverRow).join('')}</div></section>` : ''}
-    <section><div class="sh">${mode === 'buy' ? 'Book a flight with cover' : 'Check any booking'}</div>
-      <div class="seg" role="tablist"><button role="tab" aria-selected="${mode === 'check'}" data-cmode="check" class="${mode === 'check' ? 'on' : ''}">I have a booking</button>
-        <button role="tab" aria-selected="${mode === 'buy'}" data-cmode="buy" class="${mode === 'buy' ? 'on' : ''}">Find a flight</button></div></section>
-    ${mode === 'buy' ? SCREENS.buy.body() : SCREENS.check.body()}`;
+  const covered = legs.filter(g => g.cover !== 'none'), bare = legs.filter(g => g.cover === 'none');
+  const R = H.rule;
+  const ways = `<section><div class="sh">Get covered</div><div class="list">
+      <button class="todo" data-go="check"><span class="ic info">${ico('search')}</span><span><b>Add a booking</b><small>Bought a ticket on an airline site, Agoda or Trip.com? Bring it in with the booking reference.</small></span>${ico('arrow_forward', 'go')}</button>
+      <button class="todo" data-go="buy"><span class="ic info">${ico('flight_takeoff')}</span><span><b>Book a flight with cover</b><small>No ticket yet? Book here and the cover starts with it.</small></span>${ico('arrow_forward', 'go')}</button>
+    </div></section>`;
+  const pays = `<div class="pays">
+      <span><b>${sgd(R.delay_tier1_payout)}</b><small>${Math.round(R.delay_tier1_minutes / 60)}h late</small></span>
+      <span><b>${sgd(R.delay_tier2_payout)}</b><small>${Math.round(R.delay_tier2_minutes / 60)}h late or cancelled</small></span>
+      <span><b>Bag</b><small>lost bag cover</small></span></div>`;
+  return `${covered.length ? `<section><div class="sh">Covered flights</div><div class="list">${covered.map(coverRow).join('')}</div></section>`
+      : `<section class="card nocover"><div class="cap">You have no cover on an upcoming flight</div>
+          <p class="plain">Cover pays by itself when a flight is late or cancelled. No forms.</p>${pays}
+          <p class="dim" style="margin-top:8px">From ${sgd(R.delay_premium)} a flight. Add a booking you already have, or book one here.</p></section>`}
+    ${bare.length ? `<section><div class="sh">Booked, not covered yet</div><div class="list">${bare.map(coverRow).join('')}</div></section>` : ''}
+    ${ways}`;
 };
 function coverRow(g) {
   const f = g.flight, has = g.cover !== 'none';
   const attrs = has ? `data-cover="${esc(g.policy)}"` : `data-buymine="${esc(f.code)}"`;
   return `<button class="todo" ${attrs}><span class="ic ${has ? 'ok' : 'none'}">${ico(has ? 'verified_user' : 'shield')}</span>
-    <span><b><span class="mono">${esc(f.code)}</span> ${esc(f.origin)} to ${esc(f.dest)}</b><small>${esc(f.depart_label)} · ${has ? esc(coverWord(g)) : 'No cover yet, tap to add'}</small></span>${ico('arrow_forward', 'go')}</button>`;
+    <span><b><span class="mono">${esc(f.code)}</span> ${esc(f.origin)} to ${esc(f.dest)}</b><small>${esc(f.depart_label)} · ${has ? esc(coverWord(g)) : 'Tap to add cover from ' + sgd(H.rule.delay_premium)}</small></span>${ico('arrow_forward', 'go')}</button>`;
 }
 function riskStrip(g) {
   const r = g.risk, lvl = {low: 'Low', medium: 'Medium', high: 'High'}[r.level] || r.level;
@@ -596,22 +619,27 @@ TABS.wallet = () => {
 const SCREENS = {};
 
 /* --- check a booking I already have */
+let HINT;  // demo only: the reference of a booking that is not in the account yet
 SCREENS.check = {
-  title: () => 'Check my ticket',
+  title: () => 'Add a booking',
   body: () => {
     const r = form.res;
     if (!r) {
-      return `<p class="sub" style="margin:0">From an airline, Trip.com, Agoda or anywhere else. Use the reference and last name on the ticket.</p>
+      if (HINT === undefined && MODE.demo) { HINT = null; api('/api/app/demo-hint').then(h => { HINT = h; render(); }).catch(() => {}); }
+      return `<section><h1>Add a booking</h1>
+        <p class="sub">Bought a ticket on an airline site, Agoda, Trip.com or anywhere else? Enter the booking reference and the last name on it. The trip joins your account and you can cover it.</p></section>
+        ${HINT && HINT.ref ? `<button class="hint" data-hint="1">${ico('info')}<span><b>Demo:</b> try George's Agoda ticket <span class="mono">${esc(HINT.ref)}</span></span></button>` : ''}
         <section class="frm">
           <label>Booking or cover reference<input id="cRef" class="field mono" maxlength="10" placeholder="SG7K2M" value="${esc(form.ref || '')}" autocapitalize="characters"></label>
           <label>Last name<input id="cSur" class="field" maxlength="40" placeholder="Lim" value="${esc(form.sur || '')}"></label>
-          <button class="btn primary" id="cGo">Check the cover</button>
+          <button class="btn primary" id="cGo">Find my booking</button>
         </section>
 `;
     }
-    return `<section><div class="cap">${esc(r.passenger)} · <span class="mono">${esc(r.ref)}</span></div>
-      <p class="sub" style="margin:0">${esc(r.trip)}${r.channel ? ' · ' + (r.channel === 'KODA partner checkout' ? 'booked with cover through KODA' : 'booked with ' + esc(r.channel)) : ''}</p></section>
-      <p class="dim" style="margin:0">${r.legs.some(l => l.cover !== 'none') ? 'KODA is the insurer on this cover, wherever it was sold.' : 'No KODA cover on this booking yet.'}</p>
+    return `${r.added ? `<div class="msgbox good">${ico('check')} Added to your trips. ${r.legs.some(l => (l.missing_addable || []).length) ? 'Now pick the cover you want.' : ''}</div>`
+        : `<div class="msgbox">This booking is already in your trips.</div>`}
+      <section><div class="cap">${esc(r.passenger)} · <span class="mono">${esc(r.ref)}</span></div>
+      <p class="sub" style="margin:0">${esc(r.trip)}${r.channel ? ' · ' + (r.channel === 'KODA partner checkout' ? 'booked with cover through KODA' : 'booked on ' + esc(r.channel)) : ''}</p></section>
       ${r.legs.map(l => {
         const f = l.flight, can = (l.missing_addable || []).length;
         return `<section class="card"><div class="cap">${esc(f.origin)} to ${esc(f.dest)} · <span class="mono">${esc(f.code)}</span></div>
@@ -622,7 +650,7 @@ SCREENS.check = {
             : l.cover === 'none' ? `<p class="dim" style="margin-top:7px">${l.departed ? 'This flight has left, so cover cannot be added.' : 'Cover cannot be added to this flight.'}</p>` : ''}
         </section>`;
       }).join('')}
-      <button class="btn" data-cmode="check">Check another booking</button>`;
+      <button class="btn" data-again="1">Add another booking</button>`;
   },
 };
 
@@ -633,7 +661,8 @@ SCREENS.buy = {
     if (form.step === 'confirm') return buyConfirm();
     if (form.step === 'results') return buyResults();
     const today = new Date().toISOString().slice(0, 10);
-    return `<p class="sub" style="margin:0">No ticket yet? Book here and the cover starts with it. The ticket is simulated in this demo.</p>
+    return `<section><h1>Book a flight with cover</h1>
+      <p class="sub">No ticket yet? Book here and the cover starts with it. The ticket is simulated in this demo.</p></section>
       <section class="frm">
         <div class="row2"><label style="flex:1">From<input id="bFrom" class="field mono" maxlength="3" value="${esc(form.from || 'SIN')}" autocapitalize="characters"></label>
           <label style="flex:1">To<input id="bTo" class="field mono" maxlength="3" value="${esc(form.to || 'KUL')}" autocapitalize="characters"></label></div>
@@ -648,7 +677,7 @@ SCREENS.buy = {
 function buyResults() {
   const r = form.results;
   if (!r.flights.length) return `<div class="empty"><span class="ic">${ico('search')}</span><b>No flights found</b><p>Try another day or another pair of airports.</p></div>
-    <button class="btn" data-cmode="buy">Change the search</button>`;
+    <button class="btn" data-again="1">Change the search</button>`;
   const day = new Date(r.date + 'T00:00:00').toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'});
   return `<section><div class="cap">${esc(r.origin)} to ${esc(r.dest || 'anywhere')} · ${esc(day)}</div>
     <p class="sub" style="margin:0">${r.flights.length} flights. ${r.source === 'live' ? 'Live airline status.' : 'From the saved schedule; live status is checked closer to the day.'}</p></section>
@@ -1131,7 +1160,7 @@ $('#ptsChip').onclick = () => setTab('wallet');
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-cmode],[data-cover],[data-ask],[data-quick],#chSend,#chPerson,[data-go],[data-trip],#aGo,[data-claim],[data-recheck],[data-bag],[data-add],[data-addmine],[data-buymine],[data-route],[data-fl],[data-tier],[data-cat],[data-port],[data-spend],[data-voucher],[data-amt],[data-mid],[data-method],[data-default],[data-pay],[data-ev],#shClose,#cGo,#bGo,#bPay,#rGo,#gAdd,#gGo,#vScan,#vRef,#coPrev,#coGo,#pSave,#mOut');
+  const t = e.target.closest('[data-again],[data-hint],[data-cover],[data-ask],[data-quick],#chSend,#chPerson,[data-go],[data-trip],#aGo,[data-claim],[data-recheck],[data-bag],[data-add],[data-addmine],[data-buymine],[data-route],[data-fl],[data-tier],[data-cat],[data-port],[data-spend],[data-voucher],[data-amt],[data-mid],[data-method],[data-default],[data-pay],[data-ev],#shClose,#cGo,#bGo,#bPay,#rGo,#gAdd,#gGo,#vScan,#vRef,#coPrev,#coGo,#pSave,#mOut');
   if (!t) return;
   const d = t.dataset;
 
@@ -1154,7 +1183,8 @@ document.addEventListener('click', async e => {
     try { CH = await api('/api/app/chat/person', 'POST'); form = {}; render(); } catch (err) { fail(err); }
     return;
   }
-  if (d.cmode) { closeSheet(); tab = 'cover'; stack = []; form = {mode: d.cmode}; render(); return; }
+  if (d.again) { const keep = {from: form.from, to: form.to, date: form.date}; form = cur_screen() && cur_screen().name === 'buy' ? keep : {}; render(); return; }
+  if (d.hint && HINT) { form.ref = HINT.ref; form.sur = HINT.surname; render(); return; }
   if (d.trip) return go({name: 'trip', ref: d.trip});
   if (d.claim) { tab = 'claims'; return go({name: 'claim', policy: d.claim}); }
   if (d.recheck) return go({name: 'recheck', policy: d.recheck});
@@ -1185,7 +1215,7 @@ document.addEventListener('click', async e => {
     const ref = $('#cRef').value.trim().toUpperCase(), sur = $('#cSur').value.trim();
     form.ref = ref; form.sur = sur;
     if (ref.length < 5 || sur.length < 2) return toast('Enter the reference and the last name from your ticket.', true);
-    try { form.res = await api(`/api/booking/${encodeURIComponent(ref)}?surname=${encodeURIComponent(sur)}`); render(); } catch (err) { fail(err); }
+    try { form.res = await api('/api/app/link-booking', 'POST', {ref, surname: sur}); if (form.res.added) await loadHome(); render(); } catch (err) { fail(err); }
     return;
   }
   // partner checkout
