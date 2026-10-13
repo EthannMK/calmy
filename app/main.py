@@ -1116,7 +1116,7 @@ class Review(BaseModel):
 def _reviewer(c, staff_id):
     """Name of the signed-in insurer staff member, so every decision is signed by a real person."""
     st = db.one(c, "SELECT name FROM staff WHERE id=?", (staff_id,)) if staff_id else None
-    return st["name"] if st else "Ethan Htoo"
+    return st["name"] if st else "Ethan"
 
 
 @app.post("/api/console/review/{decision_id}")

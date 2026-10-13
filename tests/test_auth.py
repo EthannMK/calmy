@@ -112,7 +112,7 @@ def test_demo_accounts_are_listed_with_proper_names():
     d = client.get("/api/auth/demo-accounts").json()
     assert [t["ref"] for t in d["travelers"]] == ["BOTH42", "DLY731", "BAG518", "NONE26"]
     assert {s["role"] for s in d["staff"]} == {"admin", "reviewer", "agent"}
-    assert all(" " in s["name"] and "." not in s["name"] for s in d["staff"])
+    assert all(s["name"] and "." not in s["name"] for s in d["staff"])
 
 
 def test_new_buyer_is_signed_in_but_an_existing_customer_is_not():

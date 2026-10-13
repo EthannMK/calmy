@@ -27,7 +27,7 @@ DAY = 86400
 REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 STAFF = [
-    ("ST-1", "Ethan Htoo", "Claims officer", "ethan@flightwise.example", "EH", "admin"),
+    ("ST-1", "Ethan", "", "ethan@flightwise.example", "E", "admin"),
     ("ST-2", "Arun Suksawat", "Senior claims reviewer", "arun.suksawat@flightwise.example", "AS", "reviewer"),
     ("ST-3", "Malinee Chaiyasit", "Customer support agent", "malinee.chaiyasit@flightwise.example", "MC", "agent"),
     ("ST-4", "Pimchanok Tanakorn", "Head of claims", "pimchanok.tanakorn@flightwise.example", "PT", "admin"),
@@ -52,7 +52,7 @@ ROUTES = [
     {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "KUL", "bc": "Kuala Lumpur", "t1": "08:05", "t2": "19:30", "n": 118},
     {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "CGK", "bc": "Jakarta", "t1": "13:20", "t2": "18:45", "n": 946},
 ]
-GEORGE, GEORGE_ID = "George Lim", "CU-GEORGE"
+GEORGE, GEORGE_ID = "George", "CU-GEORGE"
 CHANNELS = ["Trip.com", "Agoda", "Airline website or app", "Another travel site"]
 
 NAMES = [
@@ -223,8 +223,8 @@ def _demo_george(w: _World):
     c, now = w.c, w.now
     r = {(x["a"], x["b"]): x for x in ROUTES if x["a"] == "SIN"}
     cid = w.customer(GEORGE_ID, GEORGE, "SG", 140, "+65 8123 4567")
-    c.execute("UPDATE customers SET email=? WHERE id=?", ("george.lim@example.com", cid))
-    w.method(cid, "card", "Visa ending 4242", "4242", GEORGE, True, 60)
+    c.execute("UPDATE customers SET email=? WHERE id=?", ("george@example.com", cid))
+    w.method(cid, "card", "Visa ending 4417", "4417", GEORGE, True, 60)
     w.method(cid, "card", "Mastercard ending 8812", "8812", GEORGE, False, 30)
     c.execute("UPDATE payment_methods SET currency='THB' WHERE customer_id=? AND last4='8812'", (cid,))
     # 1. Upcoming round trip to Bangkok, delay and baggage cover on both legs. Covered.

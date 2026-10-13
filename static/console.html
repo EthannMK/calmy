@@ -459,8 +459,8 @@ const COVER_LABEL = {both: 'Delay and baggage', delay: 'Delay only', baggage: 'B
 const coverChip = k => `<span class="chip ${k === 'both' ? 'paid' : k === 'none' ? '' : 'blue'}">${COVER_LABEL[k] || 'No cover'}</span>`;
 function drawWho() {
   if (!ME) return;
-  $('#who').innerHTML = `<span style="line-height:1.2"><span style="display:block;font-weight:600;font-size:13px">${esc(ME.name)}</span><span class="mute" style="display:block;font-size:12px">${esc(ME.title)}</span></span><span class="avatar">${esc(ME.initials)}</span>`;
-  $('#pop').innerHTML = `<h4>Signed in as</h4><a href="#profile" class="me" data-close><span class="avatar">${esc(ME.initials)}</span><span><b>${esc(ME.name)}</b><br><small class="mute">${esc(ME.title)} · ${ROLE[ME.role] || 'Agent'}</small></span></a>
+  $('#who').innerHTML = `<span style="line-height:1.2"><span style="display:block;font-weight:600;font-size:13px">${esc(ME.name)}</span>${ME.title ? `<span class="mute" style="display:block;font-size:12px">${esc(ME.title)}</span>` : ''}</span><span class="avatar">${esc(ME.initials)}</span>`;
+  $('#pop').innerHTML = `<h4>Signed in as</h4><a href="#profile" class="me" data-close><span class="avatar">${esc(ME.initials)}</span><span><b>${esc(ME.name)}</b><br><small class="mute">${ME.title ? esc(ME.title) + ' · ' : ''}${ROLE[ME.role] || 'Agent'}</small></span></a>
     <h4>Account</h4><a href="#profile" data-close>${ico('tune')}<span>Edit my profile</span></a><button data-signout>${ico('close')}<span>Sign out</span></button>`;
   $('#pop').querySelectorAll('[data-close]').forEach(a => a.addEventListener('click', closeMenu));
   const so = $('#pop').querySelector('[data-signout]'); if (so) so.onclick = () => { closeMenu(); signOutStaff(); };
@@ -508,7 +508,7 @@ async function vCustomer(id) {
 async function vPoints() {
   const d = await api('/api/console/points');
   const airports = [...new Set(d.partners.map(p => p.airport))].sort();
-  if (!PAIR || !airports.includes(PAIR)) PAIR = airports.includes('BKK') ? 'BKK' : airports[0];
+  if (!PAIR || !airports.includes(PAIR)) PAIR = airports.includes('SIN') ? 'SIN' : airports[0];
   const ps = d.partners.filter(p => p.airport === PAIR);
   const kind = {food: 'Food and drink', lounge: 'Lounge', transport: 'Taxi and car rental', hotel: 'Hotel', connect: 'SIM, calls and messages', extras: 'Extras'};
   const tab = (k, t) => `<button data-ptab="${k}" class="${PTAB === k ? 'on' : ''}">${t}</button>`;
@@ -517,7 +517,7 @@ async function vPoints() {
     ? `<div class="panel tbl"><div class="ph"><h2>Partners at</h2><select id="pair" class="field" style="width:auto;height:34px">${airports.map(a => `<option ${a === PAIR ? 'selected' : ''}>${a}</option>`).join('')}</select><span class="mute" style="margin-left:auto">${ps.filter(p => p.accepts).length} of ${ps.length} accept KODA points</span></div><table><thead><tr><th>Outlet</th><th>Type</th><th>Terminal</th><th>Opens</th><th class="r">Used</th><th>Accepts points</th></tr></thead><tbody>
       ${ps.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(kind[p.category] || p.kind)}</td><td>${esc(p.terminal || '')}</td><td class="mono">${esc(p.opens)} to ${esc(p.closes)}</td><td class="r">${p.used}</td><td><label class="sw"><input type="checkbox" data-accept="${esc(p.id)}" ${p.accepts ? 'checked' : ''} aria-label="${esc(p.name)} accepts points"> ${p.accepts ? 'Yes' : 'No'}</label></td></tr>`).join('')}</tbody></table></div>`
     : `<div class="panel tbl"><div class="ph"><h2>Recent spending and cash-outs</h2></div>${d.activity.length ? `<table><thead><tr><th>When</th><th>Customer</th><th>What</th><th class="r">Points</th></tr></thead><tbody>${d.activity.map(t => `<tr><td class="nowrap">${esc(new Date(t.created_at * 1000).toLocaleString())}</td><td><a href="#customers/${esc(t.customer_id)}">${esc(t.name)}</a></td><td>${esc(t.label)}</td><td class="r mono">${num(t.points)}</td></tr>`).join('')}</tbody></table>` : '<div class="pb mute">Nothing spent yet.</div>'}</div>`;
-  return head('Points and partners', `Payouts arrive as KODA points by default. Each customer can spend points at airport partners or cash them out to a saved card or bank. ${num(d.per_usd)} points are worth 1 US dollar to spend, and a 25% bonus is added when a payout is paid as points.`) + `
+  return head('Points and partners', `Payouts arrive as KODA points by default. Each customer can spend points at airport partners or cash them out to a saved card or bank. ${num(d.per_usd)} points are worth ${usd2(1)} to spend, and a 25% bonus is added when a payout is paid as points.`) + `
   <div class="grid3" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:20px">${kp('Points owed to customers', num(d.liability_points), 'About ' + usd2(d.liability_usd) + ' if all were cashed out')}${kp('Customers holding points', d.holders, 'of ' + ov.stats.customers)}${kp('Spent at partners', num(d.spent), 'points')}${kp('Cashed out', num(d.cashed), 'points, at ' + Math.round(d.cashout_rate * 100) + '% of spend value')}</div>
   <div class="tabsx" style="margin-bottom:14px">${tab('partners', 'Partner directory')}${tab('activity', 'Spending and cash-outs')}</div>${list}`;
 }
@@ -533,7 +533,7 @@ function vProfile() {
     <label class="sw"><input type="checkbox" id="pfNotify" ${m.notify ? 'checked' : ''}> Email me when a claim needs a person<small>${m.waiting} waiting now</small></label>
     <div><button class="btn primary" id="pfSave">Save profile</button> <span class="mute" id="pfMsg" role="status"></span></div></div></div>
   <div class="panel"><div class="ph"><h2>Your work</h2></div><div class="pb"><div class="grid3" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="mini"><b>${m.decisions}</b><span>Claims decided by you</span></div><div class="mini"><b>${m.waiting}</b><span>Waiting for a person</span></div></div>
-    <h3 style="margin:18px 0 8px;font-size:14px">Your team</h3>${STAFFL.map(x => `<div style="display:flex;gap:10px;align-items:center;padding:6px 0"><span class="avatar">${esc(x.initials)}</span><span style="flex:1">${esc(x.name)}<br><small class="mute">${esc(x.title)}</small></span><span class="mute">${x.decisions} decided</span></div>`).join('')}</div></div></div>`;
+    <h3 style="margin:18px 0 8px;font-size:14px">Your team</h3>${STAFFL.map(x => `<div style="display:flex;gap:10px;align-items:center;padding:6px 0"><span class="avatar">${esc(x.initials)}</span><span style="flex:1">${esc(x.name)}${x.title ? `<br><small class="mute">${esc(x.title)}</small>` : ''}</span><span class="mute">${x.decisions} decided</span></div>`).join('')}</div></div></div>`;
 }
 
 /* ---------- events ---------- */
