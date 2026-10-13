@@ -1,10 +1,13 @@
 # KODA, smart flight cover
 
-Flight delay and lost bag cover that pays automatically. A traveler buys cover at checkout.
-When the flight is late, rules and a risk score decide, the payout is simulated, and the
-insurer console shows the decision and the reason.
+Flight delay and lost bag cover that pays automatically. A traveler adds cover to a booking,
+and when the flight is late the rules and a risk score decide, the payout is made in KODA points,
+and the insurer console shows the decision and the reason behind it.
 
-Demo data only. Flight data is simulated and no real money moves.
+The demo is set in Singapore: the traveler is George, flying out of Changi, and the insurer is
+Flightwise Insurance, where Ethan works as the claims officer. Flight data is real where we can get
+it. Payouts, tickets bought through our own checkout, and the airport partner outlets are simulated
+and labelled as such. No real money moves.
 
 ## Run locally
 
@@ -15,15 +18,27 @@ Open http://localhost:8000. Pages: `/traveler` (mobile app), `/console` (insurer
 
 ## Demo path (about 3 minutes)
 
-Open `/judge`. A welcome card explains the page. Then follow the four steps in the top bar.
+Open `/judge`. Both apps sit side by side and both are already signed in: George on the phone,
+Ethan at the insurer desk. There is no sign-in step and nothing to set up.
 
-1. Cover a trip. The app picks a real upcoming departure (for example Thai Airways from BKK), adds cover for a traveler and, in the background, a second suspicious traveler on the same flight.
-2. Break the flight. You act as the status feed: Storm builds, Delay 3h 12m, Cancel it. The first traveler gets a phone notification at the delay limit and is paid in seconds. Then the traveler can claim extra costs with a receipt and draft a letter to the airline.
-3. Show the held case. The same delay is held for a person because the second profile scores 91.
-4. Decide as the insurer in the review queue, with the reviewer copilot. Extra cost receipts are decided under Extra costs.
+1. **George's trips.** The phone opens on Home: who he is, the delay forecast for his next covered
+   flight, his Changi trips, and the two ways in (check a ticket he already holds, or book one with
+   cover through the partner checkout). Open a trip and tap *See what this cover pays* for the payout
+   ladder and the exclusions.
+2. **Break the flight.** In the avatar menu, Demo controls sets a delay or a cancellation on one of
+   his flights. It runs the real engine. George is paid in seconds, in points, with a message.
+3. **The claim that did not pay.** His Jakarta trip was 2h 30m late, under the 3 hour rule. He taps
+   *Ask us to check again* and writes what the airline told him.
+4. **Decide as the insurer.** In the console, Review queue shows the case marked *Traveler asked*
+   with George's note, the booking and the flight. Approve it and the points land on his phone,
+   signed with Ethan's name.
+5. **Spend it.** Wallet, then an outlet at Changi: a QR code is made, *Simulate the outlet scan*
+   spends it, and the insurer's Points page flips to "Scanned at the outlet".
+6. **Talk to a person.** Messages on the phone, then Conversations in the console: take over, reply,
+   and George sees Ethan's name appear in the same chat.
 
-Flights are real and need a live key (below). The delay, storm and payout are simulated and labelled as demo events.
-The insurer in the demo is Flightwise Insurance. KODA is the product it runs.
+Flights are real and need a live key (below). Delays, cancellations and payouts are simulated and
+labelled as demo events.
 
 ## Live flight data (required)
 
@@ -65,7 +80,8 @@ and uses the template explanation.
 | Caring message | Stored on each decision and shown as a message card in the traveler app and in the console | Built (in app; email delivery is a Gmail API step, not connected) |
 | Payout to card, bank or wallet | Payout options per market plus Card refund and Digital wallet. Money is simulated | Simulated |
 | Zero paperwork | No form, receipt or letter asked. Performance page counts documents asked | Built |
-| Cloud Firestore, Cloud Functions, Gmail API, payment gateway, Firebase rules | SQLite stands in for Firestore, the engine runs inside the Cloud Run service, and only the last four digits of the payout account are stored, never a full number | Next step |
+| Cloud Firestore, Cloud Functions, Gmail API, Firebase rules | SQLite stands in for Firestore, the engine runs inside the Cloud Run service, and only the last four digits of the payout account are stored, never a full number | Next step |
+| Payment gateway | Premiums and payouts are simulated and labelled. The money paths are isolated behind `app/wallet.py` and the cash-out preview, so production means a PSP for premiums (Stripe or Adyen), a card-payout or local-rails partner for payouts, and the FX quote at cash-out coming from that partner instead of our indicative rate | Way forward, by design not by accident |
 | Prototype performance report | Console, Performance page: manual baselines against measured prototype results | Built |
 | Baggage and fraud checks (Later) | Lost bag cover and an additive risk score already included | Built ahead of plan |
 
@@ -89,11 +105,15 @@ status colors always carry a label, one axis only, values labeled directly.
 |---|---|---|
 | Traveler | Delay forecast and early alert | `app/forecast.py`: a trained model for the base chance, then live weather, the current delay and airspace alerts as readable drivers. At 55% or more a covered traveler gets an alert. Presenter buttons "Storm builds" and "Weather clears" drive it. |
 | Traveler | Your rights card | `app/rights.py`: what the airline may also owe by market (EU261, UK261, US DOT, APPR, DGCA, ANAC, CAAT). Weather counts as extraordinary, so cash compensation shows as unlikely. Gemini rewords the summary when configured. Not legal advice. |
-| Traveler | Points payout and airport restaurants | Payout rail "KODA points" pays 25% more as points (1 point = 1 cent). The Wallet tab lists only restaurants that accepted points and are open during the wait, picks the best one, and issues a voucher code. The directory (`app/partners.py`) is fictional prototype data. |
+| Traveler | Points payout and airport partners | Payout rail "KODA points" pays 25% more as points (100 points = S$1). The Wallet tab lists the partners that accept points and are open during the wait, at any airport the traveler flies from, and issues a QR voucher. The Changi directory in `app/partners.py` is fictional prototype data: food and drink, lounges, and SIM or data packs. |
 | Fraud | Adverse selection check | Cover bought while the forecast was already 55% or more adds 35 points to the risk score, so the claim goes to a person. It is never declined by the system. |
 | Insurer | Exposure forecast and dynamic price | `GET /api/console/exposure`: expected payout, reserve (expected plus a safety margin) and a suggested delay price per flight. Informs only. |
 | Insurer | Reviewer copilot | `GET /api/console/copilot/{id}` and `POST /api/console/copilot`: recommendation with confidence, evidence, an editable draft message and a question box. It advises approve, ask for proof or escalate. It never declines. |
-| Traveler | Extra costs claim | `POST /api/traveler/{pid}/extra-claim`: after the delay payout, a meal, transport or hotel receipt can be claimed. Under the tier 1 payout and with a clean score it is paid at once. Above it, or with a raised score, it waits in the console under Extra costs. Total is capped at twice the top payout. |
+| Traveler | Coverage visualizer | `GET /api/app/cover/{policy}`: the payout ladder for this flight (on time, 3 hours, 6 hours, cancelled) with a marker for where the flight actually is, what is covered, what is missing from this trip, and what is never covered. Each one opens the chat with that flight in context. |
+| Traveler | Support assistant with human takeover | `app/chat.py`. The assistant answers from the traveler's own policy, flight status, rules and wallet, and hands the chat to a person whenever one is asked for. The console sees the transcript and the facts behind each reply, and can take over or hand back. |
+| Traveler | QR redemption at the airport | Points are spent at a partner outlet as a QR voucher (`GET /api/app/qr/{code}.svg`, drawn server side with segno). `POST /api/outlet/scan` is what the outlet's till calls; a voucher works once, at its own outlet, and unused ones can be refunded. The insurer sees which vouchers were scanned. |
+| Traveler | Re-check request | `POST /api/app/recheck`: a delay under the rule did not pay, so the traveler asks a person to look again and writes what happened. It lands in the review queue marked "Traveler asked", with the note. The system never declines; only a person does. |
+| Traveler | Partner checkout | `POST /api/app/partner-booking`: a traveler with no ticket books a flight and the cover together. The ticket is simulated in the prototype and labelled; the cover is real in the system. Cover is never sold without a booking. |
 | Traveler | Airline letter | `GET /api/traveler/{pid}/airline-letter`: a ready letter asking the airline for what it owes in that market. Gemini polishes it when connected. |
 | Traveler | Delay notification | A banner appears on the phone the moment the payout or hold lands, with the same message as the Claims tab. |
 | Traveler | Calendar flight picker | Pick any date up to a month ahead, then a flight; only the chosen flight stays on screen. The traveler says where the ticket was bought (airline, Trip.com, Agoda or another site) and enters the booking reference from it, which is stored on the policy. KODA sells the cover, not the ticket, so it works beside any booking site. A lost bag can only be reported once the flight has left. Later dates use the saved real schedule (`app/schedule.py`), labelled "Scheduled flight"; live status is checked closer to the day. |
@@ -102,19 +122,33 @@ status colors always carry a label, one axis only, values labeled directly.
 The base delay chance comes from a trained model (`tools/train_model.py`, gradient boosted trees on 336,776 real flights, tested on later months it never saw). Live delay, live weather and insurer airspace alerts are added as readable drivers. The model card is in the console under Exposure forecast. It was trained on New York flights from 2013, not Thai flights, and the card says so.
 
 
-## Customers, points wallet and bookings
+## The demo world
 
-- Travelers are paid in KODA points by default (100 points = $1 to spend, 25% bonus). They can save a card or bank, cash out, or switch on auto top-up.
-- Four demo booking references show the cover states: BOTH42, DLY731, BAG518 and NONE26. Use Check my cover with the last name (Wongsakul, Tan, Nakamura, Okafor).
-- The console has Customers and Points and partners tabs and a working staff profile. The seed adds 50 demo customers with mixed cover and claims.
+One traveler and one officer, so a judge never has to pick an account.
+
+- **George** (`CU-GEORGE`), based in Singapore, paid in KODA points, with a Visa in SGD and a
+  Mastercard in THB so the cash-out currency change is visible. His account carries every scenario:
+  a covered round trip to Bangkok, a booking to Hong Kong with no cover yet, a past Kuala Lumpur trip
+  that was paid, and a past Jakarta trip that fell under the rule and can be re-checked.
+- **Ethan** (`ST-1`), claims officer at Flightwise, admin role, so he can decide claims, change rules
+  and take over a chat.
+- Around him, 50 more customers with mixed cover, claims, points and payout routes, so every console
+  page has a real book of business. About a quarter came through our own checkout (ticket and cover
+  together); the rest bought cover on a ticket from an airline or a travel site. The Customers page
+  filters by that.
+- Money is in Singapore dollars end to end. 100 points = S$1 to spend at an airport partner, with a
+  25% bonus on every payout; cash-out is 80% of the spending value, and a currency change shows the
+  rate and the fee before the traveler confirms.
 - Full cover rules and workflows: docs/COVERAGE_AND_WORKFLOW.md
 
 ## Sign-in, search and the investigation agent
 
-Sign-in. Travelers sign in with a booking reference, last name and a one-time code. Staff sign in with a work email and a code. A code lasts 5 minutes and allows 5 tries. Sessions end after 30 minutes (travelers) or 60 minutes (staff) without use. In demo mode no message is sent, so the code is shown on screen and the sign-in pages come prefilled with demo accounts. Set `KODA_DEMO_CODES=off` to stop that. Roles: admin (rules, airspace alerts, partners), reviewer (decide held claims), agent (look only). Code is in `app/auth.py`.
+Sign-in. The real thing is a one-time code: travelers use a booking reference, a last name and a code; staff use a work email and a code. A code lasts 5 minutes and allows 5 tries, and sessions end after 30 minutes (travelers) or 60 minutes (staff) without use. For the demo that is switched off: both apps sign themselves in as George and Ethan through `POST /api/auth/demo-session`, so a judge is never stopped by a code. Set `KODA_DEMO_CODES=off` to turn the demo sign-in off and get the code screens back. Roles: admin (rules, airspace alerts, partners), reviewer (decide held claims), agent (look only). Code is in `app/auth.py`.
 
 Flight search. `GET /api/flights/search` returns flights with delay risk, whether delay cover is open, the cover price and an approximate flight time. Sources in order: live status, the saved real schedule, then a built-in sample schedule, so search never comes back empty.
 
-Investigation agent. `app/agent.py` investigates a held claim with six read-only tools (claim, flight status, delay forecast, weather and airspace, policy terms, traveler history), records each step and writes a case summary. It advises only. Gemini rewrites the summary when a Google Cloud project is set. A traveler can also ask questions about their own trip from the Help tab.
+Investigation agent. `app/agent.py` investigates a held claim with six read-only tools (claim, flight status, delay forecast, weather and airspace, policy terms, traveler history), records each step and writes a case summary. It advises only. Gemini rewrites the summary when a Google Cloud project is set.
+
+Support assistant with human takeover. `app/chat.py` is the traveler's chat. The assistant answers from that traveler's own facts (`chat.facts`: policies, flight status, forecast, rules, wallet) and the answer step is one function, `chat._answer`, which builds the message from those facts and lets Gemini do the wording. Swapping that function for an ADK agent on Vertex AI changes nothing else in the app. The assistant never decides a claim: when the traveler asks for a person, or asks about a decision, the chat is flagged and the insurer sees it in Conversations, where Ethan can take over, reply under his own name, and hand it back. Every bubble says who wrote it, and the console transcript shows which facts the assistant read for each reply.
 
 Environment: `KODA_AUTH=off` turns sign-in checks off (used by most tests).
