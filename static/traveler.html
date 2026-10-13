@@ -400,7 +400,7 @@ TABS.home = () => {
 function riskStrip(g) {
   const r = g.risk, lvl = {low: 'Low', medium: 'Medium', high: 'High'}[r.level] || r.level;
   return `<section class="card fc ${r.level}">
-    <div class="cap" style="display:flex;align-items:center;gap:6px"><span class="mono">${esc(g.flight.code)}</span>, ${esc(g.flight.origin)} to ${esc(g.flight.dest)}
+    <div class="cap" style="display:flex;align-items:center;gap:6px"><span class="mono">${esc(g.flight.code)}</span><span>${esc(g.flight.origin)} to ${esc(g.flight.dest)}</span>
       <span class="st ${r.level === 'high' ? 'warn' : 'info'}" style="margin-left:auto">${lvl} risk</span></div>
     <div class="fcbar"><i style="width:${r.probability}%"></i></div>
     <p class="plain mute">${r.probability}% chance of a delay over 30 minutes. ${r.band === 'closed' ? 'Delay cover is closed on this flight because a delay is already likely.' : 'Our model reads the schedule, the route, the weather and airspace alerts.'}</p>
