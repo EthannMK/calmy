@@ -294,9 +294,13 @@ async function vPolicies() {
 /* ---------- Decisions ---------- */
 async function vDecisions(pid) {
   if (!pid) {
-    const list = ov.decisions.filter(d => d.kind === 'delay' && d.status !== 'held' && matchQ(d.id, d.policy_id, d.status));
-    return head('Decisions', 'Every delay decision, with the reason behind it.', searchBox('Search decisions')) + (list.length ?
-      `<div class="panel tbl"><table><thead><tr><th>Decision</th><th>Policy</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${list.map(d => `<tr class="click" onclick="location.hash='decisions/${esc(d.policy_id)}'"><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.policy_id)}</td><td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` :
+    const list = ov.decisions.filter(d => d.kind === 'delay' && d.status !== 'held' && matchQ(d.id, d.policy_id, d.status, d.traveler, d.flight));
+    return head('Decisions', 'Every delay decision, with the reason behind it.', searchBox('Search by name, flight or policy')) + (list.length ?
+      `<div class="panel tbl"><table><thead><tr><th>Traveler</th><th>Flight</th><th>What happened</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${list.map(d => `<tr class="click" onclick="location.hash='decisions/${esc(d.policy_id)}'">
+        <td>${esc(d.traveler || '')}<br><small class="mute mono" style="font-size:11px">${esc(d.policy_id)}</small></td>
+        <td class="mono">${esc(d.flight || '')}</td>
+        <td>${d.trigger === 'cancel' ? 'Cancelled' : d.trigger === 'recheck' ? 'Traveler asked us to check again' : hm(d.delay_minutes || 0) + ' late'}</td>
+        <td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` :
       empty('gavel', 'No decisions yet', 'Decisions appear when a flight is delayed or cancelled.'));
   }
   let info; try { info = await api('/api/console/decision/' + pid); } catch (e) { return head('Decisions') + empty('gavel', 'That policy is not here any more', 'It may have been cleared by a reset. <a href="#decisions">Back to all decisions</a>.'); }

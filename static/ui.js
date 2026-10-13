@@ -21,7 +21,9 @@ function toast(t, bad = false) {
 }
 const fail = e => toast(e, true);
 const num = n => Number(n).toLocaleString('en-US');
-const money = (n, c) => num(n) + ' ' + c;
+// The same way of writing an amount as the server uses, so a number reads the same everywhere.
+const SYMBOL = {SGD: 'S$', USD: 'US$', GBP: '£', EUR: '€', THB: 'THB ', JPY: '¥', AUD: 'A$', INR: '₹', CAD: 'C$', BRL: 'R$'};
+const money = (n, c) => SYMBOL[c] ? SYMBOL[c] + num(n) : num(n) + ' ' + c;
 const usd = n => 'S$' + num(Math.round(n));
 const hm = m => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
 const ago = t => { if (!t) return 'not yet'; const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };

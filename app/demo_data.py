@@ -60,7 +60,7 @@ NAMES = [
     "Malee Suwan", "Ploy Chanthara", "Tawan Inthara", "Emma Johansson", "Lucas Meyer", "Sofia Rossi", "Oliver Bennett", "Chloe Dubois",
     "Noah Fischer", "Isabella Garcia", "Liam O'Connor", "Hannah Weber", "Mateo Alvarez", "Wei Zhang", "Mei Lin Chen", "Hiroshi Tanaka",
     "Yuki Sato", "Min-jun Kim", "Seo-yeon Park", "Arjun Mehta", "Priya Nair", "Rohan Kapoor", "Ananya Iyer", "Sarah Mitchell",
-    "James Carter", "Olivia Harris", "Daniel Brooks", "Grace Thompson", "Ethan Walker", "Zoe Campbell", "Henry Foster", "Amelia Reed",
+    "James Carter", "Olivia Harris", "Daniel Brooks", "Grace Thompson", "Elliot Walker", "Zoe Campbell", "Henry Foster", "Amelia Reed",
     "Jack Morgan", "Fatima Al-Sayed", "Omar Haddad", "Layla Hassan", "Karim Benali", "Aisha Khan", "Tariq Rahman",
 ]
 BAG_ITEMS = [

@@ -1227,8 +1227,9 @@ def audit(q: str = "", limit: int = 200):
     with db.conn() as c:
         if q.strip():
             like = f"%{q.strip()}%"
-            return db.rows(c, "SELECT * FROM events WHERE type LIKE ? OR policy_id LIKE ? OR detail LIKE ? ORDER BY id DESC LIMIT ?", (like, like, like, limit))
-        return db.rows(c, "SELECT * FROM events ORDER BY id DESC LIMIT ?", (limit,))
+            return db.rows(c, "SELECT * FROM events WHERE type LIKE ? OR policy_id LIKE ? OR detail LIKE ? ORDER BY ts DESC, id DESC LIMIT ?", (like, like, like, limit))
+        # newest first by the time the thing happened, so the log reads as a timeline
+        return db.rows(c, "SELECT * FROM events ORDER BY ts DESC, id DESC LIMIT ?", (limit,))
 
 
 # ----------------------------------------------------------- pages
