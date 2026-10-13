@@ -8,6 +8,14 @@
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/ui.css">
 <style>
+  .gate{position:fixed;inset:0;z-index:50;background:var(--bg,#F4F6F9);display:grid;place-items:center;padding:24px;overflow:auto}
+  .gate[hidden]{display:none}
+  .gbox{width:100%;max-width:440px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:0 12px 40px rgba(20,40,80,.08);display:grid;gap:14px}
+  .gbox h1{margin:0;font-size:24px}.gbox p{margin:0;color:var(--mute);font-size:14px;line-height:1.5}
+  .gdemo{display:grid;gap:6px}.gdemo button{display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff;font:inherit;cursor:pointer}
+  .gdemo button.on{border-color:var(--cobalt);background:var(--cobalt-t)}
+  .gcode{font-size:22px;letter-spacing:.3em;text-align:center}
+  .gback{justify-self:start;color:var(--cobalt);font-weight:600;font-size:14px;background:none;border:0;cursor:pointer;display:inline-flex;gap:4px;align-items:center;padding:0}
   .app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
   .rail{background:var(--navy);color:#fff;padding:18px 12px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto}
   .rail .brand{display:flex;align-items:center;gap:10px;padding:2px 8px}
@@ -95,6 +103,7 @@
 </style>
 </head>
 <body>
+<div class="gate" id="gate" hidden></div>
 <div class="app">
   <aside class="rail">
     <div class="brand"><div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><small>Flightwise Insurance</small></div></div>
@@ -152,7 +161,7 @@ async function paint() {
   let html;
   try { html = await ({overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, customers: vCustomers, points: vPoints, profile: vProfile, review: vReview, baggage: vBaggage, extra: vExtra, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
   catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
-  if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); typeAll($('#view')); }
+  if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); applyRole(); typeAll($('#view')); }
 }
 
 /* ---------- Overview ---------- */
@@ -222,7 +231,7 @@ async function vExposure() {
     <div class="form" style="grid-template-columns:90px minmax(0,1fr) 150px auto;display:grid;align-items:end;gap:10px"><label>Airport<input id="asAp" class="field mono" maxlength="3" placeholder="BKK" style="text-transform:uppercase"></label>
       <label>What is happening<input id="asLabel" class="field" maxlength="80" placeholder="Airspace closed over the region"></label>
       <label>Impact<select id="asLvl" class="field"><option value="moderate">Moderate, +15</option><option value="severe">Severe, +30</option></select></label><button class="btn primary" id="asAdd">Add alert</button></div>
-    ${AL.length ? AL.map(a => `<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line2)"><b class="mono">${esc(a.airport)}</b><span style="flex:1">${esc(a.label)}</span><span class="chip held">+${a.points}</span><span class="mute" style="font-size:12px">${esc(a.created_by)}</span><button class="btn sm" data-asdel="${esc(a.id)}">Remove</button></div>`).join('') : '<p class="mute" style="margin:12px 0 0">No alerts. Flights are scored on weather, traffic, history and current delay only.</p>'}</div></section>
+    ${AL.length ? AL.map(a => `<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line2)"><b class="mono">${esc(a.airport)}</b><span style="flex:1">${esc(a.label)}</span><span class="chip held">+${a.points}</span><span class="mute" style="font-size:12px">${esc(a.created_by)}</span><button class="btn sm" data-asdel="${esc(a.id)}">Remove</button></div>`).join('') : '<p class="mute" style="margin:12px 0 0">No alerts. Flights are scored by the trained model and the current delay only.</p>'}</div></section>
   <section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Forecast model</h2><span class="push mute">${MC.model ? 'Trained model' : 'Rule fallback'}</span></div><div class="pb">${MC.model ? `
     <p style="margin:0 0 14px">${esc(MC.model)}, trained on ${esc(MC.data)}. It predicts: ${esc(MC.target.toLowerCase())}.</p>
     <div class="kpis" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:14px">
@@ -440,12 +449,10 @@ const coverChip = k => `<span class="chip ${k === 'both' ? 'paid' : k === 'none'
 function drawWho() {
   if (!ME) return;
   $('#who').innerHTML = `<span style="line-height:1.2"><span style="display:block;font-weight:600;font-size:13px">${esc(ME.name)}</span><span class="mute" style="display:block;font-size:12px">${esc(ME.title)}</span></span><span class="avatar">${esc(ME.initials)}</span>`;
-  $('#pop').innerHTML = `<h4>Signed in as</h4><a href="#profile" class="me" data-close><span class="avatar">${esc(ME.initials)}</span><span><b>${esc(ME.name)}</b><br><small class="mute">${esc(ME.email || ME.title)}</small></span></a>
-    <h4>Switch reviewer</h4>${STAFFL.filter(x => x.id !== ME.id).map(x => `<button data-switch="${esc(x.id)}"><span class="avatar">${esc(x.initials)}</span><span>${esc(x.name)}<br><small class="mute">${esc(x.title)}</small></span></button>`).join('')}
+  $('#pop').innerHTML = `<h4>Signed in as</h4><a href="#profile" class="me" data-close><span class="avatar">${esc(ME.initials)}</span><span><b>${esc(ME.name)}</b><br><small class="mute">${esc(ME.title)} · ${ROLE[ME.role] || 'Agent'}</small></span></a>
     <h4>Account</h4><a href="#profile" data-close>${ico('tune')}<span>Edit my profile</span></a><button data-signout>${ico('close')}<span>Sign out</span></button>`;
   $('#pop').querySelectorAll('[data-close]').forEach(a => a.addEventListener('click', closeMenu));
-  $('#pop').querySelectorAll('[data-switch]').forEach(b => b.onclick = () => { store.set('koda.staff', b.dataset.switch); closeMenu(); last = ''; toast('Switched reviewer. Decisions you make are now signed with this name.', 'ok'); refresh(); });
-  const so = $('#pop').querySelector('[data-signout]'); if (so) so.onclick = () => { store.set('koda.staff', null); closeMenu(); last = ''; toast('Signed out. Choose who you are from the menu.', 'ok'); refresh(); };
+  const so = $('#pop').querySelector('[data-signout]'); if (so) so.onclick = () => { closeMenu(); signOutStaff(); };
 }
 function closeMenu() { $('#pop').classList.remove('open'); $('#who').setAttribute('aria-expanded', 'false'); }
 $('#who').onclick = e => { e.stopPropagation(); const o = $('#pop').classList.toggle('open'); $('#who').setAttribute('aria-expanded', o); };
@@ -556,10 +563,65 @@ function bindAll() {
     try { await api('/api/console/rules?market=' + RM, 'PUT', {values}); $('#saved').textContent = 'Saved. Applies to the next delay.'; last = ''; ov = await api('/api/console/overview?market=' + RM); } catch (e) { fail(e); }
   };
 }
+// Buttons a role may not use are switched off and say why. The server enforces the same limits.
+function applyRole() {
+  if (!ME) return;
+  const off = (sel, why) => document.querySelectorAll(sel).forEach(e => { e.disabled = true; e.title = why; });
+  if (ME.role !== 'admin') off('#saveRules,#asAdd,[data-asdel],[data-accept],[data-rule]', 'Only an admin can change this.');
+  if (ME.role === 'agent') off('.act,.eact,.bact', 'Your role can look but not decide. Ask a reviewer.');
+}
 $('#aiOn').innerHTML = aiChip('AI on');
-// Poll so a claim made in the traveler app shows up. Skip while a form is in use so typing is never wiped.
-setInterval(() => { if (!document.hidden && !['rules', 'profile'].includes(route.split('/')[0]) && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
-refresh();
+
+/* ---------- Sign in ---------- */
+let timer = null, GATE = {stage: 'email', email: '', ch: null, code: '', err: '', demos: null};
+const ROLE = {admin: 'Admin', reviewer: 'Reviewer', agent: 'Agent'};
+async function showGate(msg) {
+  clearInterval(timer); timer = null; ME = null; store.set('koda.token', null);
+  if (GATE.demos === null) { try { GATE.demos = (await api('/api/auth/demo-accounts')).staff; } catch (e) { GATE.demos = []; } if (GATE.demos.length && !GATE.email) GATE.email = GATE.demos[GATE.demos.length - 1].email; }
+  GATE.stage = 'email'; GATE.ch = null; GATE.code = ''; GATE.err = msg || ''; drawGate();
+}
+function drawGate() {
+  const g = $('#gate'); g.hidden = false;
+  const demo = GATE.demos || [];
+  g.innerHTML = `<div class="gbox">
+    <div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span> <span class="mute" style="font-size:13px;margin-left:6px">Flightwise Insurance</span></div>
+    ${GATE.stage === 'email' ? `<h1>Sign in to the insurer desk</h1>
+      <p>Use your work email. We send a 6 digit code to confirm it is you.</p>
+      <label>Work email<input id="gEmail" class="field" type="email" autocomplete="username" value="${esc(GATE.email)}"></label>
+      ${demo.length ? `<div><div class="mute" style="font-size:12.5px;margin-bottom:6px">Demo accounts. Pick a role to see what each can do.</div><div class="gdemo">${demo.map(d => `<button data-gdemo="${esc(d.email)}" class="${d.email === GATE.email ? 'on' : ''}"><span><b>${esc(d.name)}</b><br><small class="mute">${esc(d.title)}</small></span><span class="chip ${d.role === 'admin' ? 'paid' : d.role === 'reviewer' ? 'blue' : ''}">${ROLE[d.role] || d.role}</span></button>`).join('')}</div></div>` : ''}
+      ${GATE.err ? `<div class="note" role="alert">${esc(GATE.err)}</div>` : ''}
+      <button id="gSend" class="btn primary">Send code</button>`
+    : `<button class="gback" id="gBack"><span class="ms" aria-hidden="true" style="transform:scaleX(-1)">arrow_forward</span> Back</button>
+      <h1>Enter your code</h1>
+      <p>We sent a 6 digit code to ${esc(GATE.ch.sent_to)}. It works for 5 minutes.</p>
+      ${GATE.ch.demo_code ? `<div class="note info">Demo mode: no message is really sent. Your code is <b class="mono">${esc(GATE.ch.demo_code)}</b>. It is filled in below.</div>` : ''}
+      <input id="gCode" class="field gcode mono" inputmode="numeric" maxlength="6" autocomplete="one-time-code" value="${esc(GATE.code)}" aria-label="6 digit code">
+      ${GATE.err ? `<div class="note" role="alert">${esc(GATE.err)}</div>` : ''}
+      <button id="gGo" class="btn primary">Sign in</button>`}
+    <p style="font-size:12.5px">Signing in is recorded in the audit log. Your session ends after 60 minutes without use.</p></div>`;
+  const q = x => g.querySelector(x);
+  g.querySelectorAll('[data-gdemo]').forEach(b => b.onclick = () => { GATE.email = b.dataset.gdemo; GATE.err = ''; drawGate(); });
+  if (q('#gEmail')) { q('#gEmail').oninput = e => GATE.email = e.target.value; q('#gEmail').onkeydown = e => { if (e.key === 'Enter') q('#gSend').click(); }; }
+  if (q('#gSend')) q('#gSend').onclick = async () => {
+    try { GATE.ch = await api('/api/auth/staff/start', 'POST', {email: GATE.email}); GATE.code = GATE.ch.demo_code || ''; GATE.stage = 'code'; GATE.err = ''; } catch (e) { GATE.err = String(e); }
+    drawGate();
+  };
+  if (q('#gBack')) q('#gBack').onclick = () => { GATE.stage = 'email'; GATE.err = ''; drawGate(); };
+  if (q('#gCode')) { q('#gCode').oninput = e => GATE.code = e.target.value; q('#gCode').onkeydown = e => { if (e.key === 'Enter') q('#gGo').click(); }; }
+  if (q('#gGo')) q('#gGo').onclick = async () => {
+    try { const r = await api('/api/auth/verify', 'POST', {challenge: GATE.ch.challenge, code: GATE.code}); store.set('koda.token', r.token); store.set('koda.staff', r.me.id); GATE.stage = 'email'; start(); }
+    catch (e) { GATE.err = String(e); drawGate(); }
+  };
+}
+window.addEventListener('koda:unauth', e => { if ($('#gate').hidden) showGate(String(e.detail || 'Your session ended. Sign in again.')); });
+async function signOutStaff() { try { await api('/api/auth/logout', 'POST'); } catch (e) {} store.set('koda.staff', null); showGate(); }
+function start() {
+  $('#gate').hidden = true; last = '';
+  refresh().catch(() => {});
+  clearInterval(timer);
+  timer = setInterval(() => { if ($('#gate').hidden && !document.hidden && !['rules', 'profile'].includes(route.split('/')[0]) && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
+}
+(async () => { if (!store.get('koda.token')) return showGate(); try { await api('/api/auth/me'); start(); } catch (e) { showGate(); } })();
 </script>
 </body>
 </html>

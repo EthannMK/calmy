@@ -27,10 +27,10 @@ DAY = 86400
 REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 STAFF = [
-    ("ST-1", "Nok P.", "Claims reviewer", "nok.p@flightwise.example", "NP"),
-    ("ST-2", "Arun S.", "Senior claims reviewer", "arun.s@flightwise.example", "AS"),
-    ("ST-3", "Mali C.", "Fraud analyst", "mali.c@flightwise.example", "MC"),
-    ("ST-4", "Pim T.", "Head of claims", "pim.t@flightwise.example", "PT"),
+    ("ST-1", "Nattaya Phromsri", "Claims reviewer", "nattaya.phromsri@flightwise.example", "NP", "reviewer"),
+    ("ST-2", "Arun Suksawat", "Senior claims reviewer", "arun.suksawat@flightwise.example", "AS", "reviewer"),
+    ("ST-3", "Malinee Chaiyasit", "Customer support agent", "malinee.chaiyasit@flightwise.example", "MC", "agent"),
+    ("ST-4", "Pimchanok Tanakorn", "Head of claims", "pimchanok.tanakorn@flightwise.example", "PT", "admin"),
 ]
 REVIEWERS = [s[1] for s in STAFF]
 
@@ -166,7 +166,7 @@ class _World:
 # ======================================================================== seed steps
 
 def seed_staff(c):
-    c.executemany("INSERT OR REPLACE INTO staff (id,name,title,email,initials,notify) VALUES (?,?,?,?,?,1)", STAFF)
+    c.executemany("INSERT OR REPLACE INTO staff (id,name,title,email,initials,role,notify) VALUES (?,?,?,?,?,?,1)", STAFF)
 
 
 def _demo_travelers(w: _World):
@@ -286,6 +286,11 @@ def seed_history(w: _World):
             pid2 = w.policy(cid, name, f2, ref, channel, d, b, bought + 60, pl.get("flags"))
             w.booking(ref, 2, name, f2["code"], "Round trip", channel, cid)
             policies.append({"pid": pid2, "cid": cid, "f": f2, "pl": {**pl, "out": "ontime" if past and f2["sched_ts"] < now else "future"}, "d": d, "b": b, "ref": ref})
+    # The signed-in demo traveler Pim has a past trip with a 3 hour delay, so her points card and wallet are not empty.
+    pim = w.flight(ROUTES[1], 1, -12)
+    pim_pid = w.policy("CU-DEMO1", "Pim Wongsakul", pim, "PIM204", "Trip.com", 1, 1, pim["sched_ts"] - 6 * DAY)
+    w.booking("PIM204", 1, "Pim Wongsakul", pim["code"], "One way", "Trip.com", "CU-DEMO1")
+    policies.append({"pid": pim_pid, "cid": "CU-DEMO1", "f": pim, "pl": {"p": 0, "when": "past", "out": "d1"}, "d": 1, "b": 1, "ref": "PIM204"})
     # uncovered bookings
     for n, pl in enumerate(ncplans):
         cid, name = people[pl["p"]]
@@ -321,8 +326,8 @@ def seed_history(w: _World):
 
     # ---- a person decides some held claims
     held = db.rows(c, "SELECT d.id, p.traveler, p.id pid, p.customer_id FROM decisions d JOIN policies p ON p.id=d.policy_id WHERE d.status='held' AND d.kind='delay' ORDER BY d.created_at")
-    notes = [(True, "Arun S.", "Called the traveler. Same household, tickets confirmed with the airline."),
-             (False, "Mali C.", "Schedule changed after purchase and the traveler could not explain it. Declined after review.")]
+    notes = [(True, "Arun Suksawat", "Called the traveler. Same household, tickets confirmed with the airline."),
+             (False, "Nattaya Phromsri", "Schedule changed after purchase and the traveler could not explain it. Declined after review.")]
     ring_ids = {people[r][0] for r in ring}
     done = 0
     for h in held:
@@ -350,7 +355,7 @@ def seed_history(w: _World):
         if k in (0, 1, 2) and db.one(c, "SELECT status FROM decisions WHERE id=?", (claim["id"] + "-D",))["status"] == "pending":
             engine.decide_baggage(c, claim["id"], True, REVIEWERS[k % 4])
         elif k == 3:
-            engine.decide_baggage(c, claim["id"], False, "Mali C.")
+            engine.decide_baggage(c, claim["id"], False, "Arun Suksawat")
     paid_delay = [p for p in policies if db.one(c, "SELECT 1 FROM decisions WHERE policy_id=? AND kind='delay' AND status='paid'", (p["pid"],))]
     rng.shuffle(paid_delay)
     for k, p in enumerate(paid_delay[:7]):

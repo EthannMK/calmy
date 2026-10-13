@@ -37,7 +37,8 @@ def test_buying_needs_no_card_digits_and_payout_is_points():
     pid, cid = _trip()
     s = client.get(f"/api/traveler/{pid}").json()
     assert s["policy"]["payout_account"].startswith("KODA points")
-    assert s["customer"]["id"] == cid and s["customer"]["balance"]["points"] == 0
+    assert s["customer"]["id"] == cid and "balance" not in s["customer"]  # a trip link never shows points
+    assert client.get(f"/api/customer/{cid}").json()["balance"]["points"] == 0
 
 
 def test_delay_pays_points_with_usd_equivalence():

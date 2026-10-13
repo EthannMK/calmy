@@ -25,7 +25,7 @@ def _load() -> dict | None:
     try:
         m = os.path.getmtime(PATH)
     except OSError:
-        return None
+        return _builtin()
     if _cache["mtime"] != m:
         try:
             with open(PATH, encoding="utf-8") as fh:
@@ -33,7 +33,17 @@ def _load() -> dict | None:
             _cache.update(mtime=m, data=d if d.get("flights") else None)
         except (OSError, ValueError):
             _cache.update(mtime=m, data=None)
-    return _cache["data"]
+    return _cache["data"] or _builtin()
+
+
+def _builtin() -> dict | None:
+    """Sample schedule for when there is no saved real one. Switched off with KODA_NO_SAMPLE_SCHEDULE (used by tests)."""
+    if os.environ.get("KODA_NO_SAMPLE_SCHEDULE"):
+        return None
+    if "builtin" not in _cache:
+        from . import sample_schedule
+        _cache["builtin"] = sample_schedule.build()
+    return _cache["builtin"]
 
 
 def available() -> bool:
@@ -44,7 +54,7 @@ def info() -> dict:
     d = _load()
     if not d:
         return {"available": False, "flights": 0, "generated_at": None, "airports": []}
-    return {"available": True, "flights": len(d["flights"]), "generated_at": d.get("generated_at"),
+    return {"available": True, "builtin": bool(d.get("builtin")), "flights": len(d["flights"]), "generated_at": d.get("generated_at"),
             "airports": sorted({f["origin"] for f in d["flights"]})}
 
 

@@ -128,8 +128,8 @@
   </section>
   <div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
   <div class="two">
-    <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><em id="capP">On the phone</em></div><div class="phone"><iframe id="phone" src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
-    <section class="side show" id="s-desk"><div class="cap"><b>Insurer</b><em id="capD">On the claims desk</em></div><div class="desk"><iframe id="desk" src="/console?embed=1" title="Insurer console"></iframe></div></section>
+    <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><em id="capP">On the phone</em></div><div class="phone"><iframe id="phone" data-src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
+    <section class="side show" id="s-desk"><div class="cap"><b>Insurer</b><em id="capD">On the claims desk</em></div><div class="desk"><iframe id="desk" data-src="/console?embed=1" title="Insurer console"></iframe></div></section>
   </div>
 </main>
 <div id="toast" class="hidden"></div>
@@ -322,6 +322,10 @@ try { if (!localStorage.getItem('koda.welcome')) showWelcome(true); } catch (e) 
 idlePipe();
 /* A judge opening this page for the first time starts from a clean story. A refresh keeps the current run. */
 (async () => {
+  // The presenter page signs the insurer desk in as the head of claims (admin) so the story needs no typing.
+  // The standalone /console and /traveler pages ask for a code instead.
+  try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'staff', id: 'ST-4'}); store.set('koda.token', r.token); store.set('koda.staff', r.me.id); } catch (e) {}
+  phone.src = phone.dataset.src; desk.src = desk.dataset.src;
   try { if (!sessionStorage.getItem('koda.fresh')) { sessionStorage.setItem('koda.fresh', '1'); await api('/api/demo/reset', 'POST'); store.set('calmy.pid', null); toPhone({reset: true}); try { desk.contentWindow.location.reload(); } catch (e) {} } } catch (e) {}
   setInterval(poll, 2500); setInterval(sources, 20000); poll(); sources();
 })();

@@ -122,7 +122,13 @@ CREATE TABLE IF NOT EXISTS airspace_alerts (
 );
 CREATE TABLE IF NOT EXISTS staff (
     id TEXT PRIMARY KEY,
-    name TEXT, title TEXT, email TEXT, initials TEXT, notify INTEGER DEFAULT 1
+    name TEXT, title TEXT, email TEXT, initials TEXT, notify INTEGER DEFAULT 1, role TEXT DEFAULT 'agent'
+);
+CREATE TABLE IF NOT EXISTS auth_codes (
+    id TEXT PRIMARY KEY, kind TEXT, subject TEXT, hash TEXT, expires REAL, tries INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY, kind TEXT, subject TEXT, role TEXT, created REAL, last_seen REAL
 );
 """
 
@@ -150,7 +156,7 @@ MIGRATIONS = [
     ("policies", "customer_id", "TEXT"), ("policies", "payout_follow", "INTEGER DEFAULT 0"), ("policies", "ref_verified", "INTEGER DEFAULT 0"),
     ("decisions", "payout", "TEXT"),
     ("partners", "category", "TEXT DEFAULT 'food'"), ("partners", "offer", "TEXT"), ("partners", "price_usd", "INTEGER DEFAULT 0"),
-    ("redemptions", "customer_id", "TEXT"),
+    ("redemptions", "customer_id", "TEXT"), ("staff", "role", "TEXT DEFAULT 'agent'"),
 ]
 
 

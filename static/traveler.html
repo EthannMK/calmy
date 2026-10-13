@@ -164,6 +164,19 @@
   .tx .plus{color:var(--green)}
   .frm label.swrow,.swrow{display:flex;gap:10px;align-items:flex-start;font-size:14px}.swrow input{margin-top:3px;width:18px;height:18px;accent-color:var(--cobalt)}
   /* test tools sheet */
+  .bk{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .bk .ms{transform:scaleX(-1);font-size:20px}.bk[hidden]{display:none}
+  .sbox{display:grid;gap:10px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(7,28,63,.06)}
+  .sbox label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--mute)}.sbox select{appearance:none;font-weight:600;font-size:15px;color:var(--ink)}
+  .fc2{display:grid;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(7,28,63,.05)}
+  .fc2:hover{border-color:var(--cobalt)}
+  .fc2 .t1{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--mute)}
+  .fc2 .mid{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+  .fc2 .mid b{font-size:20px;font-weight:700;display:block;letter-spacing:-.01em}.fc2 .mid small{font-size:12px;color:var(--mute)}
+  .fc2 .ln{display:grid;justify-items:center;gap:2px;font-size:11.5px;color:var(--mute)}.fc2 .ln hr{width:100%;border:0;border-top:2px solid var(--line);margin:0}
+  .fc2 .bt{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12.5px;border-top:1px dashed var(--line);padding-top:10px}
+  .rk{font-weight:600;border-radius:99px;padding:3px 9px;font-size:12px}.rk.low{background:#E5F6EC;color:#12663A}.rk.medium{background:#FFF1D6;color:#7A4B00}.rk.high{background:#FDE4E1;color:#9A2A1D}
+  .gcode{font-size:22px;letter-spacing:.3em;text-align:center}
   #sheet{position:absolute;inset:0;background:rgba(12,27,46,.45);z-index:50;display:flex;align-items:flex-end}
   #sheet .in{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:90%;overflow-y:auto}
   #toast{position:absolute;left:14px;right:14px;bottom:86px;transform:none;max-width:none;z-index:60}
@@ -174,6 +187,7 @@
 <body>
 <div id="app">
   <header class="top">
+    <button id="back" class="bk" hidden aria-label="Back"><span class="ms" aria-hidden="true">arrow_forward</span></button>
     <span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span>
     <span id="mkt" class="mk"></span>
     <button id="ptsChip" class="ptchip" hidden aria-label="Open your wallet"></button>
@@ -197,9 +211,10 @@ const EMBED = new URLSearchParams(location.search).has('embed'); if (EMBED) docu
 let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid');
 let S = null, MK = {}, tab = ['cover', 'claims', 'wallet', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
 let W = null, voucher = null, otherOpen = false;
-let CID = store.get('calmy.cid'), CS = null, SV = null, svAir = '', svCat = 'all', mode = 'buy', screen = null, DEMO = [], demoOpen = false;
+let CID = null, ME = null, CS = null, SV = null, svAir = '', svCat = 'all', mode = 'buy', screen = null, DEMO = [], demoOpen = false;
 let chk = {ref: '', name: '', res: null, err: ''}, pf = {name: '', email: '', phone: '', init: false}, nm = {open: false, kind: 'card', number: '', holder: '', expiry: '', bank: ''}, co = {points: '', method: ''};
 let selDate = '', calOpen = false, calMonth = null, selFlight = null;
+let si = {stage: 'ref', ref: '', name: '', ch: null, code: '', err: '', demos: null}, bstep = 'search', toAp = '', sortBy = 'time', SR = null, srBusy = false;
 let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', flight: '', market: '', ref: ''}, ap = 'BKK';
 let ex = {open: false, what: 'Meal', amount: '', receipt: null, name: ''}, letter = null, letterOpen = false, edited = false;
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
@@ -216,10 +231,14 @@ async function load() {
   }
   if (S && PID) store.set('calmy.pid', PID);
   const pol = S && PID ? S.policy : null;
-  if (S && S.customer && S.customer.id !== CID) { CID = S.customer.id; store.set('calmy.cid', CID); }
+  // Who is signed in comes from the session, never from a remembered id.
+  if (store.get('calmy.token')) {
+    try { ME = await api('/api/auth/me'); CID = ME.id; } catch (e) { ME = null; CID = null; store.set('calmy.token', null); }
+  } else { ME = null; CID = null; }
+  CS = null;
   if (CID) {
     try { CS = await api('/api/customer/' + CID); if (!pf.init) { pf = {name: CS.customer.name, email: CS.customer.email || '', phone: CS.customer.phone || '', init: true}; } }
-    catch (e) { if (/not found/i.test(e)) signOut(true); }
+    catch (e) { CS = null; }
   }
   const nm0 = CS ? CS.customer.name : pol ? pol.traveler : '';
   $('#avatar').textContent = nm0 ? nm0.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
@@ -236,9 +255,10 @@ function render(force) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', !screen && b.dataset.tab === tab));
   const v = $('#view');
   const wt = $('#walletTab'); if (wt) wt.hidden = !CID;
+  const bk = $('#back'); if (bk) bk.hidden = !canBack();
   if (tab === 'wallet' && !CID) tab = 'cover';
   const trip = PID && S;
-  const html = screen === 'profile' && CS ? profileView() : tab === 'help' ? helpView() : tab === 'wallet' && CS ? walletView()
+  const html = screen === 'signin' ? signinView() : screen === 'profile' && CS ? profileView() : tab === 'help' ? helpView() : tab === 'wallet' && CS ? walletView()
     : !trip ? startView() : tab === 'cover' ? coverView() : claimsView();
   if (force || v.dataset.k !== html) {
     const vk = tab + bagForm + (PID || '') + (screen || '') + mode + (chk.res ? 'r' : ''); const top = vk === v.dataset.vk ? v.scrollTop : 0; v.dataset.vk = vk;
@@ -373,8 +393,9 @@ function profileView() {
     <button id="signOut" class="btn block">Sign out</button>`;
 }
 function signOut(quiet) {
-  CID = null; CS = null; SV = null; svAir = ''; store.set('calmy.cid', null); pf = {name: '', email: '', phone: '', init: false}; screen = null; voucher = null;
-  PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); mode = 'buy'; chk = {ref: '', name: '', res: null, err: ''}; tab = 'cover';
+  api('/api/auth/logout', 'POST').catch(() => {}); store.set('calmy.token', null); ME = null;
+  CID = null; CS = null; SV = null; svAir = ''; pf = {name: '', email: '', phone: '', init: false}; screen = null; voucher = null;
+  PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); mode = 'buy'; bstep = 'search'; selFlight = null; chk = {ref: '', name: '', res: null, err: ''}; tab = 'cover';
   if (!quiet) toast('Signed out.', 'ok'); render(true); load().then(() => { if (LIVE.ready) loadReal(); });
 }
 function factsBlock() {
@@ -389,14 +410,7 @@ function factsBlock() {
 }
 
 /* ---------------- start: pick a flight ---------------- */
-function flightRow(f) {
-  const on = form.flight.replace(/\s/g, '') === f.code.replace(/\s/g, '');
-  const m = MK[f.market] || {};
-  return `<button data-pick="${esc(f.code)}" data-mk="${esc(f.market || '')}" class="pick opt ${on ? 'on' : ''}">
-    <span class="c">${esc(f.code)}</span><span class="r">${esc(f.origin)} to ${esc(f.dest)}<span class="mute"> · ${esc(f.depart_label)}</span></span>
-    <span class="mute" style="font-size:12px">${esc(f.airline || '')}</span></button>`;
-}
-
+/* ---------------- start: search and pick a flight ---------------- */
 /* ---------------- calendar: pick a day up to a month ahead ---------------- */
 const ISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const fromISO = t => { const [y, m, d] = t.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -416,21 +430,58 @@ function calendar() {
     <div class="calw">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<span>${x}</span>`).join('')}</div>
     <div class="calg">${cells}</div></div>`;
 }
-function flightFinder() {
-  const ok = !!LIVE.ready, day = selDate || WINDOW()[0];
-  return `<div class="row2"><input id="fFlight" class="field mono" style="text-transform:uppercase" placeholder="Flight, e.g. TG 102" maxlength="8" value="${esc(form.flight)}" ${ok ? '' : 'disabled'}><button id="fUse" class="btn primary" style="padding:0 20px" ${ok ? '' : 'disabled'}>Find</button></div>
-    ${ok ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" role="group" aria-label="Departure airport">${['BKK', 'LHR', 'JFK', 'SIN', 'DEL', 'SYD'].map(a => `<button data-ap="${a}" class="apq ${a === ap ? 'on' : ''}">${a}</button>`).join('')}</div>
-    <button id="dayBtn" class="daybtn" aria-expanded="${calOpen}">${ico('flight_takeoff')}<span>${esc(dayLabel(day))}</span>${ico(calOpen ? 'expand_less' : 'expand_more')}</button>
-    ${calOpen ? calendar() : ''}` : ''}
-    ${realMsg ? `<div class="note" style="margin-top:10px">${esc(realMsg)}</div>` : ''}
-    ${ok && REAL.length ? `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:14px 0 6px;color:var(--ink2);font-weight:600">${day === WINDOW()[0] ? '<span class="radar"></span>Departures from ' + esc(ap) + ' today' : 'Scheduled flights from ' + esc(ap)}</div>
-      <div style="display:flex;flex-direction:column;gap:6px">${REAL.map(flightRow).join('')}</div>` : ''}
-    ${ok ? '<div class="mute" style="font-size:12px;margin-top:10px;line-height:1.4">Booked on Trip.com, Agoda or with the airline? Pick the same flight and day here to add cover.</div>' : ''}`;
+const APTS = [['BKK', 'Bangkok Suvarnabhumi'], ['DMK', 'Bangkok Don Mueang'], ['HKT', 'Phuket'], ['CNX', 'Chiang Mai'], ['USM', 'Koh Samui'], ['SIN', 'Singapore'], ['KUL', 'Kuala Lumpur'], ['HKG', 'Hong Kong'], ['NRT', 'Tokyo Narita'], ['ICN', 'Seoul Incheon'], ['LHR', 'London Heathrow'], ['JFK', 'New York JFK'], ['SYD', 'Sydney'], ['DXB', 'Dubai'], ['DEL', 'Delhi']];
+const durTxt = m => Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm';
+const SRC = {live: 'Live flight status', saved: 'Saved real schedule', sample: 'Sample schedule'};
+function searchView() {
+  const day = selDate || WINDOW()[0], ok = !!LIVE.ready;
+  const opt = (v, sel, t) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${esc(t)}</option>`;
+  return `<section><div class="cap">Find your flight</div>
+    <div class="sbox">
+      <label>From<select id="sFrom" class="field">${APTS.map(a => opt(a[0], ap, a[0] + ' · ' + a[1])).join('')}</select></label>
+      <label>To<select id="sTo" class="field">${opt('', toAp, 'Anywhere')}${APTS.filter(a => a[0] !== ap).map(a => opt(a[0], toAp, a[0] + ' · ' + a[1])).join('')}</select></label>
+      <label>Departure day<button id="dayBtn" class="daybtn" style="margin-top:0" aria-expanded="${calOpen}">${ico('flight_takeoff')}<span>${esc(dayLabel(day))}</span>${ico(calOpen ? 'expand_less' : 'expand_more')}</button></label>
+      ${calOpen ? calendar() : ''}
+      <button id="sSearch" class="btn primary block" ${ok ? '' : 'disabled'}>Search flights</button>
+    </div></section>
+    <section><div class="cap">Popular routes</div><div class="chips" role="group" aria-label="Popular routes">${[['BKK', 'HKT'], ['BKK', 'CNX'], ['DMK', 'HKT'], ['BKK', 'SIN'], ['SIN', 'BKK'], ['LHR', 'JFK']].map(r => `<button data-route="${r[0]}-${r[1]}">${r[0]} to ${r[1]}</button>`).join('')}</div></section>
+    <section><div class="cap">Know your flight number?</div>
+      <div class="row2"><input id="fFlight" class="field mono" style="text-transform:uppercase" placeholder="e.g. TG 102" maxlength="8" value="${esc(form.flight)}" ${ok ? '' : 'disabled'}><button id="fUse" class="btn" style="padding:0 20px" ${ok ? '' : 'disabled'}>Find</button></div>
+      ${realMsg ? `<div class="note" style="margin-top:10px">${esc(realMsg)}</div>` : ''}</section>
+    <div class="mute" style="font-size:12.5px;line-height:1.45">Booked on Trip.com, Agoda or with the airline? Pick the same flight and day here to add cover.</div>`;
 }
-function selectedFlight() {
-  const f = selFlight;
-  return `<div class="opt on" aria-label="Selected flight"><span class="c">${esc(f.code)}</span><span class="r">${esc(f.origin)} to ${esc(f.dest)}<span class="mute"> · ${esc(f.depart_label)}</span></span><span class="mute" style="font-size:12px">${esc(f.airline || '')}</span></div>
-    <button id="changeFlight" style="color:var(--cobalt);font-weight:600;font-size:13px;margin-top:8px">Change flight or day</button>`;
+function resultsView() {
+  const list = (SR ? SR.flights : []).slice();
+  if (sortBy === 'risk') list.sort((a, b) => a.risk.probability - b.risk.probability); else list.sort((a, b) => (a.sched_ts || 0) - (b.sched_ts || 0) || a.code.localeCompare(b.code));
+  const day = selDate || WINDOW()[0];
+  const card = f => {
+    const cl = f.band === 'closed', rk = f.risk.level;
+    return `<button class="fc2" data-pick2="${esc(f.code)}" aria-label="${esc(f.airline)} ${esc(f.code)}, departs ${esc(f.scheduled || '')}">
+      <div class="t1"><span>${esc(f.airline || '')}</span><span class="mono">${esc(f.code)}</span></div>
+      <div class="mid"><div><b>${esc((f.scheduled || f.depart_label || '').slice(0, 5))}</b><small>${esc(f.origin)}</small></div>
+        <div class="ln"><span>${f.duration_min ? '~' + durTxt(f.duration_min) : ''}</span><hr><span>Nonstop</span></div>
+        <div style="text-align:right"><b>${esc(f.dest)}</b><small>${esc(f.dest_city || '')}</small></div></div>
+      <div class="bt"><span class="rk ${rk}">${rk === 'high' ? 'High' : rk === 'medium' ? 'Medium' : 'Low'} delay risk · ${f.risk.probability}%</span>
+        <span>${cl ? '<b>Delay cover closed</b>' : 'Cover from <b>' + (f.price.currency === 'USD' ? '$' + f.price.baggage : esc(f.price.currency) + ' ' + f.price.baggage) + '</b>'}</span></div></button>`;
+  };
+  return `<div><h1 style="margin-bottom:2px">${esc(ap)} to ${toAp ? esc(toAp) : 'anywhere'}</h1>
+      <p class="sub">${esc(dayLabel(day))}${SR && SR.source ? ' · ' + esc(SRC[SR.source] || '') : ''}</p></div>
+    <div class="chips" role="group" aria-label="Sort"><button data-sort="time" class="${sortBy === 'time' ? 'on' : ''}">Earliest</button><button data-sort="risk" class="${sortBy === 'risk' ? 'on' : ''}">Lowest delay risk</button></div>
+    ${srBusy ? '<div class="mute" role="status">Finding flights...</div>' : list.length ? `<div style="display:flex;flex-direction:column;gap:10px">${list.map(card).join('')}</div>` : `<div class="note" role="status">${esc(realMsg || 'No flights found.')}</div>`}
+    ${SR && SR.source === 'sample' ? '<div class="mute" style="font-size:12px">The live schedule is not reachable right now, so these are sample flights on real routes.</div>' : ''}`;
+}
+function detailsView() {
+  const f = selFlight, hit = (SR ? SR.flights : []).find(x => x.code === f.code) || f;
+  return `<div><h1>Your details</h1><p class="sub">Check your flight, then add the name and booking reference from your ticket.</p></div>
+    <div class="opt on" aria-label="Selected flight"><span class="c">${esc(f.code)}</span><span class="r">${esc(f.origin)} to ${esc(f.dest)}<span class="mute"> · ${esc(f.depart_label)}</span></span><span class="mute" style="font-size:12px">${esc(f.airline || '')}</span></div>
+    ${hit.risk ? `<div class="mute" style="font-size:13px">Delay risk on this flight: <b>${hit.risk.probability}%</b>.${hit.band === 'closed' ? ' Delay cover is closed because a delay is already very likely. Baggage cover is still open.' : hit.band === 'caution' ? ' Delay cover is open, and a claim gets an extra check.' : ''}</div>` : ''}
+    <section><div class="cap">Your ticket</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+      <input id="fName" class="field" placeholder="Full name, as on your ticket" maxlength="40" autocomplete="name" value="${esc(form.name || (CS ? CS.customer.name : ''))}">
+      <input id="fRef" class="field mono" placeholder="Booking reference" maxlength="10" autocapitalize="characters" autocomplete="off" value="${esc(form.ref)}">
+      <div class="mute" style="font-size:13px">The 5 to 10 letters or numbers on your e-ticket or booking email. Bought it anywhere, from an airline, Trip.com or Agoda? That is fine. KODA only adds the cover.</div></div></section>
+    <div class="note info" style="display:flex;gap:10px;align-items:flex-start">${ico('paid')}<span>Payouts are paid as KODA points. 100 points is worth $1 at the airport, and you get a 25% bonus. You can cash points out to a card or bank from your profile.</span></div>
+    <button id="quote" class="btn primary block">See price</button>`;
 }
 /* Points card on the first screen, like a fintech home. Signed in: the real balance. Signed out: a labelled example payout. */
 function heroView() {
@@ -454,22 +505,70 @@ function runCount() {
   requestAnimationFrame(step);
 }
 function startView() {
-  return `${mode === 'check' ? '' : heroView()}
-    <div class="seg" role="tablist" aria-label="What would you like to do"><button role="tab" data-mode="buy" class="${mode === 'buy' ? 'on' : ''}" aria-selected="${mode === 'buy'}">Add cover</button><button role="tab" data-mode="check" class="${mode === 'check' ? 'on' : ''}" aria-selected="${mode === 'check'}">Check my cover</button></div>
+  const top = mode === 'buy' && bstep === 'search' && !selFlight;  // the points card and the two-way switch show on the first step only
+  return `${top ? heroView() : ''}
+    ${top || mode === 'check' ? `<div class="seg" role="tablist" aria-label="What would you like to do"><button role="tab" data-mode="buy" class="${mode === 'buy' ? 'on' : ''}" aria-selected="${mode === 'buy'}">Add cover</button><button role="tab" data-mode="check" class="${mode === 'check' ? 'on' : ''}" aria-selected="${mode === 'check'}">Check my cover</button></div>` : ''}
+    ${!CID && top ? '<button id="goSignin" style="color:var(--cobalt);font-weight:600;font-size:14px;text-align:left">Already have an account? Sign in</button>' : ''}
     ${mode === 'check' ? checkView() : buyView()}`;
 }
 function buyView() {
-  return `<section><div class="cap">1. Find your flight</div>
-      ${LIVE.ready ? '' : `<div class="note" role="status"><b>Live flight data is not connected.</b> This app only covers real flights, so there is nothing to pick yet. ${esc(LIVE.last_error || 'Set the flight data key on the server and reload.')}</div>`}
-      ${selFlight ? selectedFlight() : flightFinder()}</section>
-    <section><div class="cap">2. Your ticket</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-      <input id="fName" class="field" placeholder="Full name, as on your ticket" maxlength="40" autocomplete="name" value="${esc(form.name || (CS ? CS.customer.name : ''))}">
-      <input id="fRef" class="field mono" placeholder="Booking reference" maxlength="10" autocapitalize="characters" autocomplete="off" value="${esc(form.ref)}">
-      <div class="mute" style="font-size:13px">The 5 to 10 letters or numbers on your e-ticket or booking email. Bought it anywhere, from an airline, Trip.com or Agoda? That is fine. KODA only adds the cover.</div></div></section>
-    <div class="note info" style="display:flex;gap:10px;align-items:flex-start">${ico('paid')}<span><b>Paid as points, worth 25% more.</b> Spend them at the airport on food, lounges, taxis and more, or cash them out to a card or bank from your profile. No account details needed now.</span></div>
-    <button id="quote" class="btn primary block">See price</button>
-    <button data-mode="check" style="color:var(--cobalt);font-weight:600;font-size:14px">Already booked with cover? Check my cover</button>`;
+  const note = LIVE.ready ? '' : `<div class="note" role="status"><b>Flight data is not available.</b> ${esc(LIVE.last_error || 'Try again in a moment.')}</div>`;
+  if (selFlight) return note + detailsView();
+  return note + (bstep === 'results' ? resultsView() : searchView());
+}
+/* ---------------- sign in ---------------- */
+async function loadDemos() {
+  if (si.demos !== null) return;
+  try { si.demos = (await api('/api/auth/demo-accounts')).travelers; } catch (e) { si.demos = []; }
+  if (si.demos.length && !si.ref) { si.ref = si.demos[0].ref; si.name = si.demos[0].surname; }
+}
+function openSignin(msg) { si.stage = 'ref'; si.ch = null; si.err = msg || ''; screen = 'signin'; render(true); loadDemos().then(() => render(true)); }
+function signinView() {
+  if (si.stage === 'code') {
+    return `<div><h1>Enter your code</h1><p class="sub">We sent a 6 digit code to ${esc(si.ch.sent_to)}. It works for 5 minutes.</p></div>
+      ${si.ch.demo_code ? `<div class="note info">Demo mode: no message is really sent. Your code is <b class="mono">${esc(si.ch.demo_code)}</b>, and it is filled in below.</div>` : ''}
+      <input id="sCode" class="field gcode mono" inputmode="numeric" maxlength="6" autocomplete="one-time-code" aria-label="6 digit code" value="${esc(si.code)}">
+      ${si.err ? `<div class="note" role="alert">${esc(si.err)}</div>` : ''}
+      <button id="sGo" class="btn primary block">Sign in</button>
+      <button id="sResend" style="color:var(--cobalt);font-weight:600;font-size:14px">Send a new code</button>`;
+  }
+  const demos = si.demos || [];
+  return `<div><h1>Sign in</h1><p class="sub">Use the booking reference and last name on your ticket. We send a 6 digit code to the email or phone on the booking.</p></div>
+    <div class="frm"><label>Booking reference<input id="sRef" class="field mono" maxlength="10" autocapitalize="characters" autocomplete="off" value="${esc(si.ref)}"></label>
+      <label>Last name<input id="sName" class="field" maxlength="40" autocomplete="family-name" value="${esc(si.name)}"></label></div>
+    ${demos.length ? `<section><div class="cap">Demo accounts</div><div style="display:grid;gap:6px">${demos.map(d => `<button class="opt ${d.ref === si.ref ? 'on' : ''}" data-sdemo="${esc(d.ref)}:${esc(d.surname)}"><span class="c">${esc(d.ref)}</span><span class="r"><b>${esc(d.name)}</b><br><span class="mute">${esc(d.what)}</span></span></button>`).join('')}</div></section>` : ''}
+    ${si.err ? `<div class="note" role="alert">${esc(si.err)}</div>` : ''}
+    <button id="sSend" class="btn primary block">Send code</button>
+    <div class="mute" style="font-size:12.5px;line-height:1.45">New to KODA? You do not need an account to add cover. One is created when you buy.</div>`;
+}
+/* Back: one step toward the start screen. The header arrow shows only when there is somewhere to go. */
+function canBack() {
+  if (screen) return true;
+  if (bagForm) return true;
+  if (PID && S) return tab === 'cover' || tab === 'claims';
+  if (tab !== 'cover') return false;
+  return mode === 'check' || bstep !== 'search';
+}
+function goBack() {
+  if (screen === 'signin' && si.stage === 'code') { si.stage = 'ref'; si.err = ''; return render(true); }
+  if (screen) { screen = null; return render(true); }
+  if (bagForm) { bagForm = false; return render(true); }
+  if (PID && S && (tab === 'cover' || tab === 'claims')) {
+    // Leave the trip. The cover is kept and can be opened again from Check my cover or Your trips.
+    PID = null; S = null; store.set('calmy.pid', null); history.replaceState(null, '', location.pathname); tab = 'cover';
+    if (!selFlight) bstep = SR ? 'results' : 'search';
+    $('#view').dataset.k = ''; return load().then(() => render(true));
+  }
+  if (mode === 'check') { if (chk.res) chk.res = null; else mode = 'buy'; chk.err = ''; return render(true); }
+  if (bstep === 'details') { selFlight = null; form.flight = ''; bstep = 'results'; return render(true); }
+  if (bstep === 'results') { bstep = 'search'; return render(true); }
+}
+async function runSearch() {
+  if (!selDate) selDate = WINDOW()[0];
+  bstep = 'results'; srBusy = true; realMsg = ''; render(true);
+  try { SR = await api(`/api/flights/search?origin=${encodeURIComponent(ap)}&dest=${encodeURIComponent(toAp)}&date=${selDate}`); REAL = SR.flights; if (!SR.flights.length) realMsg = 'No flights found for that day. Try another day or airport.'; }
+  catch (e) { SR = {flights: [], source: ''}; REAL = []; realMsg = String(e); }
+  srBusy = false; render(true);
 }
 function checkView() {
   const r = chk.res;
@@ -739,7 +838,7 @@ function helpView() {
 
 /* ---------------- events ---------------- */
 function pickFlight(code, market) {
-  const hit = [...REAL, ...SAMPLES].find(f => f.code === code); form.flight = code; form.market = market; selFlight = hit || {code, origin: '', dest: '', depart_label: '', airline: ''}; calOpen = false; render(true);
+  const hit = [...REAL, ...SAMPLES].find(f => f.code === code); form.flight = code; form.market = market; selFlight = hit || {code, origin: '', dest: '', depart_label: '', airline: ''}; calOpen = false; bstep = 'details'; render(true);
 }
 function bind() {
   document.querySelectorAll('[data-sel]').forEach(el => el.onclick = () => { sel[el.dataset.sel] = !sel[el.dataset.sel]; render(true); });
@@ -813,7 +912,7 @@ function bind() {
     if (chk.ref.length < 5) { chk.err = 'Enter the booking reference from your ticket.'; return render(true); }
     if (chk.name.trim().length < 2) { chk.err = 'Enter the last name on the ticket.'; return render(true); }
     $('#cGo').disabled = true;
-    try { chk.res = await api(`/api/booking/${encodeURIComponent(chk.ref)}?surname=${encodeURIComponent(chk.name.trim())}`); demoOpen = false; if (chk.res.customer_id) { CID = chk.res.customer_id; store.set('calmy.cid', CID); pf.init = false; await load(); } }
+    try { chk.res = await api(`/api/booking/${encodeURIComponent(chk.ref)}?surname=${encodeURIComponent(chk.name.trim())}`); demoOpen = false; }
     catch (e) { chk.res = null; chk.err = String(e); }
     render(true);
   };
@@ -824,7 +923,7 @@ function bind() {
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = async () => { PID = b.dataset.open; store.set('calmy.pid', PID); tab = 'cover'; screen = null; await load(); render(true); });
   document.querySelectorAll('[data-addleg]').forEach(b => b.onclick = async () => {
     b.disabled = true; const r = chk.res;
-    try { const q = await api('/api/policies', 'POST', {name: r.passenger, flight: b.dataset.addleg, booking_ref: r.ref, customer: r.customer_id || CID || null}); PID = q.policy; store.set('calmy.pid', PID); if (q.customer) { CID = q.customer; store.set('calmy.cid', CID); } tab = 'cover'; sel = {delay: true, baggage: true}; ack = false; chk.res = null; mode = 'buy'; }
+    try { const q = await api('/api/policies', 'POST', {name: r.passenger, flight: b.dataset.addleg, booking_ref: r.ref, customer: CID || null}); PID = q.policy; store.set('calmy.pid', PID); if (q.session) store.set('calmy.token', q.session); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false; chk.res = null; mode = 'buy'; }
     catch (e) { fail(e); b.disabled = false; return; }
     await load(); render(true);
   });
@@ -869,13 +968,35 @@ function bind() {
     await load(); render(true);
   });
   on('#signOut', () => signOut());
+  on('#goSignin', () => openSignin());
+  on('#sSearch', runSearch);
+  const sf = $('#sFrom'); if (sf) sf.onchange = () => { ap = sf.value; if (toAp === ap) toAp = ''; render(true); };
+  const st = $('#sTo'); if (st) st.onchange = () => { toAp = st.value; };
+  document.querySelectorAll('[data-route]').forEach(b => b.onclick = () => { [ap, toAp] = b.dataset.route.split('-'); runSearch(); });
+  document.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortBy = b.dataset.sort; render(true); });
+  document.querySelectorAll('[data-pick2]').forEach(b => b.onclick = () => { const f = (SR ? SR.flights : []).find(x => x.code === b.dataset.pick2); if (f) { pickFlight(f.code, f.market); window.scrollTo(0, 0); $('#view').scrollTop = 0; } });
+  on('#back', goBack);
+  const sr = $('#sRef'); if (sr) sr.oninput = () => { si.ref = sr.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(); sr.value = si.ref; };
+  const sn = $('#sName'); if (sn) sn.oninput = () => si.name = sn.value;
+  document.querySelectorAll('[data-sdemo]').forEach(b => b.onclick = () => { [si.ref, si.name] = b.dataset.sdemo.split(':'); si.err = ''; render(true); });
+  const sendCode = async () => {
+    si.err = ''; if (si.ref.length < 5 || si.name.trim().length < 2) { si.err = 'Enter the booking reference and the last name on the ticket.'; return render(true); }
+    try { si.ch = await api('/api/auth/traveler/start', 'POST', {ref: si.ref, surname: si.name.trim()}); si.code = si.ch.demo_code || ''; si.stage = 'code'; } catch (e) { si.err = String(e); }
+    render(true);
+  };
+  on('#sSend', sendCode); on('#sResend', sendCode);
+  [sr, sn].forEach(i => { if (i) i.onkeydown = e => { if (e.key === 'Enter') sendCode(); }; });
+  const sc = $('#sCode'); if (sc) { sc.oninput = () => { si.code = sc.value.replace(/\D/g, ''); sc.value = si.code; }; sc.onkeydown = e => { if (e.key === 'Enter') $('#sGo').click(); }; }
+  on('#sGo', async () => {
+    try { const r = await api('/api/auth/verify', 'POST', {challenge: si.ch.challenge, code: si.code}); store.set('calmy.token', r.token); pf.init = false; screen = null; si.stage = 'ref'; si.ch = null; si.err = ''; toast('Signed in.', 'ok'); }
+    catch (e) { si.err = String(e); return render(true); }
+    await load(); render(true);
+  });
   document.querySelectorAll('.pick').forEach(b => b.onclick = () => pickFlight(b.dataset.pick, b.dataset.mk));
-  document.querySelectorAll('.apq').forEach(b => b.onclick = () => { ap = b.dataset.ap; loadReal(); });
-  on('#dayBtn', () => { calOpen = !calOpen; render(true); });
+    on('#dayBtn', () => { calOpen = !calOpen; render(true); });
   on('#calPrev', () => { const c = calMonth || fromISO(selDate || WINDOW()[0]); calMonth = new Date(c.getFullYear(), c.getMonth() - 1, 1); render(true); });
   on('#calNext', () => { const c = calMonth || fromISO(selDate || WINDOW()[0]); calMonth = new Date(c.getFullYear(), c.getMonth() + 1, 1); render(true); });
-  document.querySelectorAll('.cd').forEach(b => b.onclick = () => { selDate = b.dataset.day; calMonth = null; calOpen = false; loadReal(); });
-  on('#changeFlight', () => { selFlight = null; form.flight = ''; form.market = ''; render(true); });
+  document.querySelectorAll('.cd').forEach(b => b.onclick = () => { selDate = b.dataset.day; calMonth = null; calOpen = false; if (bstep === 'results') runSearch(); else render(true); });
   const fref = $('#fRef'); if (fref) fref.oninput = () => { form.ref = fref.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(); fref.value = form.ref; };
   on('#fUse', async () => {
     const v = form.flight.replace(/\s/g, '').toUpperCase(); if (!v) return fail('Enter a flight number, for example TG 102.');
@@ -892,18 +1013,13 @@ function bind() {
     $('#quote').disabled = true; $('#quote').textContent = 'Checking your flight...';
     try {
       const r = await api('/api/policies', 'POST', {name: form.name.trim(), flight: form.flight.trim(), date: (selFlight && selFlight.flight_date) || selDate || null, booking_ref: form.ref, customer: CID || null});
-      PID = r.policy; if (r.customer) { CID = r.customer; store.set('calmy.cid', CID); pf.init = false; } if (!r.verified) toast('Booking reference saved. We could not check it with the airline in this demo, so it is marked not verified.', 'ok'); store.set('calmy.pid', PID); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false;
+      PID = r.policy; if (r.session) { store.set('calmy.token', r.session); pf.init = false; } if (!r.verified) toast('Booking reference saved. We could not check it with the airline in this demo, so it is marked not verified.', 'ok'); store.set('calmy.pid', PID); tab = 'cover'; sel = {delay: true, baggage: true}; ack = false;
     } catch (e) { fail(e); $('#quote') && ($('#quote').disabled = false); return; }
     await load();
   });
 }
 async function loadReal() {
-  realMsg = ''; REAL = [];
   if (!selDate) selDate = WINDOW()[0];
-  if (ap.length !== 3) { realMsg = 'Enter a three letter airport code such as BKK or LHR.'; return render(true); }
-  realMsg = 'Loading flights...'; render(true);
-  try { REAL = await api('/api/live/schedule?airport=' + encodeURIComponent(ap) + '&date=' + selDate); realMsg = REAL.length ? '' : 'No departures found from ' + ap + ' on this day.'; }
-  catch (e) { realMsg = String(e).replace(/^Error:\s*/, '') || 'Flights are not available right now.'; REAL = []; }
   try { LIVE = await api('/api/live/status'); } catch (e) {}
   render(true);
 }
@@ -913,16 +1029,16 @@ function newTrip() { PID = null; S = null; store.set('calmy.pid', null); history
 // The live demo page drives this app from outside: it can switch trip, switch tab or clear the app.
 window.addEventListener('message', e => {
   if (e.origin !== location.origin || !e.data) return;
-  if (e.data.reset) { PID = null; S = null; store.set('calmy.pid', null); form = {name: '', flight: '', market: '', ref: ''}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; screen = null; mode = 'buy'; chk = {ref: '', name: '', res: null, err: ''}; CID = null; CS = null; store.set('calmy.cid', null); pf.init = false; load().then(() => { if (LIVE.ready) loadReal(); }); return; }
+  if (e.data.reset) { PID = null; S = null; store.set('calmy.pid', null); form = {name: '', flight: '', market: '', ref: ''}; selFlight = null; selDate = ''; calOpen = false; tab = 'cover'; screen = null; mode = 'buy'; chk = {ref: '', name: '', res: null, err: ''}; CID = null; CS = null; ME = null; store.set('calmy.token', null); bstep = 'search'; toAp = ''; SR = null; si = {stage: 'ref', ref: '', name: '', ch: null, code: '', err: '', demos: si.demos}; pf.init = false; load().then(() => { if (LIVE.ready) loadReal(); }); return; }
   if (e.data.pid) { PID = e.data.pid; store.set('calmy.pid', PID); }
-  if (e.data.cid) { CID = e.data.cid; store.set('calmy.cid', CID); pf.init = false; }
+  if (e.data.token) { store.set('calmy.token', e.data.token); pf.init = false; }
   if (e.data.check) { PID = null; S = null; store.set('calmy.pid', null); mode = 'check'; chk = {ref: e.data.check.ref, name: e.data.check.surname, res: null, err: ''}; }
   if (e.data.tab) { tab = e.data.tab; screen = null; }
   if (e.data.check && e.data.check.auto) setTimeout(() => { const g = $('#cGo'); if (g) g.click(); }, 700);
   load().then(() => { render(true); if (tab === 'wallet') loadWallet(); });
 });
 
-$('#avatar').onclick = () => { if (CID) { screen = screen === 'profile' ? null : 'profile'; render(true); } else { PID = null; S = null; store.set('calmy.pid', null); mode = 'check'; screen = null; tab = 'cover'; render(true); } };
+$('#avatar').onclick = () => { if (CID) { screen = screen === 'profile' ? null : 'profile'; render(true); } else openSignin(); };
 $('#ptsChip').onclick = () => setTab('wallet');
 // Poll so a payout triggered elsewhere shows up here. Skipped while typing so forms are not wiped.
 setInterval(() => { if (!document.hidden && (PID || CID)) load().catch(() => {}); }, EMBED ? 2500 : 4000);

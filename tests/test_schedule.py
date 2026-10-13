@@ -121,3 +121,17 @@ def test_a_lost_bag_cannot_be_reported_before_the_flight_leaves():
         client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": True, "ack": True})
         r = client.post(f"/api/traveler/{pid}/baggage", json={"report_id": "PIR12345", "bag_tag": "TG123456", "items": [{"name": "Shirt", "amount": 20}]})
         assert r.status_code == 400 and "once your flight has left" in r.json()["detail"]
+
+
+def test_search_never_comes_back_empty_and_carries_risk_and_price(monkeypatch):
+    from datetime import date as _d, timedelta as _t
+    monkeypatch.setenv("KODA_SNAPSHOT", "/nonexistent.json")
+    from app import schedule
+    schedule.PATH = "/nonexistent.json"
+    day = (_d.today() + _t(days=2)).isoformat()
+    with client:
+        r = client.get(f"/api/flights/search?origin=BKK&dest=HKT&date={day}").json()
+    assert r["source"] == "sample" and r["flights"]
+    f = r["flights"][0]
+    assert f["dest"] == "HKT" and f["band"] in ("open", "caution", "closed") and f["duration_min"] > 30
+    assert f["price"]["delay"] > 0 and 3 <= f["risk"]["probability"] <= 97

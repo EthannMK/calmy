@@ -22,7 +22,7 @@ from typing import Literal
 import re
 import time
 
-from . import bookings, context, copilot, db, engine, forecast, live, markets, partners, rights, schedule, track, wallet
+from . import auth, bookings, context, copilot, db, engine, forecast, live, markets, partners, rights, schedule, track, wallet
 
 STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 @asynccontextmanager
@@ -55,6 +55,13 @@ async def cache_static(request, call_next):
     if resp.status_code == 200 and not path.startswith("/api/"):
         resp.headers["Cache-Control"] = "public, max-age=86400" if path.startswith("/static/fonts/") else "no-cache"
     return resp
+
+
+@app.middleware("http")
+async def sign_in_guard(request, call_next):
+    """Customer and console endpoints need a signed-in session. See app/auth.py."""
+    denied = auth.guard(request)
+    return denied if denied else await call_next(request)
 
 
 # ----------------------------------------------------------- helpers
@@ -137,7 +144,9 @@ def traveler_state(pid: str):
         cust = None
         if p.get("customer_id"):
             cu = wallet.get(c, p["customer_id"])
-            cust = {"id": cu["id"], "name": cu["name"], "balance": wallet.balance(c, cu["id"]), "payout_to": wallet.account_for(c, cu["id"])}
+            # No balance here: a trip link must not show someone's points. The wallet needs a signed-in session.
+            acct = wallet.account_for(c, cu["id"])
+            cust = {"id": cu["id"], "name": cu["name"], "payout_to": acct if acct.startswith(markets.POINTS_RAIL) else "your saved card or bank"}
         trip = db.rows(c, "SELECT b.leg, b.trip, b.flight, f.origin, f.dest, f.depart_label FROM bookings b LEFT JOIN flights f ON f.code=b.flight "
                           "WHERE b.ref=? ORDER BY b.leg", (p["pnr"],)) if p.get("pnr") else []
         uw = None
@@ -172,7 +181,7 @@ class NewPolicy(BaseModel):
 
 
 @app.post("/api/policies")
-def create_policy(body: NewPolicy):
+def create_policy(body: NewPolicy, request: Request):
     """Start a quote for a flight. A sample flight is used as is. Any other number is looked up live.
 
     The departure country sets the market: currency, payout rails, rules and legal notes.
@@ -231,12 +240,17 @@ def create_policy(body: NewPolicy):
         # fallback for callers that send none (the presenter panel and seed data).
         pnr = ref or "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
         channel = (body.channel or "").strip() or (booked or {}).get("channel")
-        cid, follow = None, 0
+        cid, follow, session = None, 0, None
         if legacy:
             account = f"{rail} wallet" if rail == markets.POINTS_RAIL else f"{rail} ending {body.last4}"
         else:
-            pref = body.customer or (booked or {}).get("customer_id")
+            # A customer id sent by the page counts only when it belongs to the signed-in session.
+            sess = auth.who(request.headers.get("x-session")) if auth.enabled() else None
+            mine = body.customer if (not auth.enabled() or (sess and sess["subject"] == body.customer)) else None
+            pref = mine or (booked or {}).get("customer_id")
             cid = pref if wallet.get(c, pref) else wallet.create(c, body.name, market=market if market in ("TH", "SG", "UK") else "TH")
+            # A brand new account is signed in at once. An existing one must sign in with a code first.
+            session = auth._session(c, "traveler", cid, "traveler") if cid != pref else None
             account, follow = wallet.account_for(c, cid), 1
         c.execute(
             "INSERT INTO policies (id,traveler,flight,payout_account,status,market,currency,pnr,channel,customer_id,payout_follow,ref_verified) "
@@ -244,7 +258,7 @@ def create_policy(body: NewPolicy):
             (pid, body.name.strip(), f["code"], account, market, info["currency"], pnr, channel, cid, follow, int(bool(booked))),
         )
         db.log(c, pid, "quote_created", {"flight": f["code"], "market": market, "booking_verified": bool(booked)})
-    return {"policy": pid, "flight": f, "market": info, "customer": cid, "verified": bool(booked)}
+    return {"policy": pid, "flight": f, "market": info, "customer": cid, "verified": bool(booked), "session": session}
 
 
 @app.get("/api/demo/sources")
@@ -256,10 +270,12 @@ def demo_sources():
     snap = schedule.info()
     if snap["available"] and u["last_error"]:
         u = {**u, "last_error": "Live service is not answering right now, so the saved real schedule is used."}
-    saved = f" Saved schedule: {snap['flights']} real flights from {snap['generated_at'][:10]}." if snap["available"] and snap.get("generated_at") else (" Saved schedule loaded." if snap["available"] else "")
+    if snap.get("builtin"):
+        u = {**u, "last_error": u["last_error"] and "Live service is not answering right now, so the sample schedule is used."}
+    saved = " Sample schedule in use." if snap.get("builtin") else f" Saved schedule: {snap['flights']} real flights from {snap['generated_at'][:10]}." if snap["available"] and snap.get("generated_at") else (" Saved schedule loaded." if snap["available"] else "")
     flights = {"mode": "snapshot" if snap["available"] and (u["last_error"] or not u["enabled"]) else "error" if u["last_error"] else "live" if u["enabled"] else "off",
                "detail": (u["last_error"] or (f"{u['used']} of {u['budget']} lookups used this month" if u["enabled"]
-                                               else "No live flight key. Using the saved real schedule." if snap["available"]
+                                               else ("No live flight key. Using the sample schedule." if snap.get("builtin") else "No live flight key. Using the saved real schedule.") if snap["available"]
                                                else "No flight data key on the server. Travelers cannot search flights until one is set.")) + (saved if u["enabled"] or u["last_error"] else "")}
     wx = {"mode": "error" if context.LAST["error"] else "live" if context.LAST["ok"] else "idle",
           "detail": context.LAST["error"] or ("Live from Open-Meteo" if context.LAST["ok"] else "Fetched at the first event")}
@@ -300,6 +316,42 @@ def flights_on(airport: str = Query(..., min_length=3, max_length=3), date: str 
     if not out:
         raise HTTPException(404, "No saved schedule for that day yet." if schedule.available() else "Flights for later days need the saved schedule, which is not loaded.")
     return out
+
+
+@app.get("/api/flights/search")
+def flight_search(origin: str = Query(..., min_length=3, max_length=3), dest: str = Query("", max_length=3),
+                  date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
+    """Flights for the search screen: one day, from one airport, optionally to one airport.
+
+    Order of sources: live status for today, then the saved real schedule, then the built-in sample schedule, so a
+    search never comes back empty because a service is down. Each flight carries its delay chance, whether delay cover
+    is still on sale, the cover price and an approximate flight time.
+    """
+    origin, dest = origin.upper(), dest.upper()
+    source, rows = "live", []
+    try:
+        rows = flights_on(origin, date)
+    except HTTPException:
+        rows = []
+    if not rows:
+        rows = schedule.for_date(origin, date, 60)
+    if not any(r.get("source") == "live" for r in rows):
+        source = "sample" if schedule.info().get("builtin") else "saved"
+    if dest:
+        rows = [r for r in rows if r["dest"] == dest]
+    out = []
+    with db.conn() as c:
+        for r in rows:
+            r = dict(r)
+            rules = engine.get_rules(c, r.get("market") or "TH")
+            fc = forecast.compute({**r, "flight_date": r.get("flight_date") or date})
+            km = forecast.km_between(r["origin"], r["dest"])
+            r.update(risk={"probability": fc["probability"], "level": fc["level"]},
+                     band=forecast.band(fc["probability"], rules["close_cover_at"]),
+                     price={"delay": rules["delay_premium"], "baggage": rules["baggage_premium"], "currency": engine.currency_of(r.get("market") or "TH")},
+                     duration_min=int(round((km / 800 * 60 + 25) / 5) * 5))
+            out.append(r)
+    return {"flights": out, "source": source, "origin": origin, "dest": dest, "date": date}
 
 
 @app.post("/api/flights/{code}/refresh")
@@ -1026,7 +1078,7 @@ class Review(BaseModel):
 def _reviewer(c, staff_id):
     """Name of the signed-in insurer staff member, so every decision is signed by a real person."""
     st = db.one(c, "SELECT name FROM staff WHERE id=?", (staff_id,)) if staff_id else None
-    return st["name"] if st else "Nok P."
+    return st["name"] if st else "Nattaya Phromsri"
 
 
 @app.post("/api/console/review/{decision_id}")
@@ -1166,5 +1218,6 @@ def console_page():
 
 from . import crm  # noqa: E402
 app.include_router(crm.router)
+app.include_router(auth.router)
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
