@@ -34,7 +34,7 @@ def test_cancellation_pays_at_once_with_message_and_five_steps():
         assert r["status"] == "paid"
         d = client.get("/api/traveler/CL-44910").json()["delay_decision"]
         assert d["amount"] == 80 and d["trigger"] == "cancel" and d["clause"].startswith("Clause 3.2")
-        assert "was cancelled" in d["message"] and "80 USD" in d["message"]
+        assert "was cancelled" in d["message"] and "80 SGD" in d["message"]
         assert [s["label"] for s in d["timeline"]][-2:] == ["Paid", "Traveler notified"]
         assert d["context"]["source"].startswith("Simulated") and d["elapsed_ms"] >= 1
 

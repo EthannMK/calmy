@@ -11,324 +11,60 @@
 <style>
   html,body{height:100%}
   body{display:flex;flex-direction:column;background:var(--paper);overflow:hidden}
-  .bar{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--navy);color:#fff;flex-shrink:0}
-  .bar .wordmark{font-size:20px}
-  .bar .t{font-size:13px;color:var(--navy-mute);padding-left:16px;border-left:1px solid var(--navy-line)}
-  .bar .push{margin-left:auto;display:flex;gap:10px;align-items:center}
-  .bar a,.bar button{color:#C9D6E8;font-size:13px;font-weight:600;padding:6px 12px;border:1px solid var(--navy-line);border-radius:6px}
+  .bar{display:flex;align-items:center;gap:14px;padding:8px 20px;background:var(--navy);color:#fff;flex-shrink:0}
+  .bar .wordmark{font-size:19px}
+  .bar .t{font-size:13px;color:var(--navy-mute);padding-left:14px;border-left:1px solid var(--navy-line)}
+  .bar .push{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .bar a,.bar button{color:#C9D6E8;font-size:13px;font-weight:600;padding:5px 12px;border:1px solid var(--navy-line);border-radius:6px}
   .bar a:hover,.bar button:hover{background:#0B2C60;text-decoration:none}
-
-  /* Coach bar: one slim row that says what to do now, on each side */
-  .coach{min-height:88px;display:flex;align-items:center;gap:18px;padding:10px 20px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;position:relative}
-  .dots{display:flex;gap:6px;flex-shrink:0}
-  .dots button{width:30px;height:30px;border-radius:50%;background:var(--line2);color:var(--ink2);font-weight:700;font-size:13px}
-  .dots button.done{background:var(--green);color:#fff}.dots button.now{background:var(--cobalt);color:#fff;box-shadow:0 0 0 4px var(--cobalt-t)}
-  .dots button.sel{outline:2px solid var(--ink);outline-offset:2px}
-  .stp{display:none;flex:1;min-width:0;align-items:center;gap:16px;flex-wrap:wrap}.stp.show{display:flex}
-  .stp .h{font-weight:700;font-size:15px;white-space:nowrap}
-  .stp .t{font-size:13px;color:var(--mute);flex:1;min-width:min(220px,100%);line-height:1.35}
-  .stp .acts{display:flex;gap:6px;flex-wrap:wrap}
-  .stp.lock .acts .btn{opacity:.45}
-  .coach .tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0}
-  .menu{position:absolute;right:20px;top:100%;margin-top:6px;width:340px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(7,28,63,.2);padding:14px;z-index:30;display:none;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto}
-  .menu.open{display:flex}
-  .sec h4{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--mute)}
-  .src{display:grid;grid-template-columns:10px 1fr;gap:4px 10px;align-items:start;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line2)}
-  .src:last-child{border-bottom:0}
-  .src i{width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--faint)}
-  .src i.snapshot{background:#E0A100}.src i.live{background:#1DB87E}.src i.error{background:var(--red)}.src i.sim,.src i.off,.src i.idle{background:#9AA7B8}
-  .src b{font-size:13px}.src small{display:block;color:var(--mute);font-size:12px;line-height:1.35}
-  .lnk{display:flex;flex-direction:column;gap:2px}
-  .lnk a{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;color:var(--ink);font-size:13px;font-weight:600}
-  .lnk a:hover{background:var(--line2);text-decoration:none}.lnk .ms{font-size:18px;color:var(--cobalt)}
-  .rf{display:flex;gap:6px}.rf input{flex:1;height:34px}
-
-  /* Stage: the two real apps, plus the AI pipeline between them and the title */
-  .stage{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:14px 20px 16px;gap:12px}
-  .aibar{height:auto;border-radius:12px;font-size:inherit;font-weight:400;color:inherit;flex-shrink:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px}
-  .pipe{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
-  .pn{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--faint);padding:5px 10px;border-radius:99px;border:1px solid var(--line);background:#fff;transition:all .25s}
-  .pn .ms{font-size:16px}.pn em{font-style:normal;font-family:'Geist Mono',monospace;font-size:11px}
-  .pn.on{color:var(--ink);border-color:#B8E3F8;background:var(--ai-t)}.pn.on .ms{color:var(--cobalt)}
-  .pn.hold.on{background:var(--amber-t);border-color:#F3D68E;color:var(--amber-d)}
-  .pa{color:var(--line);font-size:14px}
-  .cmp{display:flex;gap:16px;align-items:center;font-size:12.5px;color:var(--mute);white-space:nowrap}
-  .cmp b{font-family:'Figtree',sans-serif;font-size:22px;color:var(--cobalt);display:block;line-height:1}
-  .cmp .m b{color:var(--ink2)}
-  .aibar .idle{font-size:13px;color:var(--mute)}.aibar{min-height:58px}
-  .two{--ph:max(520px,calc(100vh - 302px));--pw:calc(var(--ph) * 390 / 800);flex:1;min-height:0;display:grid;grid-template-columns:var(--pw) minmax(0,1fr);gap:20px;align-items:start}
+  /* Stage: the phone keeps a true phone shape that fits the window, the insurer desk takes the rest. */
+  .stage{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;padding:16px 24px 20px;align-items:stretch;justify-content:center}
   .side{display:flex;flex-direction:column;min-height:0;min-width:0}
-  .cap{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute);height:36px;overflow:hidden}
-  .cap{align-items:center}
-  .cap b{flex:none}
-  .cap em{min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cap em{font-style:normal;font-weight:700;color:var(--cobalt);background:var(--cobalt-t);border-radius:99px;padding:2px 10px;font-size:12.5px}
+  .cap{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;color:var(--mute);height:28px}
   .cap b{font-family:'Figtree',sans-serif;font-size:17px;color:var(--ink);letter-spacing:-.01em}
-  .phone{flex:none;width:var(--pw);height:var(--ph);background:var(--navy);padding:9px;border-radius:38px;box-shadow:0 18px 40px rgba(7,28,63,.22)}
-  .phone iframe{width:100%;height:100%;border:0;border-radius:30px;background:#fff;display:block}
-  .desk{flex:none;height:var(--ph);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(7,28,63,.1);display:flex;flex-direction:column}
-  .desk .url{height:30px;display:flex;align-items:center;padding:0 12px;background:#F8FAFC;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute);font-family:'Geist Mono',monospace}
+  .cap em{font-style:normal;font-weight:700;color:var(--cobalt);background:var(--cobalt-t);border-radius:99px;padding:2px 10px;font-size:12.5px}
+  .phone{flex:1;min-height:0;aspect-ratio:390/812;background:var(--navy);padding:9px;border-radius:40px;box-shadow:0 18px 40px rgba(7,28,63,.22)}
+  .phone iframe{width:100%;height:100%;border:0;border-radius:32px;background:#fff;display:block}
+  .desk{flex:1;min-height:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 10px 30px rgba(7,28,63,.1);display:flex}
   .desk iframe{flex:1;border:0;width:100%;min-height:0}
   .tabs{display:none}
-  #welcome{position:fixed;inset:0;z-index:90;background:rgba(7,28,63,.55);display:flex;align-items:center;justify-content:center;padding:16px}
-  .wbox{background:#fff;border-radius:16px;max-width:560px;width:100%;padding:24px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto}
-  .wbox h2{font-size:22px;line-height:1.15}.wbox p{font-size:14px;color:var(--ink2);line-height:1.5}
-  .wsteps{list-style:none;counter-reset:w;margin:12px 0 14px;padding:0;display:grid;gap:8px}.wsteps li{counter-increment:w;display:grid;grid-template-columns:26px 1fr;column-gap:10px;font-size:13.5px}.wsteps li::before{content:counter(w);grid-row:span 2;width:22px;height:22px;border-radius:50%;background:var(--ink,#071C3F);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}.wsteps b{display:block}.wsteps span{color:var(--mute)}.wgrid{display:grid;gap:10px}.wgrid div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}.wgrid b{display:block;margin-bottom:2px}.wgrid span{color:var(--mute)}
-  #liveWarn{margin:10px 20px 0;padding:10px 14px;border-radius:10px;background:var(--amber-t);border:1px solid #F3D68E;color:#5C3A00;font-size:13px}
-  @media(max-width:1180px){
+  #toast{position:fixed}
+  @media(max-width:1000px){
     body{overflow:auto}
-    .coach{flex-wrap:wrap}.coach .tools{margin-left:0}
-    .stage{padding:10px 12px 14px;min-height:900px}
-    .aibar{grid-template-columns:1fr}.two{grid-template-columns:1fr}
-    .tabs{display:flex;gap:6px}.tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
+    .stage{grid-template-columns:1fr;grid-template-rows:auto auto;padding:12px}
+    .tabs{display:flex;gap:6px;padding:10px 12px 0}.tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
     .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-    .side{display:none}.side.show{display:flex}.two{--pw:min(400px,100%)}.phone{margin:0 auto;height:760px;flex:none}.desk{height:760px;flex:none}
-    .bar .t{display:none}
+    .side{display:none}.side.show{display:flex}
+    .phone{flex:none;width:min(400px,100%);height:800px;aspect-ratio:auto;margin:0 auto}.desk{flex:none;height:800px}
   }
 </style>
 </head>
 <body>
-<header class="bar"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><span class="t">Live demo: one policy, two views</span>
-  <div class="push"><a href="/">Exit</a></div></header>
-
-<section class="coach" aria-label="What to do now">
-  <div class="dots" id="dots"><button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button><button data-d="4">4</button></div>
-  <div class="stp" data-s="1"><span class="h">Cover a trip</span><span class="t">A traveler picks a real upcoming flight, enters the booking reference from the ticket and adds cover. A second, suspicious traveler joins the same flight. Or try a demo booking to see how cover is looked up by reference.</span>
-    <div class="acts"><button class="btn primary sm" data-do="1">Do it for me</button><button class="btn sm" data-do="1p">Try a demo booking</button></div>
-    <div id="rf" class="rf hidden"><input id="rfNo" class="field mono" placeholder="Cover a flight, e.g. TG102" maxlength="8" style="text-transform:uppercase"><button class="btn sm" id="rfGo">Cover it</button></div></div>
-  <div class="stp" data-s="2"><span class="h">Break the flight</span><span class="t">You act as the airline's status feed. The phone gets a notification at the delay limit, then the payout. The traveler can also claim extra costs and draft a letter to the airline.</span>
-    <div class="acts"><button class="btn sm" data-ev="storm">Storm builds</button><button class="btn sm" data-ev="clear">Weather clears</button><button class="btn primary sm" data-ev="delayed" data-min="192">Delay 3h 12m</button><button class="btn sm" data-ev="delayed" data-min="370">Delay 6h 10m</button><button class="btn sm" data-ev="cancelled">Cancel it</button><button class="btn sm" data-ev="landed">Lands on time</button></div></div>
-  <div class="stp" data-s="3"><span class="h">Try a risky traveler</span><span class="t">The same delay hit the second traveler too. The AI asks a person instead of paying.</span>
-    <div class="acts"><button class="btn primary sm" data-do="3">Show the held case</button></div></div>
-  <div class="stp" data-s="4"><span class="h">Decide as the insurer</span><span class="t">A person approves or declines in the review queue. Receipts for extra costs are in Extra costs.</span>
-    <div class="acts"><button class="btn primary sm" data-do="4">Open the review queue</button></div></div>
-  <div class="tools"><button id="story" class="btn sm">Run the whole story</button><button id="menuBtn" class="btn sm" aria-expanded="false" aria-controls="menu">More</button></div>
-  <div class="menu" id="menu" role="dialog" aria-label="More demo tools">
-    <div class="sec"><h4>Data sources</h4><div id="sources"><div class="mute" style="font-size:13px">Checking...</div></div></div>
-    <div class="sec"><h4>Open on their own</h4><div class="lnk">
-      <a href="/traveler" target="_blank" rel="noopener"><span class="ms">luggage</span>Traveler app</a>
-      <a href="/console" target="_blank" rel="noopener"><span class="ms">monitoring</span>Insurer console</a>
-      <a href="/api/demo/sources" target="_blank" rel="noopener"><span class="ms">info</span>Data source status (JSON)</a>
-      <a href="https://github.com/EthannMK/calmy" target="_blank" rel="noopener"><span class="ms">receipt_long</span>Source code</a></div></div>
-    <div class="sec"><button id="how" class="btn block" style="margin-bottom:8px">How this demo works</button><button id="reset" class="btn danger block">Reset demo data</button></div>
-  </div>
-</section>
-
-<div id="liveWarn" class="hidden" role="status"><b>Live flight data is not connected.</b> <span></span> Step 1 needs it, because KODA covers real flights only.</div>
-<div id="welcome" class="hidden" role="dialog" aria-modal="true" aria-labelledby="wt"><div class="wbox">
-  <h2 id="wt">A flight is late. The traveler is paid in seconds.</h2>
-  <p>KODA is cover that pays by itself when a flight is delayed or cancelled. Flightwise Insurance sells it, KODA AI runs it. This page shows both sides of one trip at the same time.</p>
-  <div class="wgrid"><div><b>Left: the traveler</b><span>The phone app. Pick a real flight, add cover, get paid.</span></div><div><b>Right: the insurer</b><span>Flightwise Insurance's desk. Every decision and the reason for it.</span></div><div><b>Top bar: your four steps</b><span>Each button does the step for you. Real flight data, simulated payout.</span></div></div>
-  <ol class="wsteps"><li><b>Cover a trip</b><span>Pick a real upcoming flight and add cover. A second traveler with a suspicious profile joins the same flight.</span></li><li><b>Break the flight</b><span>Act as the airline's status feed: build a storm, delay or cancel. The first traveler gets an early alert, a notification and a payout in seconds, then can claim extra costs with a receipt and draft a letter to the airline.</span></li><li><b>See the held claim</b><span>The same delay hits the suspicious traveler. It is not paid. It goes to a person with the reason.</span></li><li><b>Decide as the insurer</b><span>Open the review queue, read the copilot's advice, then approve or decline. Extra cost receipts are in Extra costs.</span></li></ol>
-  <button id="wgo" class="btn primary">Start the demo</button></div></div>
+<header class="bar"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><span class="t">Live demo: one traveler, one insurer</span>
+  <div class="push"><button id="reset">Reset demo</button><a href="/">Exit</a></div></header>
+<div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
 <main class="stage">
-  <section class="aibar" aria-label="What the KODA AI did">
-    <div id="pipe" class="pipe"></div>
-    <div class="cmp" id="cmp"></div>
-  </section>
-  <div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
-  <div class="two">
-    <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><em id="capP">On the phone</em></div><div class="phone"><iframe id="phone" data-src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
-    <section class="side show" id="s-desk"><div class="cap"><b>Insurer</b><em id="capD">On the claims desk</em></div><div class="desk"><iframe id="desk" data-src="/console?embed=1" title="Insurer console"></iframe></div></section>
-  </div>
+  <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><em>George, on the phone</em></div><div class="phone"><iframe id="phone" data-src="/traveler?embed=1" title="Traveler app"></iframe></div></section>
+  <section class="side show" id="s-desk"><div class="cap"><b>Insurer</b><em>Ethan, claims officer at Flightwise Insurance</em></div><div class="desk"><iframe id="desk" data-src="/console?embed=1" title="Insurer console"></iframe></div></section>
 </main>
 <div id="toast" class="hidden"></div>
 <script src="/static/ui.js"></script>
 <script>
 const phone = $('#phone'), desk = $('#desk');
-const IDLE = ['Event detected', 'Policy matched', 'Risk checked', 'Paid or held', 'Traveler notified'];
-const idlePipe = () => { $('#pipe').innerHTML = IDLE.map((l, i) => `${i ? '<span class="pa">›</span>' : ''}<span class="pn">${ico(ICON[l] || 'paid')}${l}</span>`).join(''); $('#cmp').innerHTML = '<span class="idle">Waiting for a flight event</span>'; };
-let st = {1: false, 2: false, 3: false, 4: false}, busy = false, shown = '';
-
-const toPhone = msg => { try { phone.contentWindow.postMessage(msg, location.origin); } catch (e) {} };
-const goDesk = h => { try { desk.contentWindow.location.hash = h; } catch (e) {} };
-const myPid = () => store.get('koda.own'), riskyPid = () => store.get('koda.risky');
-let LIVEOK = null;  // null until the data sources are known
-
-/* Which step is the presenter on? Read from real state, so tapping the apps by hand also counts. */
-async function poll() {
-  if (busy) return;
-  try {
-    const pid = myPid(), rid = riskyPid(); let own = null, risky = null;
-    if (pid) { try { own = await api('/api/traveler/' + pid); } catch (e) { store.set('koda.own', null); } }
-    if (rid) { try { risky = await api('/api/traveler/' + rid); } catch (e) { store.set('koda.risky', null); } }
-    st[1] = !!(own && own.policy.status !== 'quote');
-    st[2] = !!(own && (own.delay_decision || own.policy.status === 'archived'));
-    st[3] = !!(risky && risky.delay_decision);
-    st[4] = !!(risky && risky.delay_decision && risky.delay_decision.status !== 'held');
-    paintSteps(!!(own && own.policy.status === 'active'));
-    const d = (own && own.delay_decision) || null;
-    if (d && d.id !== shown) { shown = d.id; playPipeline(d); }
-  } catch (e) {}
-}
-// Phone captions stay short: the phone column is narrow and a caption must fit on one line.
-const WHERE = {
-  1: ['Pick a flight and add cover', 'The new policy appears on the overview'],
-  2: ['Alert, notification, payout', 'Exposure rises, then the AI scores the risk and decides'],
-  3: ['Told a person is checking', 'The AI holds the claim and shows why'],
-  4: ['Sees the result at once', 'Approve or decline in the review queue or in Extra costs'],
-};
-let picked = 0, canEv = false;
-function paintSteps(canEvent) {
-  canEv = canEvent;
-  const now = [1, 2, 3, 4].find(k => !st[k]) || 4, cur = picked || now;
-  document.querySelectorAll('.dots button').forEach(b => { const k = +b.dataset.d; b.classList.toggle('done', st[k]); b.classList.toggle('now', k === now); b.classList.toggle('sel', k === cur && k !== now); b.setAttribute('aria-label', 'Step ' + k + (st[k] ? ', done' : '')); });
-  document.querySelectorAll('.stp').forEach(el => { const k = +el.dataset.s; el.classList.toggle('show', k === cur); el.classList.toggle('lock', k === 2 && !canEvent); });
-  $('#capP').textContent = 'You: ' + WHERE[cur][0]; $('#capD').textContent = 'Watch: ' + WHERE[cur][1];
-}
-document.querySelectorAll('.dots button').forEach(b => b.onclick = () => { picked = +b.dataset.d; paintSteps(canEv); });
-
-/* The AI pipeline: each stage lights in turn, then the speed comparison appears. */
-const ICON = {'Paid or held': 'paid', 'Event detected': 'flight_takeoff', 'Policy matched': 'verified_user', 'Risk checked': 'shield', 'Paid': 'paid', 'Held for review': 'hourglass_top', 'Traveler notified': 'info', 'Traveler told a person will look': 'info'};
-function playPipeline(d) {
-  const tl = d.timeline || [], box = $('#pipe'); $('#cmp').innerHTML = '';
-  box.innerHTML = tl.map((s, i) => `${i ? '<span class="pa">›</span>' : ''}<span class="pn ${s.pending ? 'hold' : ''}" data-i="${i}">${ico(ICON[s.label] || 'check')}${esc(s.label)} <em>${s.sec}s</em></span>`).join('');
-  const nodes = [...box.querySelectorAll('.pn')];
-  nodes.forEach((n, i) => setTimeout(() => n.classList.add('on'), 250 + i * 380));
-  setTimeout(() => {
-    const held = d.status === 'held', secs = (tl.find(s => s.label === 'Paid' || s.pending) || {}).sec || 8;
-    $('#cmp').innerHTML = held ? `<div><b style="color:var(--amber-d)">Sent to a person</b>The AI never denies a claim by itself</div>`
-      : `<div><b>${secs} seconds</b>with KODA</div><div class="m"><b>About 14 days</b>manual claim</div>`;
-  }, 250 + nodes.length * 380);
-}
-
-/* Next real departures, soonest first, skipping flights that are too close to leave or already late. */
-async function liveCandidates() {
-  let last = null;
-  for (const hub of ['BKK', 'SIN', 'LHR']) {
-    try {
-      const list = await api('/api/live/upcoming?airport=' + hub);
-      const ok = list.filter(f => f.sched_ts * 1000 - Date.now() > 3600e3 && f.delay_minutes < 30).slice(0, 4).map(f => f.code);
-      if (ok.length) return ok;
-    } catch (e) { last = e; }
-  }
-  try {  // nothing left today, or the live service is down: use the saved real schedule for tomorrow
-    const w = (await api('/api/live/status')).window, t = new Date(w[0] + 'T00:00:00'); t.setDate(t.getDate() + 1);
-    const day = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
-    for (const hub of ['BKK', 'SIN', 'LHR', 'JFK', 'DEL', 'SYD']) {
-      try { const ok = (await api(`/api/live/schedule?airport=${hub}&date=${day}`)).slice(0, 4).map(f => f.code + '@' + day); if (ok.length) return ok; } catch (e) {}
-    }
-  } catch (e) {}
-  throw last || 'No upcoming real flights were found. Try the real flight box in More.';
-}
-/* Cover one real flight as the traveler, then add a second, suspicious traveler on the same flight in the background. */
-const refCode = () => Array.from({length: 6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
-async function coverTrip(name, flights) {
-  let err = null;
-  for (const f of flights) {
-    try {
-      const [code, date] = f.split('@');
-      const q = await api('/api/policies', 'POST', {name, flight: code, date: date || null, booking_ref: refCode()});
-      await api(`/api/traveler/${q.policy}/checkout`, 'POST', {delay: true, baggage: true, ack: true});
-      store.set('koda.own', q.policy); store.set('calmy.pid', q.policy);
-      try { const r = await api('/api/demo/cover-sample', 'POST', {flight: q.flight.code, risky: true}); store.set('koda.risky', r.policy); } catch (e) { store.set('koda.risky', null); }
-      toast(`Covering ${q.flight.airline} ${q.flight.code}, ${q.flight.origin} to ${q.flight.dest}.`, 'ok');
-      return {pid: q.policy, flight: q.flight.code};
-    } catch (e) { err = e; }  // that flight cannot be covered now, try the next one
-  }
-  throw err || 'No flight could be covered.';
-}
-const start = async (flights) => {
-  if (LIVEOK === false) throw 'Live flight data is not connected. Open More for details.';
-  const r = await coverTrip('Lena Fischer', flights || await liveCandidates());
-  toPhone({pid: r.pid, tab: 'cover'}); goDesk('#overview'); return r;
-};
-const actions = {
-  async 1() { await start(); },
-  async '1p'() { toPhone({check: {ref: 'BOTH42', surname: 'Wongsakul', auto: true}}); },
-  async 3() {
-    const rp = riskyPid();
-    if (!rp) throw 'Cover a trip first (step 1).';
-    if (!st[2]) throw 'Break the flight first (step 2). The same delay holds this second traveler.';
-    store.set('calmy.pid', rp); toPhone({pid: rp, tab: 'claims'}); goDesk('#review'); shown = '';
-  },
-  async 4() { goDesk('#review'); showTab('desk'); },
-};
-document.querySelectorAll('[data-do]').forEach(b => b.onclick = async () => {
-  busy = true; b.disabled = true; const label = b.textContent; b.textContent = 'Working...';
-  try { await actions[b.dataset.do](); } catch (e) { fail(e); }
-  b.textContent = label; b.disabled = false; busy = false; picked = 0; poll();
-});
-/* Step 2: the presenter acts as the airline's flight status feed, through the same webhook the product uses. */
-document.querySelectorAll('[data-ev]').forEach(b => b.onclick = async () => {
-  const pid = myPid(); let t = null; try { t = pid && await api('/api/traveler/' + pid); } catch (e) {}
-  if (!t || t.policy.status !== 'active') return fail('Cover a trip first (step 1).');
-  busy = true; b.disabled = true;
-  try {
-    const r = await api('/api/webhook/flight-event', 'POST', {flight: t.flight.code, event: b.dataset.ev, minutes: +b.dataset.min || 0});
-    if (b.dataset.ev === 'storm' || b.dataset.ev === 'clear') {
-      toast(b.dataset.ev === 'storm' ? 'Storm building. Covered travelers get an early alert, and the insurer sees exposure rise.' : 'Weather cleared. The forecast comes back down.', 'ok');
-      toPhone({tab: 'cover'}); goDesk('#exposure'); busy = false; b.disabled = false; return;
-    }
-    if (b.dataset.ev === 'landed') toast(r.archived ? 'Landed on time. The trip was archived with no payout and no message.' : 'Nothing to archive.', 'ok');
-    else if (!r.results.length) toast('Nothing new to pay at this level. Try a longer delay or a cancellation.', 'ok');
-    toPhone({tab: 'claims'}); goDesk(b.dataset.ev === 'landed' ? '#policies' : '#decisions/' + pid); shown = '';
-  } catch (e) { fail(e); }
-  b.disabled = false; busy = false; picked = 0; poll();
-});
-/* One tap for a three minute slot: cover, a delay that pays at once, then a risky traveler held for a person. */
-$('#story').onclick = async () => {
-  const b = $('#story'); b.disabled = true; busy = true;
-  try {
-    const r = await start();
-    await new Promise(x => setTimeout(x, 2200));
-    await api('/api/webhook/flight-event', 'POST', {flight: r.flight, event: 'delayed', minutes: 192});
-    shown = ''; toPhone({tab: 'claims'}); goDesk('#overview'); busy = false; await poll(); busy = true;
-    await new Promise(x => setTimeout(x, 6500));
-    await actions[3](); busy = false; await poll();
-  } catch (e) { fail(e); }
-  busy = false; b.disabled = false; poll();
-};
-$('#reset').onclick = async () => {
-  if (!confirm('Reset all demo data? Trips, decisions and the audit log are cleared.')) return;
-  try { await api('/api/demo/reset', 'POST'); } catch (e) { return fail(e); }
-  store.set('calmy.pid', null); store.set('koda.own', null); store.set('koda.risky', null); st = {1: false, 2: false, 3: false, 4: false}; shown = '';
-  idlePipe();
-  toPhone({reset: true}); goDesk('#overview'); try { desk.contentWindow.location.reload(); } catch (e) {}
-  toast('Demo data reset.', 'ok'); poll();
-};
-
-/* Real flight: cover a specific number instead of the next departure. */
-$('#rfGo').onclick = async () => {
-  const v = $('#rfNo').value.trim(); if (!v) return fail('Enter a flight number.');
-  busy = true;
-  try { await start([v]); $('#menu').classList.remove('open'); } catch (e) { fail(e); }
-  busy = false; picked = 0; poll();
-};
-
-/* Data sources, with the reason when one is not live. */
-const MODE = {live: 'Live', snapshot: 'Saved real data', off: 'Built in', error: 'Problem', sim: 'Simulated', idle: 'Ready'};
-async function sources() {
-  try {
-    const s = await api('/api/demo/sources');
-    $('#sources').innerHTML = [['Flight status', s.flights], ['Weather', s.weather], ['AI reasons', s.ai], ['Payouts', s.payments]].map(([n, x]) =>
-      `<div class="src"><i class="${x.mode}"></i><span><b>${n}: ${MODE[x.mode]}</b><small>${esc(x.detail)}</small></span></div>`).join('');
-    LIVEOK = s.flights.mode === 'live' || s.flights.mode === 'snapshot';
-    $('#rf').classList.toggle('hidden', !LIVEOK);
-    $('#liveWarn').classList.toggle('hidden', LIVEOK);
-    $('#liveWarn span').textContent = s.flights.detail;
-  } catch (e) {}
-}
-
-function showTab(t) { document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('#s-phone').classList.toggle('show', t === 'phone'); $('#s-desk').classList.toggle('show', t === 'desk'); }
-document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
-$('#menuBtn').onclick = e => { e.stopPropagation(); const o = $('#menu').classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', o); };
-document.addEventListener('click', e => { if (!e.target.closest('#menu') && !e.target.closest('#menuBtn')) { $('#menu').classList.remove('open'); $('#menuBtn').setAttribute('aria-expanded', 'false'); } });
-if (matchMedia('(max-width:1180px)').matches) showTab('phone');
-const showWelcome = v => $('#welcome').classList.toggle('hidden', !v);
-$('#wgo').onclick = () => { showWelcome(false); try { localStorage.setItem('koda.welcome', '1'); } catch (e) {} };
-$('#how').onclick = () => { $('#menu').classList.remove('open'); showWelcome(true); };
-try { if (!localStorage.getItem('koda.welcome')) showWelcome(true); } catch (e) { showWelcome(true); }
-idlePipe();
-/* A judge opening this page for the first time starts from a clean story. A refresh keeps the current run. */
-(async () => {
-  // The presenter page signs the insurer desk in as the head of claims (admin) so the story needs no typing.
-  // The standalone /console and /traveler pages ask for a code instead.
-  try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'staff', id: 'ST-4'}); store.set('koda.token', r.token); store.set('koda.staff', r.me.id); } catch (e) {}
+// Both apps open already signed in with the demo accounts. Sign-in codes are used outside the demo.
+async function boot() {
+  try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'staff', id: 'ST-1'}); store.set('koda.token', r.token); store.set('koda.staff', r.me.id); } catch (e) {}
+  try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'traveler', id: 'CU-GEORGE'}); store.set('calmy.token', r.token); } catch (e) {}
   phone.src = phone.dataset.src; desk.src = desk.dataset.src;
-  try { if (!sessionStorage.getItem('koda.fresh')) { sessionStorage.setItem('koda.fresh', '1'); await api('/api/demo/reset', 'POST'); store.set('calmy.pid', null); toPhone({reset: true}); try { desk.contentWindow.location.reload(); } catch (e) {} } } catch (e) {}
-  setInterval(poll, 2500); setInterval(sources, 20000); poll(); sources();
-})();
+}
+$('#reset').onclick = async () => {
+  try { await api('/api/demo/reset', 'POST'); await boot(); toast('Demo data reset.', 'ok'); } catch (e) { fail(e); }
+};
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('#s-phone').classList.toggle('show', b.dataset.t === 'phone'); $('#s-desk').classList.toggle('show', b.dataset.t === 'desk');
+});
+boot();
 </script>
 </body>
 </html>

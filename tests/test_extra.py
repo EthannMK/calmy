@@ -175,7 +175,7 @@ def _quote(name, last4, flight, rail=None):
 def test_market_sets_currency_rails_and_rules():
     with client:
         r = _quote("Lena Fischer", "1234", "OA 420").json()  # Frankfurt to Madrid, EU
-        assert r["market"]["currency"] == "USD"
+        assert r["market"]["currency"] == "SGD"
         pid = r["policy"]
         t = client.get(f"/api/traveler/{pid}").json()
         assert t["policy"]["payout_account"] == "SEPA Instant ending 1234"
@@ -196,7 +196,7 @@ def test_checkout_needs_acknowledgement():
         r = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False})
         assert r.status_code == 400 and "key facts" in r.json()["detail"]
         ok = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True}).json()
-        assert ok["total"] == 5 and ok["currency"] == "USD"  # UK price, shown in demo dollars
+        assert ok["total"] == 5 and ok["currency"] == "SGD"  # UK price, shown in demo currency
         again = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": False, "ack": True})
         assert again.status_code == 400
 
@@ -208,7 +208,7 @@ def test_payout_uses_market_currency_and_amounts():
         r = client.post("/api/demo/delay", json={"flight": "OA 970", "minutes": 200}).json()["results"][0]
         assert r["status"] == "paid"
         d = client.get(f"/api/traveler/{pid}").json()["delay_decision"]
-        assert d["amount"] == 45 and "USD" in d["explanation"]
+        assert d["amount"] == 45 and "SGD" in d["explanation"]
 
 
 def test_rules_are_per_market():

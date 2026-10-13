@@ -22,7 +22,7 @@ function toast(t, bad = false) {
 const fail = e => toast(e, true);
 const num = n => Number(n).toLocaleString('en-US');
 const money = (n, c) => num(n) + ' ' + c;
-const usd = n => '$' + num(Math.round(n));
+const usd = n => 'S$' + num(Math.round(n));
 const hm = m => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
 const ago = t => { if (!t) return 'not yet'; const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
 const ico = (n, c = '') => `<span class="ms ${c}" aria-hidden="true">${n}</span>`;

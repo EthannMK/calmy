@@ -6,8 +6,8 @@ KODA handles them. They are a design aid for the demo and are not legal advice. 
 needs a licensed insurer and local counsel to confirm the current text of each law.
 """
 
-# Units of local currency per 1 USD. Indicative demo values, used only to show totals in one currency.
-FX_PER_USD = {"THB": 36.0, "USD": 1.0, "EUR": 0.92, "GBP": 0.79, "INR": 84.0, "SGD": 1.34,
+# Units of local currency per 1 unit of the demo currency (SGD). Indicative demo values, used for totals and for cash-out previews.
+FX_PER_USD = {"THB": 36.0, "USD": 1.0, "EUR": 0.92, "GBP": 0.79, "INR": 84.0, "SGD": 1.0,
               "JPY": 150.0, "AUD": 1.52, "BRL": 5.4, "CAD": 1.37}
 
 # Rules every market starts with. Thresholds are the same everywhere. Prices and payouts are
@@ -65,11 +65,11 @@ def market_for_timezone(tz: str | None) -> str:
 POINTS_RAIL = "KODA points"   # payout as points to spend at partner airport restaurants
 POINTS_PER_USD = 100          # 1 point = 1 cent
 POINTS_BONUS = 0.25           # taking points instead of money earns 25% more
-DEMO_CURRENCY = "USD"  # every amount in the demo is shown in US dollars, whatever the market's own currency
+DEMO_CURRENCY = "SGD"  # every amount in the demo is in Singapore dollars, the home market of the demo insurer
 
 
 def _m(name, currency, rails, **kw):
-    # `currency` stays on record as the market's real currency. All demo money is in USD.
+    # `currency` stays on record as the market's real currency. All demo money is in SGD.
     return {"name": name, "currency": DEMO_CURRENCY, "local_currency": currency, "rails": list(rails) + [r for r in ("Card refund", "Digital wallet", POINTS_RAIL) if r not in rails], **kw}
 
 

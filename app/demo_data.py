@@ -27,7 +27,7 @@ DAY = 86400
 REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 STAFF = [
-    ("ST-1", "Nattaya Phromsri", "Claims reviewer", "nattaya.phromsri@flightwise.example", "NP", "reviewer"),
+    ("ST-1", "Ethan Htoo", "Claims officer", "ethan@flightwise.example", "EH", "admin"),
     ("ST-2", "Arun Suksawat", "Senior claims reviewer", "arun.suksawat@flightwise.example", "AS", "reviewer"),
     ("ST-3", "Malinee Chaiyasit", "Customer support agent", "malinee.chaiyasit@flightwise.example", "MC", "agent"),
     ("ST-4", "Pimchanok Tanakorn", "Head of claims", "pimchanok.tanakorn@flightwise.example", "PT", "admin"),
@@ -35,7 +35,8 @@ STAFF = [
 REVIEWERS = [s[1] for s in STAFF]
 
 TZ = {"BKK": "Asia/Bangkok", "CNX": "Asia/Bangkok", "HKT": "Asia/Bangkok", "USM": "Asia/Bangkok", "SIN": "Asia/Singapore",
-      "LHR": "Europe/London", "NRT": "Asia/Tokyo", "DXB": "Asia/Dubai", "HKG": "Asia/Hong_Kong"}
+      "LHR": "Europe/London", "NRT": "Asia/Tokyo", "DXB": "Asia/Dubai", "HKG": "Asia/Hong_Kong",
+      "KUL": "Asia/Kuala_Lumpur", "CGK": "Asia/Jakarta", "DPS": "Asia/Makassar"}
 
 # Route templates: outbound a to b at t1, return b to a at t2. Flight numbers are generated, so each trip has its own.
 ROUTES = [
@@ -47,7 +48,11 @@ ROUTES = [
     {"al": "EK", "name": "Emirates", "a": "BKK", "ac": "Bangkok", "b": "DXB", "bc": "Dubai", "t1": "01:45", "t2": "22:10", "n": 380},
     {"al": "BA", "name": "British Airways", "a": "LHR", "ac": "London", "b": "BKK", "bc": "Bangkok", "t1": "21:10", "t2": "23:55", "n": 920},
     {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "HKG", "bc": "Hong Kong", "t1": "10:20", "t2": "20:15", "n": 990},
+    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "BKK", "bc": "Bangkok", "t1": "09:15", "t2": "17:40", "n": 970},
+    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "KUL", "bc": "Kuala Lumpur", "t1": "08:05", "t2": "19:30", "n": 100},
+    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "CGK", "bc": "Jakarta", "t1": "13:20", "t2": "18:45", "n": 950},
 ]
+GEORGE, GEORGE_ID = "George Lim", "CU-GEORGE"
 CHANNELS = ["Trip.com", "Agoda", "Airline website or app", "Another travel site"]
 
 NAMES = [
@@ -138,8 +143,8 @@ class _World:
             "f_shared_account,f_prior_claims,market,currency,created_at,sched_at_purchase,pnr,channel,customer_id,payout_follow,ref_verified,f_adverse) "
             "VALUES (?,?,?,?,?,?,?,'active',?,?,?,?,?,?,?,?,?,?,?,1,1,?)",
             (pid, name, f["code"], label, delay, bag, premium, flags["f_covers_2h"], flags["f_schedule_changed"], flags["f_shared_account"],
-             flags["f_prior_claims"], f["market"], "USD", bought_ts, f["scheduled"], ref, channel, cid, flags["f_adverse"]))
-        db.log(self.c, pid, "policy_active", {"delay": bool(delay), "baggage": bool(bag), "total": premium, "currency": "USD", "booking": ref}, ts=bought_ts)
+             flags["f_prior_claims"], f["market"], markets.DEMO_CURRENCY, bought_ts, f["scheduled"], ref, channel, cid, flags["f_adverse"]))
+        db.log(self.c, pid, "policy_active", {"delay": bool(delay), "baggage": bool(bag), "total": premium, "currency": markets.DEMO_CURRENCY, "booking": ref}, ts=bought_ts)
         db.log(self.c, pid, "notices_accepted", {"market": f["market"], "version": markets.LAW_VERSION}, ts=bought_ts)
         return pid
 
@@ -201,6 +206,33 @@ def _outcomes():
     """Past outcomes for travelers with delay cover, in a fixed mix."""
     o = ["ontime"] * 15 + ["short"] * 4 + ["d1"] * 12 + ["d2"] * 4 + ["cancel"] * 3
     return o
+
+
+def _demo_george(w: _World):
+    """The one traveler on the phone. His account shows every scenario in the app, all at Changi."""
+    c, now = w.c, w.now
+    r = {(x["a"], x["b"]): x for x in ROUTES if x["a"] == "SIN"}
+    cid = w.customer(GEORGE_ID, GEORGE, "SG", 140, "+65 8123 4567")
+    c.execute("UPDATE customers SET email=? WHERE id=?", ("george.lim@example.com", cid))
+    w.method(cid, "card", "Visa ending 4242", "4242", GEORGE, True, 60)
+    # 1. Upcoming round trip to Bangkok, delay and baggage cover on both legs. Covered.
+    out, back = w.flight(r[("SIN", "BKK")], 1, 2), w.flight(r[("SIN", "BKK")], 2, 6)
+    for leg, f in ((1, out), (2, back)):
+        w.booking("SG7K2M", leg, GEORGE, f["code"], "Round trip", "Trip.com", cid)
+        w.policy(cid, GEORGE, f, "SG7K2M", "Trip.com", 1, 1, now - 2 * DAY)
+    # 2. Upcoming one way to Hong Kong, booked on an airline site, no cover yet. He can add it.
+    f = w.flight(r[("SIN", "HKG")], 1, 4)
+    w.booking("HK9P4R", 1, GEORGE, f["code"], "One way", "Airline website or app", cid)
+    # 3. Past trip to Kuala Lumpur, delayed 3h35, covered. Points paid, some already spent.
+    f = w.flight(r[("SIN", "KUL")], 1, -12)
+    w.booking("KL3D8T", 1, GEORGE, f["code"], "One way", "Agoda", cid)
+    w.policy(cid, GEORGE, f, "KL3D8T", "Agoda", 1, 1, f["sched_ts"] - 6 * DAY)
+    w.event(f["code"], 215)
+    # 4. Past trip to Jakarta, delayed 2h30, below the 3 hour rule. Not covered, so he can ask for a re-check.
+    f = w.flight(r[("SIN", "CGK")], 1, -20)
+    w.booking("JK5N6W", 1, GEORGE, f["code"], "One way", "Trip.com", cid)
+    w.policy(cid, GEORGE, f, "JK5N6W", "Trip.com", 1, 0, f["sched_ts"] - 5 * DAY)
+    w.event(f["code"], 150)
 
 
 def seed_history(w: _World):
@@ -424,4 +456,5 @@ def seed_all(c):
     seed_staff(c)
     w = _World(c)
     _demo_travelers(w)
+    _demo_george(w)
     seed_history(w)

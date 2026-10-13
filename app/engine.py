@@ -138,7 +138,7 @@ def clean_checks() -> list[str]:
 
 # ---------------------------------------------------------------- explain
 
-def template_explanation(kind: str, amount: int, minutes: int, rules: dict, currency: str = "USD") -> str:
+def template_explanation(kind: str, amount: int, minutes: int, rules: dict, currency: str = "SGD") -> str:
     """Instant explanation that needs no network. Stored first, upgraded later."""
     if kind == "cancel":
         return f"Flight cancelled, covered under {CLAUSE_CANCEL}, payout {money(amount, currency)}."
@@ -154,7 +154,7 @@ def held_explanation(reasons: list, amount: int, currency: str) -> str:
             f"but the AI saw these signals: {top}.")
 
 
-def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, currency: str = "USD", reasons: list | None = None) -> str:
+def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, currency: str = "SGD", reasons: list | None = None) -> str:
     """Plain English reason for a decision, written by Gemini on Vertex AI.
 
     Called from a background thread, never while the database is locked, and
@@ -219,7 +219,7 @@ def _hm(minutes: int) -> str:
     return f"{h}h {m:02d}m" if h else f"{m} min"
 
 
-def caring_message(flight: str, cancelled: bool, minutes: int, amount: int, status: str, account: str, cur: str = "USD") -> str:
+def caring_message(flight: str, cancelled: bool, minutes: int, amount: int, status: str, account: str, cur: str = "SGD") -> str:
     """The message the traveler gets. Warm and short, says what was paid, why and where."""
     what = "was cancelled" if cancelled else f"is delayed by {_hm(minutes)}"
     if status == "paid" and account.startswith(markets.POINTS_RAIL):
@@ -335,7 +335,7 @@ def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) ->
         pol = db.one(c, "SELECT payout_account, currency FROM policies WHERE id=?", (d["policy_id"],)) or {}
         msg = caring_message(db.one(c, "SELECT flight FROM policies WHERE id=?", (d["policy_id"],))["flight"],
                              d.get("trigger") == "cancel", d["delay_minutes"], d["amount"], "paid",
-                             pol.get("payout_account", "your account"), pol.get("currency", "USD"))
+                             pol.get("payout_account", "your account"), pol.get("currency", "SGD"))
     else:
         msg = ("Thank you for your patience. After review, this claim does not meet the cover terms. "
                "You can ask for a second review from the app.")

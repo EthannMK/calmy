@@ -20,26 +20,43 @@ def _h(s: str) -> int:
     return int(hashlib.sha256(s.encode()).hexdigest(), 16)
 
 
-# Services other than food. (name, what it is, offer, price in USD, opens, closes, category)
+# Services other than food. (name, what it is, offer, price in SGD, opens, closes, category)
 SERVICES = [
     ("Cloud Nine Lounge", "Lounge", "2 hour lounge pass with buffet, showers and Wi-Fi", 32, "05:00", "23:59", "lounge"),
     ("Quiet Pod Lounge", "Lounge", "Sleep pod for 3 hours", 24, "00:00", "23:59", "lounge"),
-    ("CityGo Taxi", "Taxi", "Taxi ride credit to the city, any time", 25, "00:00", "23:59", "transport"),
-    ("DriveEasy Rentals", "Car rental", "One day compact car rental credit", 45, "06:00", "22:00", "transport"),
-    ("Metro Link Shuttle", "Shuttle", "Airport shuttle or train ticket", 10, "05:00", "23:30", "transport"),
-    ("Transit Rest Hotel", "Hotel", "6 hour day room at the airport hotel", 55, "00:00", "23:59", "hotel"),
     ("Hello Mobile eSIM", "SIM and data", "Travel eSIM with 5 GB data, calls and messages", 9, "00:00", "23:59", "connect"),
     ("TalkHome Pack", "Calls and messages", "Call and message pack for 7 days", 4, "00:00", "23:59", "connect"),
-    ("Fast Lane Security", "Fast track", "Skip the security queue", 12, "05:00", "23:00", "extras"),
-    ("Bag Safe Storage", "Storage", "24 hour luggage storage", 10, "06:00", "23:00", "extras"),
 ]
-CATEGORIES = [("food", "Food and drink"), ("lounge", "Lounges"), ("transport", "Taxi and car rental"), ("hotel", "Hotels"),
-              ("connect", "SIM, calls and messages"), ("extras", "Airport extras")]
+CATEGORIES = [("food", "Food and drink"), ("lounge", "Lounges"), ("connect", "SIM and data")]
+
+# Singapore Changi: the demo airport. Names are fictional demo partners, not real Changi tenants.
+CHANGI_FOOD = [  # name, kind, terminal, walk, avg spend, opens, closes
+    ("Kopi Kaya Corner", "Kopitiam breakfast and coffee", "T3", 3, 8, "06:00", "23:00"),
+    ("Hawker Lane Chicken Rice", "Hawker meal", "T3", 5, 12, "10:00", "22:00"),
+    ("Laksa Junction", "Noodles and laksa", "T2", 4, 13, "07:00", "23:30"),
+    ("Satay by the Gate", "Satay and grill", "T2", 7, 18, "11:00", "23:00"),
+    ("Bean Street Coffee", "Coffee and pastries", "T1", 2, 7, "05:30", "23:30"),
+    ("Dim Sum Express", "Dim sum", "T1", 6, 15, "07:00", "21:30"),
+]
+CHANGI_SERVICES = [  # name, kind, offer, price, terminal, walk, category
+    ("Merlion Rest Lounge", "Lounge", "2 hour lounge pass with buffet, showers and Wi-Fi", 32, "T3", 6, "lounge"),
+    ("Orchid Sleep Pods", "Lounge", "Sleep pod for 3 hours", 24, "T2", 8, "lounge"),
+    ("SingConnect eSIM", "SIM and data", "Travel eSIM with 5 GB data for 7 days", 9, "T3", 4, "connect"),
+    ("Lion City SIM", "SIM and data", "Tourist SIM with 100 GB and calls for 14 days", 15, "T2", 5, "connect"),
+]
 
 
 def seed(c) -> None:
     cols = "(id,airport,name,kind,terminal,walk_min,opens,closes,accepts,avg_spend,category,offer,price_usd)"
     for iata in context.AIRPORTS:
+        if iata == "SIN":
+            for i, (name, kind, term, walk, spend, op, cl) in enumerate(CHANGI_FOOD):
+                c.execute(f"INSERT OR REPLACE INTO partners {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                          (f"SIN-{i}", "SIN", name, kind, term, walk, op, cl, 1, spend, "food", None, 0))
+            for j, (name, kind, offer, price, term, walk, cat) in enumerate(CHANGI_SERVICES):
+                c.execute(f"INSERT OR REPLACE INTO partners {cols} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                          (f"SIN-s{j}", "SIN", name, kind, term, walk, "00:00", "23:59", 1, price, cat, offer, price))
+            continue
         for i, (name, kind, spend) in enumerate(KINDS):
             h = _h(f"{iata}{name}")
             accepts = 1 if (h % 3) else 0                    # about two in three have joined

@@ -52,7 +52,7 @@ def test_spend_points_at_airport_reduces_balance_and_gives_voucher():
     pid, cid = _trip()
     _late(200)
     sv = client.get(f"/api/customer/{cid}/services?airport=BKK").json()
-    assert {c["key"] for c in sv["categories"]} >= {"food", "lounge", "transport"}
+    assert {c["key"] for c in sv["categories"]} >= {"food", "lounge", "connect"}
     fixed = next(p for p in sv["partners"] if p["price_usd"])
     r = client.post(f"/api/customer/{cid}/redeem", json={"partner": fixed["id"], "points": fixed["price_usd"] * 100})
     assert r.status_code == 200 and r.json()["points"] == fixed["price_usd"] * 100
@@ -153,7 +153,7 @@ def test_console_customers_points_staff_and_reviewer_signature():
     with db.conn() as c:
         demo_data.seed_all(c)
     cs = client.get("/api/console/customers").json()
-    assert len(cs) == 50
+    assert len(cs) == 51
     assert {x["cover"] for x in cs} >= {"both", "delay", "baggage", "none"}
     assert all(x["cover"] == "both" for x in client.get("/api/console/customers", params={"cover": "both"}).json())
     d = client.get("/api/console/customers/CU-DEMO1").json()

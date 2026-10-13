@@ -119,7 +119,7 @@
 </div>
 <script src="/static/ui.js"></script>
 <script>
-const usd2 = n => '$' + Number(n).toFixed(2);
+const usd2 = n => 'S$' + Number(n).toFixed(2);
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
 let INV = {}, ME = null, STAFFL = [], CU = {cover: '', payout: ''}, PTAB = 'partners', PAIR = '';
 let refreshing = false, liveAt = 0, LIVE = {}, EXP = null, COP = {}, CHAT = {}, DRAFT = {};
@@ -174,7 +174,7 @@ function vOverview() {
   const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
   const oc = ov.outcomes, decidedAll = oc.auto + oc.reviewed + oc.held + oc.declined, fastPct = decidedAll ? Math.round(oc.auto * 100 / decidedAll) : 0;
   const secs = ov.decisions.filter(d => d.kind === 'delay' && d.status === 'paid' && d.seconds != null).map(d => d.seconds), avg = secs.length ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : null;
-  return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in US dollars.') + `
+  return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in Singapore dollars.') + `
   <div class="panel kpis" style="margin-bottom:20px">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
     ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts'))}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
@@ -249,7 +249,7 @@ async function vExposure() {
       <td style="min-width:180px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;border-radius:99px;background:var(--line2)"><i style="display:block;height:100%;width:${f.probability}%;border-radius:99px;background:${f.level === 'high' ? 'var(--amber-d)' : 'var(--cobalt)'}"></i></div><b class="mono">${f.probability}%</b></div>
         <div class="mute" style="font-size:12px;margin-top:4px">${f.drivers.filter(d => d.points > 0).sort((a, b) => b.points - a.points).slice(0, 2).map(d => esc(d.text)).join('; ')}</div></td>
       <td class="r mono">${f.covered}</td><td class="r mono">${usd2(f.expected_usd)}</td><td class="r mono">$${f.price_now}</td>
-      <td class="r mono"><b style="color:${f.move === 'raise' ? 'var(--amber-d)' : 'inherit'}">$${Number(f.price_suggested).toFixed(2)}</b>${f.move === 'raise' ? '<div class="mute" style="font-size:12px">raise</div>' : ''}</td></tr>`).join('')}</tbody></table></div>
+      <td class="r mono"><b style="color:${f.move === 'raise' ? 'var(--amber-d)' : 'inherit'}">S$${Number(f.price_suggested).toFixed(2)}</b>${f.move === 'raise' ? '<div class="mute" style="font-size:12px">raise</div>' : ''}</td></tr>`).join('')}</tbody></table></div>
     <div class="pb mute" style="border-top:1px solid var(--line2);font-size:12px">The score informs reserves and pricing. It never decides a payout. Suggested price = expected payout divided by a 60% target loss ratio, never below the current price. Change prices under Rules.</div></section>`;
 }
 function bizStrip() {
@@ -258,7 +258,7 @@ function bizStrip() {
     <div><div class="mute" style="font-size:12px">Manual claim today</div><div class="disp" style="font-size:22px">14 days</div><div class="mute" style="font-size:12px">industry average</div></div>
     <div><div class="mute" style="font-size:12px">With KODA</div><div class="disp" style="font-size:22px;color:var(--cobalt)">${p.seconds_to_payout} seconds</div><div class="mute" style="font-size:12px">event to payout</div></div>
     <div><div class="mute" style="font-size:12px">Handling cost per policy</div><div class="disp" style="font-size:22px">$${p.manual_cost_usd} to $${p.admin_cost_usd}</div><div class="mute" style="font-size:12px">manual vs measured here</div></div>
-    <div><div class="mute" style="font-size:12px">Handling cost avoided so far</div><div class="disp" style="font-size:22px;color:var(--green)">${p.auto_paid ? '$' + saved : 'None yet'}</div><div class="mute" style="font-size:12px">${p.auto_paid ? p.auto_paid + (p.auto_paid === 1 ? ' claim' : ' claims') + ' paid with no human step' : 'Appears with the first auto-paid claim'}</div></div></div></section>`;
+    <div><div class="mute" style="font-size:12px">Handling cost avoided so far</div><div class="disp" style="font-size:22px;color:var(--green)">${p.auto_paid ? 'S$' + saved : 'None yet'}</div><div class="mute" style="font-size:12px">${p.auto_paid ? p.auto_paid + (p.auto_paid === 1 ? ' claim' : ' claims') + ' paid with no human step' : 'Appears with the first auto-paid claim'}</div></div></div></section>`;
 }
 function aiDesk() {
   const done = ov.decisions.filter(d => d.kind === 'delay' && d.status === 'paid');
@@ -403,7 +403,7 @@ function vRules() {
       <div><label class="lbl" for="rmSel">Market</label><select id="rmSel" class="field">${ov.markets.map(x => `<option value="${x.code}" ${x.code === RM ? 'selected' : ''}>${esc(x.name)} (${esc(x.currency)})</option>`).join('')}</select></div>
       ${fields.map(([k, l]) => `<div style="display:grid;grid-template-columns:1fr 130px;gap:12px;align-items:center"><label for="r_${k}">${l}</label><input id="r_${k}" data-rule="${k}" type="number" min="0" value="${r[k]}" class="field mono" style="text-align:right"></div>`).join('')}
       <div style="display:flex;align-items:center;gap:12px;padding-top:6px;border-top:1px solid var(--line2)"><button id="saveRules" class="btn primary">Save rules</button><span id="saved" style="color:var(--green);font-size:13px"></span></div>
-      <p class="mute" style="font-size:12px">Prices and payouts are in US dollars.</p></div></section>
+      <p class="mute" style="font-size:12px">Prices and payouts are in Singapore dollars.</p></div></section>
     <div class="stack"><section class="panel"><div class="ph"><h2>What a traveler is paid</h2><span class="push mute">${esc(m.name)}</span></div><div class="pb">${payoutCurve(r, c)}</div></section>
     <section class="panel"><div class="ph"><h2>Cover price against the top payout</h2></div><div class="pb">${barList([{label: 'Delay cover', value: r.delay_premium, text: money(r.delay_premium, c)}, {label: 'Top delay payout', value: r.delay_tier2_payout, text: money(r.delay_tier2_payout, c)}, {label: 'Baggage cover', value: r.baggage_premium, text: money(r.baggage_premium, c)}, {label: 'Lost bag payout', value: r.lost_bag_payout, text: money(r.lost_bag_payout, c)}])}</div></section></div></div>`;
 }

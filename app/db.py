@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS policies (
     f_schedule_changed INTEGER DEFAULT 0,  -- flight time changed shortly before purchase
     f_shared_account INTEGER DEFAULT 0,    -- payout account shared with other profiles
     f_prior_claims INTEGER DEFAULT 0,      -- prior claims in 12 months
-    market TEXT DEFAULT 'TH', currency TEXT DEFAULT 'USD',
+    market TEXT DEFAULT 'TH', currency TEXT DEFAULT 'SGD',
     created_at REAL,                       -- when cover was bought
     sched_at_purchase TEXT                 -- scheduled time seen at purchase, to spot later changes
 );
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS partners (
     airport TEXT, name TEXT, kind TEXT, terminal TEXT, walk_min INTEGER,
     opens TEXT, closes TEXT,              -- local opening hours, HH:MM
     accepts INTEGER DEFAULT 0,            -- 1 when the outlet has joined KODA points
-    avg_spend INTEGER DEFAULT 12          -- typical spend in USD
+    avg_spend INTEGER DEFAULT 12          -- typical spend in SGD
 );
 CREATE TABLE IF NOT EXISTS redemptions (
     id TEXT PRIMARY KEY,
@@ -148,7 +148,7 @@ def conn():
 # Columns added after the first release. Applied to an existing database file on start.
 MIGRATIONS = [
     ("flights", "flight_date", "TEXT"), ("flights", "sched_ts", "REAL"), ("flights", "market", "TEXT DEFAULT 'TH'"),
-    ("decisions", "breakdown", "TEXT"), ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'USD'"),
+    ("decisions", "breakdown", "TEXT"), ("policies", "market", "TEXT DEFAULT 'TH'"), ("policies", "currency", "TEXT DEFAULT 'SGD'"),
     ("policies", "created_at", "REAL"), ("policies", "pnr", "TEXT"), ("flights", "cancelled", "INTEGER DEFAULT 0"),
     ("decisions", "trigger", "TEXT DEFAULT 'delay'"), ("decisions", "elapsed_ms", "INTEGER"), ("decisions", "message", "TEXT"), ("decisions", "context", "TEXT"), ("policies", "sched_at_purchase", "TEXT"),
     ("flights", "stress", "INTEGER DEFAULT 0"), ("policies", "f_adverse", "INTEGER DEFAULT 0"),

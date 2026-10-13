@@ -218,7 +218,7 @@ let si = {stage: 'ref', ref: '', name: '', ch: null, code: '', err: '', demos: n
 let LIVE = {}, SAMPLES = [], REAL = [], realMsg = '', form = {name: '', flight: '', market: '', ref: ''}, ap = 'BKK';
 let ex = {open: false, what: 'Meal', amount: '', receipt: null, name: ''}, letter = null, letterOpen = false, edited = false;
 let bag = {report_id: '', bag_tag: '', items: [{name: '', amount: ''}]};
-const cur = () => (S && S.policy && S.policy.currency) || 'USD';
+const cur = () => (S && S.policy && S.policy.currency) || 'SGD';
 const M = n => money(n, cur());
 const acct = a => esc(a).replace('ending ', 'ending <b class="mono">') + '</b>';
 const typing = () => document.activeElement && document.activeElement.matches('input,select,textarea');
@@ -293,7 +293,7 @@ function paidTotal() {
   if (S.extra?.decision?.status === 'paid') t += S.extra.decision.amount;
   return t;
 }
-const usd2 = n => '$' + Number(n).toFixed(2);
+const usd2 = n => 'S$' + Number(n).toFixed(2);
 const pts = n => Number(n || 0).toLocaleString() + ' points';
 const asPts = d => !!(d && d.points > 0);
 const payTxt = d => asPts(d) ? pts(d.points) : M(d.amount);
@@ -353,7 +353,7 @@ function walletView() {
       ${otherOpen ? `<div style="padding:0 14px 12px;font-size:13px">${SV.not_partner.map(n => `<div class="kv" style="padding:2px 0"><span>${esc(n.name)}</span><span>${esc(n.reason)}</span></div>`).join('')}</div>` : ''}</div>` : ''}
     ${CS.vouchers && CS.vouchers.length ? `<section class="card"><div class="cap">Your vouchers</div>${CS.vouchers.slice(0, 4).map(v => `<div class="tx"><span><b>${esc(v.partner)}</b> <span class="mono">${esc(v.code)}</span><br><small class="mute">${pts(v.points)}${v.refunded ? ' · refunded' : ''}</small></span>${v.refunded ? '' : `<button class="btn sm" style="margin-left:auto" data-refund="${esc(v.id)}">Not used? Refund</button>`}</div>`).join('')}</section>` : ''}
     <section class="card"><div class="cap">Points activity</div>${CS.ledger.length ? CS.ledger.slice(0, 12).map(t => `<div class="tx"><span>${esc(t.label)}<br><small class="mute">${new Date(t.created_at * 1000).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}</small></span><b class="mono ${t.points > 0 ? 'plus' : ''}">${t.points > 0 ? '+' : ''}${t.points.toLocaleString()}</b></div>`).join('') : '<div class="mute" style="font-size:13px">Points arrive here when a claim is paid.</div>'}</section>
-    <div class="mute" style="font-size:12px">${(SV && SV.directory) || 'Prototype directory of fictional outlets'}. 100 points are worth $1 at the airport. Cash-out pays $${(CS.cashout_rate).toFixed(2)} per 100 points.</div>`;
+    <div class="mute" style="font-size:12px">${(SV && SV.directory) || 'Prototype directory of fictional outlets'}. 100 points are worth S$1 at the airport. Cash-out pays S$${(CS.cashout_rate).toFixed(2)} per 100 points.</div>`;
 }
 function profileView() {
   const c = CS.customer, b = CS.balance, ms = CS.methods;
@@ -379,7 +379,7 @@ function profileView() {
       ${!ms.length ? '<div class="mute" style="font-size:13px">Save a card or bank account above to cash out.</div>' : b.points < CS.min_cashout ? `<div class="mute" style="font-size:13px">You need at least ${CS.min_cashout.toLocaleString()} points to cash out. You have ${b.points.toLocaleString()}.</div>` : `
       <label>Points to cash out<input id="coPts" class="field mono" inputmode="numeric" value="${esc(co.points)}"></label>
       <label>Send to<select id="coMethod" class="field">${ms.map(m => `<option value="${esc(m.id)}" ${m.id === co.method ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select></label>
-      <div style="font-size:14px">You receive <b class="mono">${usd2(getUsd)}</b> <span class="mute">(100 points = $${CS.cashout_rate.toFixed(2)} as cash)</span></div>
+      <div style="font-size:14px">You receive <b class="mono">${usd2(getUsd)}</b> <span class="mute">(100 points = S$${CS.cashout_rate.toFixed(2)} as cash)</span></div>
       <button id="coGo" class="btn primary block">Cash out ${cashPts ? cashPts.toLocaleString() + ' points' : ''}</button>`}</section>
     <section class="card frm"><div class="cap" style="margin:0">Your details</div>
       <label>Name<input id="pName" class="field" maxlength="40" value="${esc(pf.name)}"></label>
@@ -462,7 +462,7 @@ function resultsView() {
         <div class="ln"><span>${f.duration_min ? '~' + durTxt(f.duration_min) : ''}</span><hr><span>Nonstop</span></div>
         <div style="text-align:right"><b>${esc(f.dest)}</b><small>${esc(f.dest_city || '')}</small></div></div>
       <div class="bt"><span class="rk ${rk}">${rk === 'high' ? 'High' : rk === 'medium' ? 'Medium' : 'Low'} delay risk · ${f.risk.probability}%</span>
-        <span>${cl ? '<b>Delay cover closed</b>' : 'Cover from <b>' + (f.price.currency === 'USD' ? '$' + f.price.baggage : esc(f.price.currency) + ' ' + f.price.baggage) + '</b>'}</span></div></button>`;
+        <span>${cl ? '<b>Delay cover closed</b>' : 'Cover from <b>' + (f.price.currency === 'SGD' ? 'S$' + f.price.baggage : esc(f.price.currency) + ' ' + f.price.baggage) + '</b>'}</span></div></button>`;
   };
   return `<div><h1 style="margin-bottom:2px">${esc(ap)} to ${toAp ? esc(toAp) : 'anywhere'}</h1>
       <p class="sub">${esc(dayLabel(day))}${SR && SR.source ? ' · ' + esc(SRC[SR.source] || '') : ''}</p></div>
@@ -480,7 +480,7 @@ function detailsView() {
       <input id="fName" class="field" placeholder="Full name, as on your ticket" maxlength="40" autocomplete="name" value="${esc(form.name || (CS ? CS.customer.name : ''))}">
       <input id="fRef" class="field mono" placeholder="Booking reference" maxlength="10" autocapitalize="characters" autocomplete="off" value="${esc(form.ref)}">
       <div class="mute" style="font-size:13px">The 5 to 10 letters or numbers on your e-ticket or booking email. Bought it anywhere, from an airline, Trip.com or Agoda? That is fine. KODA only adds the cover.</div></div></section>
-    <div class="note info" style="display:flex;gap:10px;align-items:flex-start">${ico('paid')}<span>Payouts are paid as KODA points. 100 points is worth $1 at the airport, and you get a 25% bonus. You can cash points out to a card or bank from your profile.</span></div>
+    <div class="note info" style="display:flex;gap:10px;align-items:flex-start">${ico('paid')}<span>Payouts are paid as KODA points. 100 points is worth S$1 at the airport, and you get a 25% bonus. You can cash points out to a card or bank from your profile.</span></div>
     <button id="quote" class="btn primary block">See price</button>`;
 }
 /* Points card on the first screen, like a fintech home. Signed in: the real balance. Signed out: a labelled example payout. */
@@ -586,8 +586,8 @@ const cvRow = (on, t, n) => `<div class="cv ${on ? 'on' : 'off'}">${ico(on ? 'ch
 function legStatus(l) {
   const dd = l.delay_decision, bc = l.baggage_claim;
   const out = [];
-  if (dd) out.push(dd.status === 'paid' ? `Delay payout paid: ${dd.points > 0 ? pts(dd.points) : '$' + Number(dd.amount).toFixed(2)}.` : dd.status === 'held' ? 'Delay claim is with a person for a quick check.' : dd.status === 'declined' ? 'Delay claim was reviewed and not paid.' : 'Delay claim is being processed.');
-  if (bc) out.push(bc.status === 'paid' ? `Lost bag payout paid: $${Number(bc.amount).toFixed(2)}.` : bc.status === 'declined' ? 'Lost bag claim was reviewed and not paid.' : 'Lost bag claim is being reviewed.');
+  if (dd) out.push(dd.status === 'paid' ? `Delay payout paid: ${dd.points > 0 ? pts(dd.points) : 'S$' + Number(dd.amount).toFixed(2)}.` : dd.status === 'held' ? 'Delay claim is with a person for a quick check.' : dd.status === 'declined' ? 'Delay claim was reviewed and not paid.' : 'Delay claim is being processed.');
+  if (bc) out.push(bc.status === 'paid' ? `Lost bag payout paid: S$${Number(bc.amount).toFixed(2)}.` : bc.status === 'declined' ? 'Lost bag claim was reviewed and not paid.' : 'Lost bag claim is being reviewed.');
   if (!dd && l.delayed && l.cover !== 'none' && l.policy && l.missing.includes('delay')) out.push('This flight is delayed. It had no delay cover, so no payout is due.');
   if (!dd && l.delayed && !l.policy) out.push('This flight is delayed. It had no cover, so no payout is due.');
   if (l.departed && !dd && !l.delayed && !bc) out.push('This flight has left. Cover can no longer be added.');
