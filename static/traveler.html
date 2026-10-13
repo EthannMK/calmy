@@ -434,16 +434,15 @@ function selectedFlight() {
 }
 /* Points card on the first screen, like a fintech home. Signed in: the real balance. Signed out: a labelled example payout. */
 function heroView() {
-  const real = !!CS, pts0 = real ? CS.balance.points : 5000, usd = real ? CS.balance.spend_usd : 50, cash = real ? CS.balance.cash_usd : 40;
+  const real = !!CS, pts0 = real ? CS.balance.points : 0, usd = real ? CS.balance.spend_usd : 0, cash = real ? CS.balance.cash_usd : 0;
   const last = real && CS.ledger[0];
   const uses = [['paid', 'Food'], ['verified_user', 'Lounge'], ['flight', 'Taxi'], ['support_agent', 'SIM']];
-  return `<section class="pcard" aria-label="${real ? 'Your KODA points' : 'Example payout'}">
-    <div class="pc-top"><span>${real ? 'KODA points' : 'Example payout'}</span><span class="pc-tag">${real ? esc(CS.customer.name.split(' ')[0]) : 'Delay of 3h 20m'}</span></div>
+  return `<section class="pcard" aria-label="Your KODA points">
+    <div class="pc-top"><span>KODA points</span>${real ? `<span class="pc-tag">${esc(CS.customer.name.split(' ')[0])}</span>` : ''}</div>
     <div class="pc-num"><b data-count="${pts0}">${pts0.toLocaleString()}</b><small>points</small></div>
     <div class="pc-eq">Worth <b>${usd2(usd)}</b> at the airport, or <b>${usd2(cash)}</b> as cash</div>
     <div class="pc-uses">${uses.map((u, i) => `<span style="animation-delay:${0.15 * i + 0.5}s">${ico(u[0])}${u[1]}</span>`).join('')}</div>
-    <div class="pc-foot">${real ? (last ? `<span>${esc(last.label)}</span><b class="${last.points > 0 ? 'plus' : ''}">${last.points > 0 ? '+' : ''}${last.points.toLocaleString()}</b>` : '<span>Payouts arrive here when a flight is late</span>')
-      : '<span>Delayed flights pay you in points. No forms.</span>'}</div></section>`;
+    ${real && last ? `<div class="pc-foot"><span>${esc(last.label)}</span><b class="${last.points > 0 ? 'plus' : ''}">${last.points > 0 ? '+' : ''}${last.points.toLocaleString()}</b></div>` : ''}</section>`;
 }
 let _counted = null;
 function runCount() {
