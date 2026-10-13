@@ -6,7 +6,17 @@ os.environ["KODA_SAMPLE_DATA"] = "1"
 os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "m.db")
 os.environ["KODA_NO_WEATHER"] = "1"
 
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
 from app import forecast  # noqa: E402
+from app.main import app  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _db():
+    with TestClient(app):  # starts the app so the tables exist
+        yield
 
 F = {"code": "TG 100", "origin": "BKK", "dest": "HKT", "scheduled": "14:00", "flight_date": "2026-10-14"}
 
