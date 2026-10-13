@@ -138,8 +138,10 @@ def risk_score(p: dict) -> tuple[int, list[str]]:
     return min(sum(pts for _, pts in parts), 100), [label for label, _ in signals[:3]]
 
 
-def clean_checks() -> list[str]:
-    return ["Flight status matches", "PromptPay name matches", "No double claim"]
+def clean_checks(score: int, threshold: float, event: str | None = None) -> list[str]:
+    """The checks the engine really ran before paying without a person. Nothing here is assumed or decorative."""
+    out = [event] if event else []
+    return out + [f"Risk score {score} is under the auto-pay limit of {int(threshold)}", "No earlier claim of this kind on this trip"]
 
 
 # ---------------------------------------------------------------- explain
@@ -199,7 +201,9 @@ def explain(kind: str, amount: int, minutes: int, rules: dict, status: str, curr
             ),
         )
         AI_LAST["ok"], AI_LAST["error"] = time.time(), None
-        return (resp.text or fallback).strip()
+        from . import copilot
+        # The model only words the reason. A sentence with a number that is not in the facts is dropped for the template.
+        return copilot.safe_rewrite(facts + " " + fallback, (resp.text or "").strip(), decisions=False) or fallback
     except Exception as e:  # pragma: no cover
         AI_LAST["error"] = f"{type(e).__name__}: {str(e)[:140]}"
         return fallback
@@ -259,6 +263,14 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
     policies = db.rows(
         c, "SELECT * FROM policies WHERE flight=? AND status='active' AND delay_cover=1", (flight_code,)
     )
+    # A delay reported after the trip was closed as on time is not paid by the system (that needs a person's decision),
+    # but it is never dropped silently: it goes on the trip's record, once per reported delay.
+    for p in db.rows(c, "SELECT * FROM policies WHERE flight=? AND status='archived' AND delay_cover=1", (flight_code,)):
+        late = int(get_rules(c, p["market"] or "TH")["cancel_payout"]) if cancelled else payout_for_delay(get_rules(c, p["market"] or "TH"), minutes)
+        seen = db.one(c, "SELECT 1 FROM events WHERE policy_id=? AND type='event_after_close' AND detail=?", (p["id"], json.dumps({"minutes": minutes, "cancelled": cancelled})))
+        if late and not seen:
+            db.log(c, p["id"], "event_after_close", {"minutes": minutes, "cancelled": cancelled})
+            results.append({"policy": p["id"], "status": "after_close"})
     for p in policies:
         wallet.refresh(c, p)  # the traveler's current choice of points or saved card decides where this goes
         # Money and rules follow the policy's own market (where the traveler bought cover).
@@ -285,7 +297,9 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
         feats = features(c, p)
         score, reasons = risk_score(feats)
         status = "paid" if score < rules["risk_threshold"] else "held"
-        reasons_out = clean_checks() if status == "paid" else reasons
+        event = (f"Flight cancelled: {CLAUSE_CANCEL}" if cancelled else
+                 f"Recorded delay of {_hm(minutes)} meets the {_hm(int(rules['delay_tier1_minutes']))} rule")
+        reasons_out = clean_checks(score, rules["risk_threshold"], event) if status == "paid" else reasons
         did = _new_id("RQ") if status == "held" else _new_id("DC")
         c.execute(
             "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
@@ -405,6 +419,9 @@ def case_history(c, policy_id: str, staff: bool = False) -> list[dict]:
             what = f"Lost bag reported, {money(d.get('total', 0), cur)} declared"
         elif t == "trip_archived":
             what = "Flight ended with no covered event, trip archived"
+        elif t == "event_after_close":
+            what = ("Cancellation" if d.get("cancelled") else f"A delay of {_hm(d.get('minutes') or 0)}") + \
+                   " was reported after this trip was closed as on time. Nothing was paid automatically."
         else:
             continue  # quotes, notices and other bookkeeping stay in the full audit log
         out.append({"ts": e["ts"], "type": t, "what": what})
@@ -468,8 +485,11 @@ def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) ->
 
 def submit_bag_claim(c, policy_id: str, report_id: str, bag_tag: str, items: list[dict]) -> dict:
     p = db.one(c, "SELECT * FROM policies WHERE id=?", (policy_id,))
-    if not p or p["status"] != "active" or not p["baggage_cover"]:
-        raise ValueError("this policy has no baggage cover")
+    # A trip closed after landing ("archived") still takes a lost-bag claim: landing is when a bag goes missing.
+    if not p or p["status"] not in ("active", "archived"):
+        raise ValueError("This trip has no active cover.")
+    if not p["baggage_cover"]:
+        raise ValueError("This trip has no baggage cover.")
     if db.one(c, "SELECT 1 FROM baggage WHERE policy_id=?", (policy_id,)):
         raise ValueError("a baggage claim already exists for this policy")
     total = sum(int(i["amount"]) for i in items)
@@ -492,7 +512,7 @@ def submit_bag_claim(c, policy_id: str, report_id: str, bag_tag: str, items: lis
             "delay_minutes,created_at,decided_by,note) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             bid + "-D", policy_id, "baggage", status, amount, score,
-            json.dumps(reasons if status == "held" else clean_checks()), json.dumps([]), CLAUSE_BAG,
+            json.dumps(reasons if status == "held" else clean_checks(score, rules["risk_threshold"], f"Airline report {report_id} given")), json.dumps([]), CLAUSE_BAG,
             template_explanation("baggage", amount, 0, rules, cur), 0, time.time(), None, None,
         ),
     )
@@ -573,7 +593,7 @@ def submit_extra_claim(c, policy_id: str, what: str, amount: int, receipt: str |
         "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
         "delay_minutes,created_at,decided_by,note,message) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (eid + "-D", policy_id, "expense", status, payable, score,
-         json.dumps(reasons if not auto else clean_checks()), json.dumps([]), CLAUSE_EXTRA, expl, 0, time.time(),
+         json.dumps(reasons if not auto else clean_checks(score, rules["risk_threshold"], f"Amount under the fast track limit of {money(fast, cur)}")), json.dumps([]), CLAUSE_EXTRA, expl, 0, time.time(),
          "system" if auto else None, None, msg))
     c.execute("UPDATE decisions SET breakdown=? WHERE id=?",
               (json.dumps(risk_parts(feats) + [("Loading for self declared amounts", 6)]), eid + "-D"))

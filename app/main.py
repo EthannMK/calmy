@@ -700,8 +700,8 @@ def airline_letter(pid: str, ai: int = 0):
             f"Booking reference: [add yours]\nName: {p['traveler']}\n\nThank you. Please reply in writing.")
     better = None
     if ai and os.environ.get("GOOGLE_CLOUD_PROJECT"):
-        better = copilot.ask_gemini("Polish this letter so it is clear, polite and firm. Keep every fact, add nothing new, no legal claims beyond the text, "
-                                    "keep the [add yours] placeholder, plain text only.\n\n" + text)
+        better = copilot.safe_rewrite(text, copilot.ask_gemini("Polish this letter so it is clear, polite and firm. Keep every fact, add nothing new, no legal claims beyond the text, "
+                                    "keep the [add yours] placeholder, plain text only.\n\n" + text))
     return {"text": better or text, "ai": bool(better)}
 
 
@@ -1041,8 +1041,8 @@ def copilot_get(decision_id: str, ai: bool = False):
     if not ai:
         rec["ai"] = False
         return rec
-    better = copilot.ask_gemini("Rewrite this message to an insurance customer so it is warm, clear and under 60 words. Keep every fact and ask. "
-                                "Return only the message.\n" + rec["draft"]) if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
+    better = copilot.safe_rewrite(rec["draft"], copilot.ask_gemini("Rewrite this message to an insurance customer so it is warm, clear and under 60 words. Keep every fact and ask. "
+                                "Return only the message.\n" + rec["draft"])) if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
     rec["draft"], rec["ai"] = (better or rec["draft"]), bool(better)
     return rec
 
@@ -1059,8 +1059,8 @@ def copilot_ask(body: Ask):
     base = copilot.answer(body.question, d, rec, p)
     facts = (f"Claim {d['id']}: delay {d['delay_minutes']} min, amount {d['amount']}, risk {d['risk_score']}, signals "
              + "; ".join(f"{t} +{pts}" for t, pts in d["breakdown"]) + f". Recommendation {rec['label']}.")
-    better = copilot.ask_gemini("You help an insurance claims reviewer. Answer in at most 2 sentences using only these facts; never suggest declining.\n"
-                                f"{facts}\nQuestion: {body.question}") if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
+    better = copilot.safe_rewrite(facts + " " + base, copilot.ask_gemini("You help an insurance claims reviewer. Answer in at most 2 sentences using only these facts; never suggest declining.\n"
+                                f"{facts}\nQuestion: {body.question}"), decisions=False) if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
     return {"answer": better or base, "ai": bool(better)}
 
 

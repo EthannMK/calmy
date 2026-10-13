@@ -6,6 +6,7 @@ checked. Gemini rewrites the draft and answers free questions when it is configu
 rule-based text is used.
 """
 import os
+import re
 
 APPROVE, PROOF, ESCALATE = "approve", "ask_proof", "escalate"
 
@@ -51,6 +52,30 @@ def answer(question: str, d: dict, rec: dict, p: dict) -> str:
     if any(w in q for w in ("recommend", "should", "do", "next", "approve")):
         return f"I suggest: {rec['label']} ({rec['confidence']}% confident). {rec['why'][0]}"
     return f"I can explain the score, the amount, the account history or what to do next. For now: {rec['why'][0]}"
+
+
+_NUM = re.compile(r"\d+(?:[.,]\d+)*")
+_DECISION = ("approv", "declin", "reject", "guarantee", "promise", "refund", "compensat", "entitled", "owe you")
+
+
+def _numbers(text: str) -> set[str]:
+    return {n.replace(",", "") for n in _NUM.findall(text or "")}
+
+
+def safe_rewrite(original: str, rewritten: str | None, decisions: bool = True) -> str | None:
+    """Accept a model rewrite only if it rewords. It may not add a number the original did not have, may not add a
+    decision or a promise the original did not make, and may not balloon. Anything else returns None, and the caller
+    keeps the original. This is what stops text typed by a traveler (prompt injection) from changing a claim fact."""
+    if not rewritten:
+        return None
+    if not _numbers(rewritten) <= _numbers(original):
+        return None
+    low, orig = rewritten.lower(), (original or "").lower()
+    if decisions and any(w in low and w not in orig for w in _DECISION):
+        return None
+    if len(rewritten) > 3 * len(original or "") + 200:
+        return None
+    return rewritten
 
 
 def ask_gemini(prompt: str) -> str | None:

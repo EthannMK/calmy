@@ -197,3 +197,51 @@ def test_add_a_booking_bought_elsewhere_joins_the_account_once():
         # Once linked, cover can be added through the normal add-cover path.
         a = client.post("/api/app/add-cover", json={"ref": "AGD123", "flight": "OA 204", "delay": True, "baggage": False, "ack": True}, headers=H)
         assert a.status_code == 200
+
+
+def test_lost_bag_can_be_claimed_after_the_flight_lands():
+    with client:
+        q = client.post("/api/policies", json={"name": "Bag Landed", "flight": "OA 204"}).json()
+        client.post(f"/api/traveler/{q['policy']}/checkout", json={"delay": True, "baggage": True, "ack": True})
+        q2 = client.post("/api/policies", json={"name": "Delay Only", "flight": "OA 204"}).json()
+        client.post(f"/api/traveler/{q2['policy']}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        with db.conn() as c:
+            c.execute("UPDATE flights SET sched_ts=? WHERE code='OA 204'", (time.time() - 4 * 3600,))
+        assert client.post("/api/webhook/flight-event", json={"flight": "OA 204", "event": "landed"}).json()["archived"] >= 1
+        r = client.post(f"/api/traveler/{q['policy']}/baggage", json={"report_id": "PIR123", "bag_tag": "OA1234", "items": [{"name": "Suitcase", "amount": 30}]})
+        assert r.status_code == 200
+        # A delay-only trip still says so plainly.
+        r = client.post(f"/api/traveler/{q2['policy']}/baggage", json={"report_id": "PIR124", "bag_tag": "OA1235", "items": [{"name": "Suitcase", "amount": 30}]})
+        assert r.status_code == 400 and "no baggage cover" in r.json()["detail"]
+
+
+def test_delay_after_trip_closed_is_recorded_not_dropped():
+    with client:
+        q = client.post("/api/policies", json={"name": "Closed Early", "flight": "OA 204"}).json()
+        client.post(f"/api/traveler/{q['policy']}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        client.post("/api/webhook/flight-event", json={"flight": "OA 204", "event": "on_time"})
+        for _ in range(2):
+            client.post("/api/webhook/flight-event", json={"flight": "OA 204", "event": "delayed", "minutes": 250})
+        hist = client.get(f"/api/console/decision/{q['policy']}").json()["history"]
+        late = [h for h in hist if h["type"] == "event_after_close"]
+        assert len(late) == 1 and "after this trip was closed" in late[0]["what"]
+        assert client.get(f"/api/console/decision/{q['policy']}").json()["decision"] is None  # no payout made by the system
+
+
+def test_auto_paid_claim_lists_only_checks_that_ran():
+    with client:
+        q = client.post("/api/policies", json={"name": "Evidence", "flight": "OA 204"}).json()
+        client.post(f"/api/traveler/{q['policy']}/checkout", json={"delay": True, "baggage": False, "ack": True})
+        client.post("/api/demo/delay", json={"flight": "OA 204", "minutes": 200})
+        d = client.get(f"/api/console/decision/{q['policy']}").json()["decision"]
+        assert d["status"] == "paid" and not any("PromptPay" in r for r in d["reasons"])
+        assert any("meets the" in r for r in d["reasons"]) and any("under the auto-pay limit" in r for r in d["reasons"])
+
+
+def test_model_rewrites_cannot_add_numbers_or_decisions():
+    from app import copilot
+    base = "A delay of 180 minutes or more pays S$40."
+    assert copilot.safe_rewrite(base, "Good news, a 180 minute delay pays S$40.") is not None
+    assert copilot.safe_rewrite(base, "Your claim is approved: S$900 today.") is None
+    assert copilot.safe_rewrite(base, "We guarantee a delay of 180 minutes pays S$40.") is None
+    assert copilot.safe_rewrite(base, None) is None

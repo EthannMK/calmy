@@ -212,12 +212,13 @@ function vOverview() {
   const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   const recent = ov.decisions.filter(d => d.kind === 'delay').slice(0, 6);
   const oc = ov.outcomes, decidedAll = oc.auto + oc.reviewed + oc.held + oc.declined, fastPct = decidedAll ? Math.round(oc.auto * 100 / decidedAll) : 0;
-  const secs = ov.decisions.filter(d => d.kind === 'delay' && d.status === 'paid' && d.seconds != null).map(d => d.seconds), avg = secs.length ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : null;
+  // Measured: the engine times every delay decision (elapsed_ms). The timeline's step seconds are a fixed illustration, never averaged here.
+  const avg = ov.performance && ov.performance.avg_decision_ms != null ? ov.performance.avg_decision_ms : null;
   return head('Overview', 'Cover sold, flights being watched and every payout decision, across all markets. Totals are in Singapore dollars.') + `
   <div class="panel kpis" style="margin-bottom:20px">${kpi('Active policies', 'verified_user', num(s.active), s.premium_usd ? 'Premium written ' + usd(s.premium_usd) : 'No cover sold yet')}
     ${kpi('Paid out', 'payments', usd(s.paid_amount_usd), s.paid_count + (s.paid_count === 1 ? ' payout' : ' payouts'))}
     ${kpi('Held for review', 'schedule', s.held, s.held ? '<a href="#review">Open the review queue</a>' : 'Nothing is waiting for a person')}
-    ${kpi('Auto-paid claims', 'bolt', share, avg == null ? 'Decision time appears with the first claim' : 'Average decision ' + avg + ' seconds, ' + fastPct + '% of decisions paid with no human step')}</div>
+    ${kpi('Auto-paid claims', 'bolt', share, avg == null ? 'Decision time appears with the first claim' : 'Rules and risk check took ' + avg + ' ms on average (measured). ' + fastPct + '% of decisions paid with no human step')}</div>
   ${bookStrip()}
   ${exposureStrip()}
   <div class="cols"><div class="stack">

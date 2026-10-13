@@ -129,5 +129,10 @@ def test_new_buyer_is_signed_in_but_an_existing_customer_is_not():
 
 def test_trip_link_does_not_show_points():
     r = client.post("/api/policies", json={"name": "Lena Fischer", "flight": "OA 108", "booking_ref": "QQ12AB"}).json()
-    s = client.get(f"/api/traveler/{r['policy']}").json()
+    # A trip that belongs to an account cannot be opened, spent from or claimed on without that account's session.
+    assert client.get(f"/api/traveler/{r['policy']}").status_code == 401
+    assert client.post(f"/api/traveler/{r['policy']}/redeem", json={"partner": "x", "points": 100}).status_code == 401
+    other, _ = _traveler()
+    assert client.get(f"/api/traveler/{r['policy']}", headers={"X-Session": other}).status_code == 404
+    s = client.get(f"/api/traveler/{r['policy']}", headers={"X-Session": r["session"]}).json()
     assert "balance" not in s["customer"]

@@ -30,8 +30,13 @@ def mode():
 
 
 def _decision(c, pid):
-    return db.one(c, "SELECT id,status,amount,points,delay_minutes,trigger,explanation,message,note,decided_by,created_at FROM decisions "
-                     "WHERE policy_id=? AND kind='delay'", (pid,))
+    d = db.one(c, "SELECT id,status,amount,points,payout,delay_minutes,trigger,explanation,message,note,decided_by,created_at FROM decisions "
+                  "WHERE policy_id=? AND kind='delay'", (pid,))
+    # The traveler sees their own note on a claim with a person, and the reason for a decline. A reviewer's note on an
+    # approval is internal and stays on the claims desk.
+    if d and d["status"] == "paid":
+        d["note"] = None
+    return d
 
 
 def _leg(c, row, rules_cache) -> dict:

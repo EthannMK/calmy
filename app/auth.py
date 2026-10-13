@@ -255,6 +255,18 @@ def guard(request: Request) -> JSONResponse | None:
             return _denied(401, "Sign in to see your points and details.")
         if s["subject"] != cid:
             return _denied(403, "This account belongs to someone else.")
+    elif path.startswith("/api/traveler/") or (path.startswith("/api/airport/") and request.query_params.get("pid")):
+        # Per-trip endpoints act on one policy: its points, its claims, its cover. A policy that belongs to an account
+        # may only be used by that account's signed-in traveler. Anonymous quotes (no account yet) stay reachable by id.
+        pid = path.split("/")[3] if path.startswith("/api/traveler/") else request.query_params.get("pid")
+        with db.conn() as c:
+            p = db.one(c, "SELECT customer_id FROM policies WHERE id=?", (pid,))
+        if p and p["customer_id"]:
+            s = who(tok)
+            if not s or s["kind"] != "traveler":
+                return _denied(401, "Sign in to see your trips.")
+            if s["subject"] != p["customer_id"]:
+                return _denied(404, "policy not found")  # same answer as a wrong id, so ids cannot be probed
     elif path.startswith("/api/app/") and path != "/api/app/mode" and not path.startswith("/api/app/qr/"):
         s = who(tok)
         if not s or s["kind"] != "traveler":

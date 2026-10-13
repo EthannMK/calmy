@@ -128,9 +128,9 @@ def _gemini_summary(out: dict) -> str | None:
     if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
         return None
     facts = "\n".join(f"- {s['label']}: {s['result']}" for s in out["steps"])
-    return copilot.ask_gemini(
+    return copilot.safe_rewrite(facts, copilot.ask_gemini(
         "You are a claims investigator for a travel insurer. Write a case summary of at most 80 words for a human reviewer. "
-        "Use only these findings. Say what supports paying and what raises doubt. Never recommend declining; a person decides.\n" + facts)
+        "Use only these findings. Say what supports paying and what raises doubt. Never recommend declining; a person decides.\n" + facts), decisions=False)
 
 
 def answer_traveler(p: dict, question: str, status: dict) -> dict:
@@ -147,5 +147,5 @@ def answer_traveler(p: dict, question: str, status: dict) -> dict:
         base += " If your bag is lost, report it to the airline, then use My bag is lost in the Cover tab."
     else:
         base += " Ask me about payouts, delays or bags."
-    better = copilot.ask_gemini("Rewrite this for a traveler in friendly, plain English under 50 words. Keep every fact. Return only the text.\n" + base)
+    better = copilot.safe_rewrite(base, copilot.ask_gemini("Rewrite this for a traveler in friendly, plain English under 50 words. Keep every fact. Return only the text.\n" + base))
     return {"answer": better or base, "ai": bool(better)}
