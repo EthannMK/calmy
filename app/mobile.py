@@ -320,8 +320,6 @@ def cover_detail(policy: str, request: Request):
             {"what": "Cancelled flight", "detail": f"{engine.money(rules['cancel_payout'], cur)}, paid the same way"})
         (covered if p["baggage_cover"] else not_covered).append(
             {"what": "Bag not delivered", "detail": f"Up to {engine.money(rules['lost_bag_payout'], cur)} against the airline's report"})
-        (covered if p["delay_cover"] else not_covered).append(
-            {"what": "Extra costs after a delay", "detail": f"Receipts up to {engine.money(engine.extra_limits(rules)[1], cur)} in total"})
         return {
             "policy": policy, "flight": {k: f.get(k) for k in ("code", "airline", "origin", "dest", "depart_label", "delay_minutes", "cancelled")},
             "booking": p["pnr"], "currency": cur, "cover": "both" if p["delay_cover"] and p["baggage_cover"] else "delay" if p["delay_cover"]

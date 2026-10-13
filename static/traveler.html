@@ -191,7 +191,7 @@
   .bub.me{background:var(--navy);color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
   .bub.sys{align-self:center;background:var(--amber-t);border:1px solid #F3D68E;color:#5C3A00;font-size:12.5px;text-align:center;max-width:94%}
   .bub time{display:block;font-size:10.5px;opacity:.6;margin-top:4px}
-  .whochip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;font-size:12.5px}
+  .whochip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;font-size:12.5px;position:sticky;top:-14px;z-index:5;box-shadow:0 6px 12px rgba(7,28,63,.06)}
   .whochip .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
   .whochip .dot.wait{background:var(--amber)}
   .whochip b{font-size:13px}
@@ -204,6 +204,8 @@
   .lrow{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:center;font-size:13px}
   .lrow .bar{height:10px;border-radius:99px;background:var(--line2);overflow:hidden}
   .lrow .bar i{display:block;height:100%;border-radius:99px;background:var(--cobalt)}
+  .lrow.cx .bar{background:none;border:2px dashed var(--line);height:12px;border-radius:99px}
+  .lrow.cx.on .bar{border-color:var(--green)}
   .lrow.on .bar i{background:var(--green)}
   .lrow .amt{font-family:'Geist Mono',monospace;font-weight:600;font-size:12.5px}
   .lnow{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:#6B4300;background:var(--amber-t);border:1px solid #F3D68E;border-radius:10px;padding:7px 10px}
@@ -853,10 +855,10 @@ SCREENS.cover = {
           <div class="lrow"><span>On time</span><span class="bar"><i style="width:2%"></i></span><span class="amt">${sgd(0)}</span></div>
           ${rung(t1, r.delay_tier1_payout, Math.round(t1 / 60) + ' hours late')}
           ${rung(t2, r.delay_tier2_payout, Math.round(t2 / 60) + ' hours late')}
-          <div class="lrow ${cancelled ? 'on' : ''}"><span>Cancelled</span><span class="bar"><i style="width:100%"></i></span><span class="amt">${sgd(r.cancel_payout)}</span></div>
+          <div class="lrow cx ${cancelled ? 'on' : ''}"><span>Cancelled</span><span class="bar"></span><span class="amt">${sgd(r.cancel_payout)}</span></div>
         </div>
         ${late || cancelled ? `<div class="lnow" style="margin-top:10px">${ico('bolt')}${cancelled ? 'This flight was cancelled' : 'This flight is ' + hm(late) + ' late'}${v.claim ? ' · ' + (v.claim.status === 'paid' ? 'paid ' + (v.claim.points ? pts(v.claim.points) : sgd(v.claim.amount)) : v.claim.status === 'held' ? 'with a claims officer' : 'not paid') : late >= t1 ? '' : ' · under the rule, so no payout'}</div>` : ''}
-        <p class="dim" style="margin-top:8px">Paid once per flight. A longer delay moves you up to the higher rung, and we pay the difference.</p></section>`}
+        <p class="dim" style="margin-top:8px">Paid once per flight. A longer delay moves you up to the higher rung and we pay the difference. A cancellation pays whatever the clock says.</p></section>`}
       <section class="card"><div class="cap">What is covered</div>
         ${v.covered.length ? v.covered.map(x => `<div class="yes">${ico('check')}<span><b>${esc(x.what)}</b><small>${esc(x.detail)}</small></span></div>`).join('')
           : '<p class="dim">Nothing on this flight yet.</p>'}</section>

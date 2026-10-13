@@ -458,12 +458,12 @@ async function vChats(id) {
         ${next ? `<dt>${next.upcoming ? 'Next trip' : 'Last trip'}</dt><dd><span class="mono">${esc(next.flight)}</span> ${esc(next.route)}, ${esc(next.departs)} · ${esc(next.cover)} cover${next.claim ? ' · claim ' + esc(next.claim.status) : ''}</dd>` : ''}
       </dl></div></section>
     <section class="panel"><div class="ph"><h2>Transcript</h2><span class="push mute" style="font-size:12px">${c.messages.length} messages</span></div>
-      <div class="pb" style="display:grid;gap:9px;max-height:430px;overflow-y:auto">${c.messages.map(m => {
+      <div class="pb" id="ctrans" style="display:grid;gap:9px;max-height:430px;overflow-y:auto">${c.messages.map(m => {
         const when = new Date(m.ts * 1000).toLocaleString();
         if (m.role === 'system') return `<div class="note info" style="font-size:12.5px">${esc(m.text)}</div>`;
         const mine = m.role === 'staff';
         return `<div style="justify-self:${m.role === 'traveler' ? 'start' : 'end'};max-width:82%;background:${m.role === 'traveler' ? '#fff' : mine ? 'var(--cobalt-t)' : '#F4F6F9'};border:1px solid ${mine ? '#CBDCFB' : 'var(--line)'};border-radius:12px;padding:9px 12px;font-size:13.5px;line-height:1.45">
-          <b style="display:block;font-size:11.5px;color:${m.role === 'traveler' ? 'var(--mute)' : mine ? '#0A2E6E' : 'var(--cobalt)'}">${esc(m.author)}${m.role === 'bot' ? ' (assistant)' : ''}</b>
+          <b style="display:block;font-size:11.5px;color:${m.role === 'traveler' ? 'var(--mute)' : mine ? '#0A2E6E' : 'var(--cobalt)'}">${esc(m.author)}${m.role === 'staff' ? ', your team' : ''}</b>
           ${esc(m.text)}${m.meta && m.meta.used && m.meta.used.length ? `<span class="mute" style="display:block;font-size:11px;margin-top:4px">read: ${esc(m.meta.used.join(', '))}</span>` : ''}
           <span class="mute" style="display:block;font-size:11px;margin-top:3px">${when}</span></div>`;
       }).join('')}</div></section>
@@ -601,6 +601,7 @@ function bindAll() {
   });
   const dr = $('#draft'); if (dr) dr.oninput = () => { DRAFT[dr.dataset.d] = dr.value; };
   const cm = $('#cmsg'); if (cm) cm.oninput = () => { CDRAFT[cm.dataset.c] = cm.value; };
+  const ct = $('#ctrans'); if (ct) ct.scrollTop = ct.scrollHeight;   // newest message in view
   document.querySelectorAll('.creply').forEach(b => b.onclick = async () => {
     const id = b.dataset.c, box = $('#cmsg'), text = (box ? box.value : '').trim();
     if (text.length < 2) return toast('Write a message first.', true);
