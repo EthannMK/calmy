@@ -116,6 +116,10 @@ CREATE TABLE IF NOT EXISTS bookings (
     customer_id TEXT,
     PRIMARY KEY (ref, leg)
 );
+CREATE TABLE IF NOT EXISTS airspace_alerts (
+    id TEXT PRIMARY KEY,
+    airport TEXT, label TEXT, points INTEGER, created_by TEXT, created_at REAL
+);
 CREATE TABLE IF NOT EXISTS staff (
     id TEXT PRIMARY KEY,
     name TEXT, title TEXT, email TEXT, initials TEXT, notify INTEGER DEFAULT 1
@@ -229,7 +233,7 @@ def reset():
     """Wipe everything and reseed. Backs the Reset demo data button."""
     with conn() as c:
         for t in ("decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules",
-                  "customers", "payment_methods", "wallet_tx", "bookings", "staff"):  # api_usage is kept
+                  "customers", "payment_methods", "wallet_tx", "bookings", "staff", "airspace_alerts"):  # api_usage is kept
             c.execute(f"DELETE FROM {t}")
         seed(c)
 

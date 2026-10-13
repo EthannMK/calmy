@@ -91,6 +91,18 @@ Extra costs (meals, a hotel, a taxi) can be claimed with a receipt after a delay
 
 The risk score adds up readable signals, each with its points: cover bought while a delay was already likely, several covers bought on one profile within 2 hours, a changed flight time, a payment card or account shared by different customers, and a claim paid on the profile in the last 12 months. The points wallet belongs to one customer and is never counted as a shared account. A real card saved on several customer accounts is a signal.
 
+## 8b. Why AI here, and who gains
+
+Rules decide the money. A delay of 3 hours pays $40. That is a rule on purpose, because it is cheap, instant and auditable. AI works on what rules cannot: ranking odd cases, writing a clear message for each traveler, and forecasting delays.
+
+Delay forecast. Each flight gets a delay chance from weather, airport traffic, time of day, the airline and route history, the aircraft type when known, the current delay, and any airspace alert set by a person. Every driver is shown in plain words. In this prototype the history values are simulated and the score is not a trained model. In production the same inputs feed a model trained on saved flight history.
+
+Selling bands. Under 55%: cover is sold normally. 55% to 79%: cover is sold, the traveler gets an early warning, and a claim gets an extra check by a person. 80% or more: delay cover is closed for that flight and baggage stays open. The traveler is told why. The threshold is set in the console under Rules.
+
+Who gains. The insurer gains first: fewer claims on losses that are already known, and a fair book for everyone who bought earlier. The traveler gains an early alert and an honest "closed" message instead of buying cover that would not pay. A distribution partner such as an airline or booking site gains from a better insurance attach rate and fewer complaints.
+
+Airspace alerts. A person at the insurer marks an airport as disrupted. It adds 15 or 30 points to the forecast and shows as a named driver. It is a judgement by a person, not a scraped news feed.
+
 ## 9. Real scenarios
 
 1. Pim, round trip BKK to CNX, both covers. Her outbound flight is 3h 20m late. She is paid 5,000 points in seconds, worth $50 at the airport. She spends 2,400 on a sleep pod, then cashes out the rest to a saved card for $20.80.

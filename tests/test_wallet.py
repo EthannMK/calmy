@@ -195,3 +195,16 @@ def test_delay_cover_closes_when_a_delay_is_already_very_likely_but_baggage_stay
     assert refused.status_code == 400 and "closed" in refused.json()["detail"]
     assert client.post(f"/api/traveler/{pid}/checkout", json={"delay": False, "baggage": True, "ack": True}).status_code == 200
     assert client.put("/api/console/rules?market=TH", json={"values": {"close_cover_at": 20}}).status_code == 400
+
+
+def test_airspace_alert_adds_a_forecast_driver_and_can_close_cover():
+    base = client.get("/api/console/exposure").json()["flights"]
+    f = next(x for x in base if x["flight"] == FL)
+    r = client.post("/api/console/airspace", json={"airport": FL and f["route"].split(" to ")[0], "label": "Airspace closed over the region", "level": "severe"})
+    assert r.status_code == 200
+    after = next(x for x in client.get("/api/console/exposure").json()["flights"] if x["flight"] == FL)
+    assert after["probability"] > f["probability"] and any("Airspace alert" in d["text"] for d in after["drivers"])
+    assert client.post("/api/console/airspace", json={"airport": "BANGKOK", "label": "x" * 5}).status_code == 400
+    client.delete(f"/api/console/airspace/{r.json()['id']}")
+    back = next(x for x in client.get("/api/console/exposure").json()["flights"] if x["flight"] == FL)
+    assert back["probability"] == f["probability"]

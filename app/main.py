@@ -832,6 +832,7 @@ def demo_cover_sample(body: SampleCover):
 @app.post("/api/demo/reset")
 def demo_reset():
     db.reset()
+    forecast.invalidate_airspace()
     return {"ok": True}
 
 
@@ -956,7 +957,8 @@ def exposure():
             out.append({"flight": f["code"], "route": f"{f['origin']} to {f['dest']}", "covered": len(pols), "probability": fc["probability"],
                         "level": fc["level"], "drivers": [{"text": t, "points": pts} for t, pts in fc["drivers"]],
                         "expected_usd": round(exp, 2), "price_now": pr["current"], "price_suggested": pr["suggested"], "move": pr["move"],
-                        "stress": int(f.get("stress") or 0)})
+                        "stress": int(f.get("stress") or 0),
+                        "band": forecast.band(fc["probability"], rules["close_cover_at"])})
         premium = sum(markets.to_usd(r["premium"], r["currency"]) for r in db.rows(c, "SELECT premium, currency FROM policies WHERE status='active'"))
     reserve = total + 1.28 * (var ** 0.5)
     return {"expected_usd": round(total, 2), "reserve_usd": round(reserve), "premium_usd": round(premium),

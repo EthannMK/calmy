@@ -14,6 +14,24 @@ HEAVY_SHARE = 0.35     # share of delays that last 3 hours or more, used to size
 TARGET_LOSS_RATIO = 0.6
 
 
+_air = {"at": 0.0, "rows": []}
+
+
+def airspace(airport: str) -> list[dict]:
+    """Active airspace alerts the insurer has set for an airport. Cached for a few seconds because the forecast runs per flight."""
+    import time
+    from . import db
+    if time.time() - _air["at"] > 3:
+        with db.conn() as c:
+            _air["rows"] = db.rows(c, "SELECT airport,label,points FROM airspace_alerts")
+        _air["at"] = time.time()
+    return [r for r in _air["rows"] if r["airport"] == airport]
+
+
+def invalidate_airspace() -> None:
+    _air["at"] = 0.0
+
+
 def _h(s: str) -> int:
     return int(hashlib.sha256(s.encode()).hexdigest(), 16)
 
@@ -38,6 +56,8 @@ def compute(flight: dict) -> dict:
         drivers.append((f"Thunderstorm building near {origin}", 22 if stress == 1 else 38))
     if stress >= 2:
         drivers.append((f"Queue of departures at {origin} growing", 12))
+    for a in airspace(origin) + ([] if flight.get("dest") == origin else airspace(flight.get("dest", ""))):
+        drivers.append((f"Airspace alert near {a['airport']}: {a['label']}", a["points"]))
     cong = 4 + _h(origin) % 7
     drivers.append((f"Usual traffic at {origin}", cong))
     # History drivers. Prototype values are derived from the code so they are stable but not real. In the cloud

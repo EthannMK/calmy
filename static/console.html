@@ -206,16 +206,22 @@ function exposureStrip() {
       <div><div class="mute" style="font-size:12px">Reserve to hold (about 9 in 10 cases)</div><div class="disp" style="font-size:22px">${usd(EXP.reserve_usd)}</div></div>
       <div><div class="mute" style="font-size:12px">Flights at high delay risk</div><div class="disp" style="font-size:22px;color:${hot.length ? 'var(--amber-d)' : 'var(--green)'}">${hot.length ? hot.map(f => esc(f.flight)).join(', ') : 'None'}</div></div></div></section>`;
 }
-function vExposure() {
+async function vExposure() {
+  const AL = await api('/api/console/airspace').catch(() => []);
   if (!EXP) return head('Exposure forecast', '') + empty('error', 'Not available', 'Try again in a moment.');
   const e = EXP, covered = e.flights.filter(f => f.covered > 0);
-  const lvl = f => `<span class="chip ${f.level === 'high' ? 'held' : f.level === 'medium' ? 'blue' : 'paid'}"><i></i>${f.level === 'high' ? 'High' : f.level === 'medium' ? 'Medium' : 'Low'}</span>`;
+  const lvl = f => `<span class="chip ${f.level === 'high' ? 'held' : f.level === 'medium' ? 'blue' : 'paid'}"><i></i>${f.level === 'high' ? 'High' : f.level === 'medium' ? 'Medium' : 'Low'}</span>${f.band === 'closed' ? ' <span class="chip red">Cover closed</span>' : ''}`;
   const kpi = (k, ic, v, sub) => `<div><div class="k">${k}${ico(ic, 'mute')}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
   return head('Exposure forecast', 'What the book may pay out on trips that have not flown yet, and what each flight should cost today.') + `
   <div class="panel kpis" style="margin-bottom:20px">${kpi('Expected payouts', 'payments', usd2(e.expected_usd), covered.length + (covered.length === 1 ? ' flight with cover' : ' flights with cover'))}
     ${kpi('Reserve to hold', 'shield', usd(e.reserve_usd), 'Expected plus a safety margin')}
     ${kpi('Premium written', 'verified_user', usd(e.premium_usd), 'All active policies')}
     ${kpi('Flights at high risk', 'warning', e.flights.filter(f => f.level === 'high').length, 'Delay chance of 55% or more')}</div>
+  <section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Airspace alerts</h2><span class="push mute">Set by a person. Adds a visible driver to the delay forecast for flights to or from that airport.</span></div><div class="pb">
+    <div class="form" style="grid-template-columns:90px minmax(0,1fr) 150px auto;display:grid;align-items:end;gap:10px"><label>Airport<input id="asAp" class="field mono" maxlength="3" placeholder="BKK" style="text-transform:uppercase"></label>
+      <label>What is happening<input id="asLabel" class="field" maxlength="80" placeholder="Airspace closed over the region"></label>
+      <label>Impact<select id="asLvl" class="field"><option value="moderate">Moderate, +15</option><option value="severe">Severe, +30</option></select></label><button class="btn primary" id="asAdd">Add alert</button></div>
+    ${AL.length ? AL.map(a => `<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line2)"><b class="mono">${esc(a.airport)}</b><span style="flex:1">${esc(a.label)}</span><span class="chip held">+${a.points}</span><span class="mute" style="font-size:12px">${esc(a.created_by)}</span><button class="btn sm" data-asdel="${esc(a.id)}">Remove</button></div>`).join('') : '<p class="mute" style="margin:12px 0 0">No alerts. Flights are scored on weather, traffic, history and current delay only.</p>'}</div></section>
   <section class="panel"><div class="ph"><h2>Flights by delay risk</h2>${aiChip('KODA AI')}<span class="push mute">${esc(e.method)}</span></div>
     <div class="tbl"><table><thead><tr><th>Flight</th><th>Risk</th><th>Chance of delay</th><th class="r">Covered</th><th class="r">Expected payout</th><th class="r">Price now</th><th class="r">Suggested price</th></tr></thead><tbody>
     ${e.flights.map(f => `<tr style="vertical-align:top"><td><b class="mono">${esc(f.flight)}</b><div class="mute" style="font-size:12px">${esc(f.route)}</div></td><td>${lvl(f)}</td>
@@ -528,6 +534,8 @@ function bindAll() {
   const ps = $('#pfSave'); if (ps) ps.onclick = async () => {
     try { ME = await api('/api/console/staff/' + ME.id, 'PUT', {name: $('#pfName').value, title: $('#pfTitle').value, email: $('#pfEmail').value, notify: $('#pfNotify').checked}); $('#pfMsg').textContent = 'Saved.'; toast('Profile saved.', 'ok'); last = ''; await refresh(); } catch (e) { fail(e); }
   };
+  const asb = $('#asAdd'); if (asb) asb.onclick = async () => { try { await api('/api/console/airspace', 'POST', {airport: $('#asAp').value, label: $('#asLabel').value, level: $('#asLvl').value}); toast('Alert added. The forecast now counts it.', 'ok'); EXP = await api('/api/console/exposure'); } catch (e) { return fail(e); } last = ''; refresh(); };
+  document.querySelectorAll('[data-asdel]').forEach(b => b.onclick = async () => { try { await api('/api/console/airspace/' + b.dataset.asdel, 'DELETE'); toast('Alert removed.', 'ok'); EXP = await api('/api/console/exposure'); } catch (e) { fail(e); } last = ''; refresh(); });
   const sv = $('#saveRules');
   if (sv) sv.onclick = async () => {
     const values = {}; document.querySelectorAll('[data-rule]').forEach(i => values[i.dataset.rule] = +i.value);

@@ -162,3 +162,52 @@ def staff_update(sid: str, body: StaffUpdate):
                   (st["name"], st["title"], st["email"], st["initials"], st["notify"], sid))
         db.log(c, None, "staff_updated", {"staff": sid, "name": st["name"]})
         return st
+
+
+# ---------------------------------------------------------------- airspace alerts
+
+class Airspace(BaseModel):
+    airport: str
+    label: str
+    level: str = "moderate"  # moderate adds 15 points to the delay chance, severe adds 30
+
+
+@router.get("/airspace")
+def airspace_list():
+    with db.conn() as c:
+        return db.rows(c, "SELECT * FROM airspace_alerts ORDER BY created_at DESC")
+
+
+@router.post("/airspace")
+def airspace_add(body: Airspace, x_staff: str | None = Header(None)):
+    """The insurer marks an airport region as disrupted, for example closed airspace or a security incident.
+    It is a person's judgement, not a scraped news feed, and it adds a readable driver to the delay forecast."""
+    import re
+    import secrets
+    from . import forecast
+    ap = body.airport.strip().upper()
+    if not re.fullmatch(r"[A-Z]{3}", ap):
+        raise HTTPException(400, "Enter a three letter airport code such as BKK.")
+    label = body.label.strip()
+    if not 3 <= len(label) <= 80:
+        raise HTTPException(400, "Describe the disruption in 3 to 80 characters.")
+    if body.level not in ("moderate", "severe"):
+        raise HTTPException(400, "Choose moderate or severe.")
+    with db.conn() as c:
+        st = db.one(c, "SELECT name FROM staff WHERE id=?", (x_staff,)) if x_staff else None
+        aid = "AS-" + secrets.token_hex(3).upper()
+        c.execute("INSERT INTO airspace_alerts VALUES (?,?,?,?,?,?)", (aid, ap, label, 30 if body.level == "severe" else 15, (st or {}).get("name", "Staff"), time.time()))
+        db.log(c, None, "airspace_alert_added", {"airport": ap, "label": label, "level": body.level})
+    forecast.invalidate_airspace()
+    return {"id": aid}
+
+
+@router.delete("/airspace/{aid}")
+def airspace_remove(aid: str):
+    from . import forecast
+    with db.conn() as c:
+        if not c.execute("DELETE FROM airspace_alerts WHERE id=?", (aid,)).rowcount:
+            raise HTTPException(404, "alert not found")
+        db.log(c, None, "airspace_alert_removed", {"id": aid})
+    forecast.invalidate_airspace()
+    return {"ok": True}
