@@ -31,19 +31,98 @@
   .desk iframe{flex:1;border:0;width:100%;min-height:0}
   .tabs{display:none}
   #toast{position:fixed}
-  @media(max-width:1000px){
-    body{overflow:auto}
-    .stage{grid-template-columns:1fr;grid-template-rows:auto auto;padding:12px}
-    .tabs{display:flex;gap:6px;padding:10px 12px 0}.tabs button{flex:1;height:36px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600}
-    .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-    .side{display:none}.side.show{display:flex}
-    .phone{flex:none;height:830px}.desk{flex:none;height:830px}
+
+  /* Opening card: the problem, the AI, and what changes, before the demo itself. It is the first thing a judge
+     sees and then gets out of the way. Class names are prefixed because ui.css owns .col, .cols and .ai. */
+  #why{position:fixed;inset:0;z-index:60;background:var(--navy);color:#fff;display:flex;overflow-y:auto}
+  #why[hidden]{display:none}
+  .w-in{max-width:1180px;width:100%;margin:auto;padding:26px 30px 24px;display:grid;gap:20px}
+  .w-head{display:grid;gap:8px;max-width:800px}
+  .w-head h1{font-family:'Figtree',sans-serif;font-weight:800;font-size:clamp(26px,2.9vw,38px);line-height:1.03;letter-spacing:-.035em;margin:0;color:#fff}
+  .w-head h1 i{font-style:normal;color:var(--amber)}
+  .w-lede{font-size:15px;line-height:1.5;color:#C9D6E8;max-width:66ch;margin:0}
+  .w-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+  .w-col{padding:0 24px;border-left:1px solid var(--navy-line);min-width:0}
+  .w-col:first-child{padding-left:0;border-left:0}
+  .w-col:last-child{padding-right:0}
+  .w-col h2{font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:none;color:var(--navy-mute);margin:0 0 9px}
+  .w-col.w-ai h2{color:#7FC4FF}
+  .w-col.w-now h2{color:#7FE3B8}
+  .w-col p{font-size:13.5px;line-height:1.5;color:#DCE5F2;margin:0 0 9px}
+  .w-col p:last-child{margin-bottom:0}
+  .w-col p b{color:#fff;font-weight:600}
+  /* The only numbers on the card, read from the running demo rather than typed in. */
+  .w-figs{display:grid;gap:13px}
+  .w-fig b{display:block;font-family:'Figtree',sans-serif;font-weight:800;font-size:25px;letter-spacing:-.03em;line-height:1.05;color:#7FE3B8;font-variant-numeric:tabular-nums}
+  .w-fig span{display:block;font-size:12.5px;color:#C9D6E8;line-height:1.4;margin-top:2px}
+  .w-who{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid var(--navy-line);padding-top:16px}
+  .w-who div{padding:0 24px;border-left:1px solid var(--navy-line);font-size:12.5px;line-height:1.45;color:#C9D6E8}
+  .w-who div:first-child{padding-left:0;border-left:0}
+  .w-who b{display:block;color:#fff;font-size:13px;margin-bottom:2px}
+  .w-foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .w-go{background:var(--amber);color:var(--navy);border:0;border-radius:9px;height:44px;padding:0 22px;font-size:15px;font-weight:700;cursor:pointer;flex-shrink:0}
+  .w-go:hover{background:#FFC93C}
+  .w-note{font-size:12px;color:var(--navy-mute);max-width:60ch;line-height:1.45;margin:0}
+  @media(max-width:900px){
+    .w-cols,.w-who{grid-template-columns:1fr}
+    .w-col,.w-who div{padding:16px 0 0;border-left:0;border-top:1px solid var(--navy-line)}
+    .w-col:first-child,.w-who div:first-child{padding-top:0;border-top:0}
   }
 </style>
 </head>
 <body>
+<section id="why" aria-labelledby="whyTitle">
+  <div class="w-in">
+    <div class="w-head">
+      <span class="wordmark" role="img" aria-label="KODA" style="font-size:19px"><i>K</i><i>O</i><i>D</i><i>A</i></span>
+      <h1 id="whyTitle">Your flight is delayed.<br><i>Your payout isn't.</i></h1>
+      <p class="w-lede">A delay is already a fact in an airline data feed, so the claim should not exist. KODA is flight
+        cover that pays by itself, with an insurer desk where a person sees every decision and the reason behind it.</p>
+    </div>
+
+    <div class="w-cols">
+      <div class="w-col">
+        <h2>The problem today</h2>
+        <p>A delay claim takes about <b>14 days</b> and costs an insurer roughly <b>US$41</b> to settle by hand.</p>
+        <p>So a small payout is not worth the forms. Most travelers never claim, the insurer keeps premium it never pays
+          out, and the customer decides insurance does not work.</p>
+        <p>At the desk the claim arrives as email and attachments, with no single view of the case and no record of why
+          it was flagged.</p>
+      </div>
+      <div class="w-col w-ai">
+        <h2>What the AI does</h2>
+        <p>A <b>trained model</b> on 336,776 real flights scores the delay risk of every flight, so the traveler is
+          warned early and the insurer can price and reserve for it.</p>
+        <p>Published rules pay automatically. A readable risk score decides when to stop and ask a person.</p>
+        <p><b>Three agents</b> do what rules cannot: investigate a held case with read-only tools, advise the reviewer
+          with the evidence, and answer the traveler from their own policy, handing over to a person on request.</p>
+        <p>No model decides money. The system can pay or hold. <b>Only a person can decline.</b></p>
+      </div>
+      <div class="w-col w-now">
+        <h2>What changes, live from this demo</h2>
+        <div class="w-figs">
+          <div class="w-fig"><b id="f1">&mdash;</b><span id="f1l">claims paid with no human step</span></div>
+          <div class="w-fig"><b id="f2">&mdash;</b><span id="f2l">documents asked of travelers</span></div>
+          <div class="w-fig"><b id="f3">&mdash;</b><span id="f3l">to administer a policy, against US$41 by hand</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="w-who">
+      <div><b>The traveler</b>No forms, money in seconds, a plain reason, and a person whenever they ask for one.</div>
+      <div><b>The insurer</b>One queue instead of an inbox. Each held case arrives investigated, and every decision is signed and logged.</div>
+      <div><b>The airline or booking site</b>Cover sold at their own checkout, with no claims desk to run.</div>
+    </div>
+
+    <div class="w-foot">
+      <button class="w-go" id="whyGo">Start the live demo</button>
+      <p class="w-note">Real flight data where we can get it. Payouts, tickets bought through our own checkout and the
+        airport partner outlets are simulated and labelled. No real money moves.</p>
+    </div>
+  </div>
+</section>
 <header class="bar"><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><span class="t">Live demo: one traveler, one insurer</span>
-  <div class="push"><button id="reset">Reset demo</button><a href="/">Exit</a></div></header>
+  <div class="push"><button id="whyOpen">Why this exists</button><button id="reset">Reset demo</button><a href="/">Exit</a></div></header>
 <div class="tabs" id="tabs"><button data-t="phone" class="on">Traveler</button><button data-t="desk">Insurer</button></div>
 <main class="stage">
   <section class="side show" id="s-phone"><div class="cap"><b>Traveler</b><em>George, on the phone</em></div><div class="phone"><div class="dev" id="dev"><iframe id="phone" data-src="/traveler?embed=1" title="Traveler app"></iframe></div></div></section>
@@ -59,6 +138,36 @@ async function boot() {
   try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'traveler', id: 'CU-GEORGE'}); store.set('calmy.token', r.token); } catch (e) {}
   phone.src = phone.dataset.src; desk.src = desk.dataset.src;
 }
+/* The opening card. Shown first, dismissed into the demo, and reachable again from the bar.
+   Its three figures are read from the running demo, so they are never a typed-in claim. */
+async function fillFigures() {
+  // The shared api() helper sends the traveler token on this path, and the overview is a console endpoint,
+  // so the staff session is passed explicitly here.
+  let o;
+  try {
+    const r = await fetch('/api/console/overview', {headers: {'X-Session': store.get('koda.token') || ''}});
+    if (!r.ok) return;                      // leave the dashes rather than show an invented number
+    o = await r.json();
+  } catch (e) { return; }
+  const p = o.performance || {}, s = o.stats || {};
+  if (p.decisions) {   // the same two figures the Overview page shows, so the card cannot contradict the desk
+    $('#f1').textContent = `${p.auto_paid} of ${p.decisions}`;
+    $('#f1l').textContent = `decisions paid with no human step. ${s.held} held for a person, and none declined by the system.`;
+  }
+  $('#f2').textContent = p.documents_asked != null ? p.documents_asked : '0';
+  $('#f2l').textContent = 'documents asked of travelers. No form, no receipt, no letter from the airline.';
+  if (p.admin_cost_usd != null) {
+    $('#f3').textContent = 'US$' + p.admin_cost_usd.toFixed(2);
+    $('#f3l').textContent = `to administer a policy, against US$${p.manual_cost_usd} by hand. Measured across ${p.covered_total} policies in this demo.`;
+  }
+}
+const showWhy = on => { $('#why').hidden = !on; if (on) fillFigures(); };
+// /judge?skip=1 opens straight into the demo, for a recording that must not start on the card.
+if (new URLSearchParams(location.search).get('skip')) showWhy(false);
+$('#whyGo').onclick = () => showWhy(false);
+$('#whyOpen').onclick = () => showWhy(true);
+addEventListener('keydown', e => { if (e.key === 'Escape') showWhy(false); });
+
 $('#reset').onclick = async () => {
   try { await api('/api/demo/reset', 'POST'); await boot(); toast('Demo data reset.', 'ok'); } catch (e) { fail(e); }
 };
@@ -75,7 +184,7 @@ function fit() {
   box.style.width = Math.ceil(408 * s) + 'px';
 }
 addEventListener('resize', fit);
-boot().then(fit);
+boot().then(() => { fit(); fillFigures(); });
 setTimeout(fit, 400);
 </script>
 </body>
