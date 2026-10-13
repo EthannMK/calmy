@@ -127,6 +127,19 @@ CREATE TABLE IF NOT EXISTS staff (
 CREATE TABLE IF NOT EXISTS auth_codes (
     id TEXT PRIMARY KEY, kind TEXT, subject TEXT, hash TEXT, expires REAL, tries INTEGER DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS chats (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT, status TEXT DEFAULT 'open',
+    mode TEXT DEFAULT 'bot',               -- bot | human
+    assigned_to TEXT,                      -- name of the staff member who took over
+    waiting INTEGER DEFAULT 0,             -- the traveler is waiting for a person
+    created_at REAL, updated_at REAL
+);
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY,
+    chat_id TEXT, role TEXT,               -- traveler | bot | staff | system
+    author TEXT, text TEXT, meta TEXT, ts REAL
+);
 CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY, kind TEXT, subject TEXT, role TEXT, created REAL, last_seen REAL
 );
@@ -252,7 +265,7 @@ def seed_rules(c):
 def reset():
     """Wipe everything and reseed. Backs the Reset demo data button."""
     with conn() as c:
-        for t in ("decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules",
+        for t in ("chat_messages", "chats", "decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules",
                   "customers", "payment_methods", "wallet_tx", "bookings", "staff", "airspace_alerts"):  # api_usage is kept
             c.execute(f"DELETE FROM {t}")
         seed(c)

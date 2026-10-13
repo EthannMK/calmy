@@ -268,3 +268,72 @@ def add_cover(body: AddCoverBody, request: Request):
     q = main.create_policy(main.NewPolicy(name=passenger, flight=body.flight, booking_ref=body.ref, customer=cid, channel=channel), request)
     r = main.checkout(q["policy"], main.Checkout(delay=body.delay, baggage=body.baggage, ack=True))
     return {"policy": q["policy"], "total": r["total"]}
+
+
+# ----------------------------------------------------------------------------- support chat
+
+class ChatSay(BaseModel):
+    text: str = Field(..., min_length=1, max_length=600)
+
+
+@router.get("/api/app/chat")
+def chat_get(request: Request):
+    cid = _cid(request)
+    from . import chat
+    with db.conn() as c:
+        ch = chat.open_chat(c, cid)
+        return chat.state(c, ch["id"])
+
+
+@router.post("/api/app/chat")
+def chat_post(body: ChatSay, request: Request):
+    from . import chat
+    return chat.traveler_says(_cid(request), body.text.strip())
+
+
+@router.post("/api/app/chat/person")
+def chat_person(request: Request):
+    """The traveler asks for a human. The chat is flagged for the insurer and the assistant steps back."""
+    from . import chat
+    return chat.ask_for_person(_cid(request))
+
+
+@router.get("/api/app/cover/{policy}")
+def cover_detail(policy: str, request: Request):
+    """What this trip's cover pays and what it does not, for the coverage visualizer."""
+    cid = _cid(request)
+    with db.conn() as c:
+        p = db.one(c, "SELECT * FROM policies WHERE id=?", (policy,))
+        if not p or p["customer_id"] != cid:
+            raise HTTPException(404, "Trip not found.")
+        f = db.one(c, "SELECT * FROM flights WHERE code=?", (p["flight"],)) or {}
+        rules = engine.get_rules(c, p["market"] or "SG")
+        d = db.one(c, "SELECT status, amount, points FROM decisions WHERE policy_id=? AND kind='delay'", (policy,))
+        bag = db.one(c, "SELECT status, total FROM baggage WHERE policy_id=?", (policy,))
+        cur = p["currency"] or markets.DEMO_CURRENCY
+        delay = int(f.get("delay_minutes") or 0)
+        covered, not_covered = [], []
+        (covered if p["delay_cover"] else not_covered).append(
+            {"what": "Delay", "detail": f"{engine.money(rules['delay_tier1_payout'], cur)} from {int(rules['delay_tier1_minutes'])} minutes, "
+                                        f"{engine.money(rules['delay_tier2_payout'], cur)} from {int(rules['delay_tier2_minutes'])} minutes"})
+        (covered if p["delay_cover"] else not_covered).append(
+            {"what": "Cancelled flight", "detail": f"{engine.money(rules['cancel_payout'], cur)}, paid the same way"})
+        (covered if p["baggage_cover"] else not_covered).append(
+            {"what": "Bag not delivered", "detail": f"Up to {engine.money(rules['lost_bag_payout'], cur)} against the airline's report"})
+        (covered if p["delay_cover"] else not_covered).append(
+            {"what": "Extra costs after a delay", "detail": f"Receipts up to {engine.money(engine.extra_limits(rules)[1], cur)} in total"})
+        return {
+            "policy": policy, "flight": {k: f.get(k) for k in ("code", "airline", "origin", "dest", "depart_label", "delay_minutes", "cancelled")},
+            "booking": p["pnr"], "currency": cur, "cover": "both" if p["delay_cover"] and p["baggage_cover"] else "delay" if p["delay_cover"]
+                       else "baggage" if p["baggage_cover"] else "none",
+            "premium": p["premium"], "rules": dict(rules), "delay_minutes": delay,
+            "covered": covered, "not_covered": not_covered,
+            "never_covered": [
+                "A delay you already knew about when you bought cover",
+                "Missing your flight for your own reasons, or a visa or boarding refusal",
+                "Items not in a checked bag, cash and documents",
+                "A trip you cancel yourself",
+            ],
+            "claim": ({"status": d["status"], "amount": d["amount"], "points": d["points"]} if d else None),
+            "bag_claim": ({"status": bag["status"], "declared": bag["total"]} if bag else None),
+        }

@@ -22,8 +22,8 @@
   .bk .ms{transform:scaleX(-1);font-size:19px}
   .bk[hidden]{display:none}
   .ttl{font-family:'Figtree',sans-serif;font-weight:700;font-size:16px;letter-spacing:-.01em}
-  .top .push{margin-left:auto;display:flex;align-items:center;gap:8px}
-  .ptchip{font-size:12px;font-weight:700;background:#0F3470;color:#fff;border-radius:99px;padding:4px 9px;white-space:nowrap}
+  .top .push{margin-left:auto;display:flex;align-items:center;gap:7px;min-width:0}
+  .ptchip{font-size:11.5px;font-weight:700;background:#0F3470;color:#fff;border-radius:99px;padding:4px 8px;white-space:nowrap;max-width:112px;overflow:hidden;text-overflow:ellipsis}
   .av{width:31px;height:31px;border-radius:50%;background:var(--amber);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
   #view{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 15px 20px;display:flex;flex-direction:column;gap:13px;scrollbar-width:none}
   #view::-webkit-scrollbar{display:none}
@@ -40,7 +40,7 @@
   .who .ava{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;flex-shrink:0}
   .who b{display:block;font-size:15px;letter-spacing:-.01em}
   .who small{display:block;font-size:12px;color:var(--mute);margin-top:1px}
-  .who .ms{margin-left:auto;color:var(--faint);font-size:20px;transform:scaleX(1)}
+  .who .ms.go{margin-left:auto;color:var(--faint);font-size:18px}
 
   /* ---- trip row */
   .trip{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px;display:grid;gap:9px}
@@ -180,7 +180,42 @@
   .pushbn b{display:block;font-size:11.5px;color:#FFC93C;margin-bottom:1px}
   .pushbn .ms{font-size:19px;color:#FFC93C;flex-shrink:0}
   [hidden]{display:none!important}
-  .plain{background:#fff;border:0;padding:0;color:var(--ink2);font-size:13px;line-height:1.5}
+  /* chat */
+  .thread{display:flex;flex-direction:column;gap:9px}
+  .bub{max-width:84%;padding:10px 12px;border-radius:14px;font-size:13.5px;line-height:1.45;position:relative}
+  .bub .by{display:block;font-size:11px;font-weight:700;margin-bottom:3px;letter-spacing:.01em}
+  .bub.them{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px}
+  .bub.them .by{color:var(--cobalt)}
+  .bub.human{background:#F3F8FF;border-color:#CBDCFB}
+  .bub.human .by{color:#0A2E6E}
+  .bub.me{background:var(--navy);color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
+  .bub.sys{align-self:center;background:var(--amber-t);border:1px solid #F3D68E;color:#5C3A00;font-size:12.5px;text-align:center;max-width:94%}
+  .bub time{display:block;font-size:10.5px;opacity:.6;margin-top:4px}
+  .whochip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;font-size:12.5px}
+  .whochip .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+  .whochip .dot.wait{background:var(--amber)}
+  .whochip b{font-size:13px}
+  .composer{display:flex;gap:8px;align-items:flex-end}
+  .composer textarea{flex:1;height:46px;max-height:110px;padding:12px;border-radius:12px;font-size:14px;resize:none}
+  .composer button{width:46px;height:46px;border-radius:12px;flex-shrink:0;display:grid;place-items:center}
+  .composer button .ms{transform:rotate(-90deg)}
+  /* cover ladder */
+  .ladder{display:grid;gap:7px}
+  .lrow{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:center;font-size:13px}
+  .lrow .bar{height:10px;border-radius:99px;background:var(--line2);overflow:hidden}
+  .lrow .bar i{display:block;height:100%;border-radius:99px;background:var(--cobalt)}
+  .lrow.on .bar i{background:var(--green)}
+  .lrow .amt{font-family:'Geist Mono',monospace;font-weight:600;font-size:12.5px}
+  .lnow{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:#6B4300;background:var(--amber-t);border:1px solid #F3D68E;border-radius:10px;padding:7px 10px}
+  .yes,.no{display:flex;gap:9px;align-items:flex-start;font-size:13px;padding:7px 0;border-top:1px solid var(--line2)}
+  .yes:first-of-type,.no:first-of-type{border-top:0}
+  .yes .ms{color:var(--green);font-size:18px;flex-shrink:0}
+  .no .ms{color:var(--faint);font-size:18px;flex-shrink:0}
+  .yes b,.no b{display:block;font-size:13.5px}
+  .yes small,.no small{color:var(--mute);font-size:12.5px;line-height:1.4}
+  .plain{background:none;border:0;padding:0;color:var(--ink2);font-size:13px;line-height:1.5}
+  .msgbox{background:var(--cobalt-t);border:1px solid #CBDCFB;color:#0A2E6E;border-radius:11px;padding:11px 13px;font-size:13px;line-height:1.5}
+  .msgbox.good{background:var(--green-t);border-color:#A9DCC4;color:#0B5138}
   h1{font-size:23px;letter-spacing:-.02em}
   .sub{font-size:13px;color:var(--mute);margin-top:5px;line-height:1.5}
 </style>
@@ -214,6 +249,8 @@ const TAB_TITLES = {home: '', claims: 'Claims', wallet: 'Wallet'};
 let H = null;            // /api/app/home payload
 let CS = null;           // /api/customer/{id} payload (methods, vouchers, ledger)
 let SV = null;           // outlets at the airport
+let CH = null;           // the support chat
+let poll = null;         // while the chat is open, a reply from a person shows up by itself
 let tab = 'home';
 let stack = [];          // [{name, ...params}]
 let MODE = {demo: true};
@@ -247,6 +284,12 @@ async function loadWallet(force) {
   if (CS && !force) return;
   try { CS = await api(`/api/customer/${H.customer.id}`); } catch (e) { fail(e); }
 }
+async function loadChat() {
+  try { CH = await api('/api/app/chat'); } catch (e) { fail(e); }
+}
+async function loadCover(policy) {
+  try { form.cover = await api(`/api/app/cover/${policy}`); } catch (e) { fail(e); }
+}
 async function loadOutlets(airport, force) {
   if (SV && SV.airport === airport && !force) return;
   try { SV = await api(`/api/customer/${H.customer.id}/services?airport=${airport}`); } catch (e) { fail(e); }
@@ -269,7 +312,15 @@ function render() {
   if (H) { chip.hidden = false; chip.textContent = Number(H.balance.points).toLocaleString('en-US') + ' pts'; }
   const html = !H ? '<p class="dim">Loading your trips…</p>' : s ? SCREENS[s.name].body(s) : TABS[tab]();
   $('#view').innerHTML = `<div class="fade">${html}</div>`;
-  $('#view').scrollTop = 0;
+  const onChat = s && s.name === 'chat';
+  $('#view').scrollTop = onChat ? $('#view').scrollHeight : 0;
+  clearInterval(poll); poll = null;
+  if (onChat) poll = setInterval(async () => {
+    if (document.hidden || document.activeElement === $('#chText')) return;
+    const was = CH && CH.messages.length, mode = CH && CH.mode;
+    await loadChat();
+    if (CH && (CH.messages.length !== was || CH.mode !== mode)) render();
+  }, 4000);
 }
 function setTab(t) {
   tab = t; stack = []; form = {};
@@ -280,10 +331,10 @@ function setTab(t) {
 /* ---------------------------------------------------------------- shared pieces */
 function whoCard() {
   const c = H.customer;
-  return `<button class="who" data-open="menu">
+  return `<button class="who" data-go="menu" aria-label="Open your profile and the menu">
     <span class="ava">${esc(initials(c.name))}</span>
     <span><b>${esc(c.name)}</b><small>${esc(c.email)} · ${esc(c.market === 'SG' ? 'Singapore' : c.market)}</small></span>
-    <span class="ms" aria-hidden="true">expand_more</span></button>`;
+    <span class="ms go" aria-hidden="true">arrow_forward</span></button>`;
 }
 const STATE_CHIP = {
   covered: ['ok', 'verified_user', 'Covered'],
@@ -322,27 +373,32 @@ const TABS = {};
 TABS.home = () => {
   const up = H.trips.filter(t => t.upcoming), past = H.trips.filter(t => !t.upcoming);
   const next = up[0] && up[0].legs.find(g => !g.departed);
-  return `${whoCard()}
-  ${next && next.risk ? riskStrip(next) : ''}
+  // The forecast belongs to a trip we actually cover. With nothing bought there is nothing to forecast.
+  const watched = next && next.risk && next.policy ? next : null;
+  return `<section><div class="cap">Your account</div>${whoCard()}</section>
+  ${watched ? `<section><div class="cap">Delay forecast</div>${riskStrip(watched)}</section>` : ''}
   <section><div class="cap">Your trips</div>
     ${up.length ? up.map(tripRow).join('') : `<div class="empty"><span class="ic">${ico('flight_takeoff')}</span><b>No trips coming up</b>
       <p>Add a ticket you have already booked, or book a flight with cover here.</p></div>`}
   </section>
-  <section><div class="cap">Add cover to a trip</div>
+  <section><div class="cap">Check or add cover</div>
     <div style="display:grid;gap:8px">
       <button class="door" data-go="check"><span class="ic">${ico('search')}</span>
-        <span><b>I already have a ticket</b><small>Enter your booking reference to see what is covered, and add cover if it is missing.</small></span>${ico('arrow_forward')}</button>
+        <span><b>Check a ticket or a cover</b><small>Any booking reference: an airline, a travel site, or a partner that sells KODA cover. See exactly what is covered, and add what is missing.</small></span>${ico('arrow_forward')}</button>
       <button class="door" data-go="buy"><span class="ic">${ico('flight_takeoff')}</span>
-        <span><b>I need a flight</b><small>Book through our partner checkout and cover is added at the same time.</small></span>${ico('arrow_forward')}</button>
+        <span><b>Book a flight with cover</b><small>No ticket yet? Book through our partner checkout and the cover is added at the same time.</small></span>${ico('arrow_forward')}</button>
     </div>
-    <p class="dim" style="margin-top:8px">KODA is the insurer. Cover is sold against a booking, so a ticket comes first.</p>
+    <p class="dim" style="margin-top:8px">KODA is the insurer behind the cover, whether you bought it here or through one of our partners. Cover always belongs to a booking, so a ticket comes first.</p>
   </section>
+  <section><div class="cap">Questions</div>
+    <button class="door" data-go="chat"><span class="ic">${ico('support_agent')}</span>
+      <span><b>Ask about your cover</b><small>Our assistant answers from your own policy. A person at Flightwise can join the same chat whenever you want one.</small></span>${ico('arrow_forward')}</button></section>
   ${past.length ? `<section><div class="cap">Past trips</div>${past.map(tripRow).join('')}</section>` : ''}`;
 };
 function riskStrip(g) {
   const r = g.risk, lvl = {low: 'Low', medium: 'Medium', high: 'High'}[r.level] || r.level;
   return `<section class="card fc ${r.level}">
-    <div class="cap" style="display:flex;align-items:center;gap:6px">Delay forecast for ${esc(g.flight.code)}
+    <div class="cap" style="display:flex;align-items:center;gap:6px"><span class="mono">${esc(g.flight.code)}</span>, ${esc(g.flight.origin)} to ${esc(g.flight.dest)}
       <span class="st ${r.level === 'high' ? 'warn' : 'info'}" style="margin-left:auto">${lvl} risk</span></div>
     <div class="fcbar"><i style="width:${r.probability}%"></i></div>
     <p class="plain mute">${r.probability}% chance of a delay over 30 minutes. ${r.band === 'closed' ? 'Delay cover is closed on this flight because a delay is already likely.' : 'Our model reads the schedule, the route, the weather and airspace alerts.'}</p>
@@ -380,7 +436,7 @@ TABS.wallet = () => {
   return `<section class="bal"><small>KODA points</small><b>${Number(b.points).toLocaleString('en-US')}</b>
     <div class="two"><span>Spend at the airport <b>${sgd(b.spend_usd)}</b></span><span>As cash <b>${sgd(b.cash_usd)}</b></span></div></section>
   <div class="row2">
-    <button class="btn primary" data-go="spend" style="flex:1">Spend at ${esc(SV ? SV.airport : homeAirport())}</button>
+    <button class="btn primary" data-go="spend" style="flex:1">Spend at the airport</button>
     <button class="btn" data-go="cashout" style="flex:1">Cash out</button>
   </div>
   ${ready.length ? `<section><div class="cap">Ready to scan</div>${ready.slice(0, 3).map(v => `<button class="out" data-voucher="${esc(v.id)}">
@@ -407,16 +463,17 @@ SCREENS.check = {
     const r = form.res;
     if (!r) {
       return `<section><h1>What is covered on your ticket?</h1>
-        <p class="sub">Bought on an airline site, Trip.com, Agoda or anywhere else. Enter the reference from your e-ticket and the last name on it.</p></section>
+        <p class="sub">Works for a ticket from an airline, Trip.com, Agoda or anywhere else, and for KODA cover you bought through one of our partners at checkout. Enter the reference and the last name on it.</p></section>
         <section class="frm">
-          <label>Booking reference<input id="cRef" class="field mono" maxlength="10" placeholder="SG7K2M" value="${esc(form.ref || '')}" autocapitalize="characters"></label>
+          <label>Booking or cover reference<input id="cRef" class="field mono" maxlength="10" placeholder="SG7K2M" value="${esc(form.ref || '')}" autocapitalize="characters"></label>
           <label>Last name<input id="cSur" class="field" maxlength="40" placeholder="Lim" value="${esc(form.sur || '')}"></label>
-          <button class="btn primary" id="cGo">Check my cover</button>
+          <button class="btn primary" id="cGo">Check the cover</button>
         </section>
-        <p class="dim">Your own bookings are already in the app, on the Home tab. This screen is for a ticket that is not there yet.</p>`;
+        <p class="dim">Your own trips are already on the Home tab. Use this for a ticket or a cover that is not there yet.</p>`;
     }
     return `<section><div class="cap">${esc(r.passenger)} · <span class="mono">${esc(r.ref)}</span></div>
-      <p class="sub" style="margin:0">${esc(r.trip)}${r.channel ? ' · booked with ' + esc(r.channel) : ''}</p></section>
+      <p class="sub" style="margin:0">${esc(r.trip)}${r.channel ? ' · ' + (r.channel === 'KODA partner checkout' ? 'booked with cover through KODA' : 'booked with ' + esc(r.channel)) : ''}</p></section>
+      <p class="dim" style="margin:0">${r.legs.some(l => l.cover !== 'none') ? 'KODA is the insurer on this cover, wherever it was sold.' : 'No KODA cover on this booking yet.'}</p>
       ${r.legs.map(l => {
         const f = l.flight, can = (l.missing_addable || []).length;
         return `<section class="card"><div class="cap">${esc(f.origin)} to ${esc(f.dest)} · <span class="mono">${esc(f.code)}</span></div>
@@ -534,6 +591,7 @@ function legCard(g) {
   if (g.can.includes('recheck')) acts.push(`<button class="btn sm" data-recheck="${esc(g.policy)}">Ask us to check again</button>`);
   if (g.can.includes('bag')) acts.push(`<button class="btn sm" data-bag="${esc(g.policy)}">Report a lost bag</button>`);
   if (g.decision) acts.push(`<button class="btn sm" data-claim="${esc(g.policy)}">Open the claim</button>`);
+  if (g.policy) acts.push(`<button class="btn sm" data-cover="${esc(g.policy)}">${ico('shield')} See what this cover pays</button>`);
   return `<section class="card">
     <div class="cap" style="display:flex;align-items:center;gap:8px"><span class="mono">${esc(f.code)}</span><span class="mute" style="font-weight:400">${esc(f.airline)}</span><span class="grow">${chip(g.state)}</span></div>
     <div class="kv"><span>Route</span><b>${esc(f.origin)} to ${esc(f.dest)}</b></div>
@@ -556,10 +614,11 @@ SCREENS.claim = {
         <span class="mute" style="font-weight:400">${esc(f.origin)} to ${esc(f.dest)}</span><span class="grow">${chip(g.state)}</span></div>
       <div class="kv"><span>Departed</span><b>${esc(f.depart_label)}</b></div>
       ${f.cancelled ? `<div class="kv"><span>What happened</span><b>Cancelled</b></div>` : `<div class="kv"><span>Delay</span><b>${hm(f.delay_minutes || 0)}</b></div>`}
-      <div class="kv"><span>Rule</span><b>Pays from ${H.rule.delay_tier1_minutes} minutes</b></div></section>`;
+      <div class="kv"><span>Rule</span><b>Pays from ${H.rule.delay_tier1_minutes} minutes</b></div>
+      <button class="btn sm" style="margin-top:10px" data-cover="${esc(g.policy)}">${ico('shield')} See what this cover pays</button></section>`;
     if (!d) {
       return head + (g.state === 'not_covered' ? `<section class="card"><div class="cap">No payout on this flight</div>
-          <p class="note">The delay we have on record is ${hm(f.delay_minutes || 0)}, under the ${H.rule.delay_tier1_minutes} minute rule, so the cover did not pay.</p>
+          <p class="plain">The delay we have on record is ${hm(f.delay_minutes || 0)}, under the ${H.rule.delay_tier1_minutes} minute rule, so the cover did not pay.</p>
           <button class="btn primary sm" style="margin-top:10px" data-recheck="${esc(g.policy)}">Ask us to check again</button></section>`
         : `<p class="dim">Nothing to claim on this flight.</p>`) + bagBlock(g);
     }
@@ -567,7 +626,7 @@ SCREENS.claim = {
       return head + `<section class="rcpt"><span class="st ok">${ico('check')}Paid</span>
         <div class="amt">${d.points ? Number(d.points).toLocaleString('en-US') : sgd(d.amount)}</div>
         <div class="dim">${d.points ? `points, worth ${sgd(d.amount)} as cash and ${sgd(Math.round(d.points / 100))} at the airport` : 'to your saved card'}</div>
-        <p class="note" style="margin-top:11px">${esc(d.message || d.explanation || '')}</p>
+        <p class="msgbox good" style="margin-top:11px">${esc(d.message || d.explanation || '')}</p>
         ${d.decided_by && d.decided_by !== 'system' ? `<p class="dim" style="margin-top:7px">Approved by ${esc(d.decided_by)} at Flightwise Insurance.</p>` : '<p class="dim" style="margin-top:7px">Paid automatically, with no claim form.</p>'}
       </section>
       <div class="row2"><button class="btn primary" data-go="spend" style="flex:1">Spend at the airport</button><button class="btn" data-go="cashout" style="flex:1">Cash out</button></div>` + bagBlock(g);
@@ -577,11 +636,11 @@ SCREENS.claim = {
         <div class="step"><span class="dot">${ico('check')}</span><span><b>We picked up the flight event</b><small>${esc(f.depart_label)}</small></span></div>
         <div class="step"><span class="dot">${ico('check')}</span><span><b>Checked against your cover</b><small>Would pay ${sgd(d.amount)}</small></span></div>
         <div class="step"><span class="dot wait">${ico('hourglass_top')}</span><span><b>A person is looking at it</b><small>${d.trigger === 'recheck' ? 'You asked us to check again.' : 'Our checks need a human decision.'}</small></span></div>
-        <p class="note" style="margin-top:9px">${esc(d.message || 'We will send you a message here as soon as it is decided.')}</p>
+        <p class="msgbox" style="margin-top:9px">${esc(d.message || 'We will send you a message here as soon as it is decided.')}</p>
         ${d.note ? `<p class="dim" style="margin-top:7px">On file: ${esc(d.note)}</p>` : ''}</section>` + bagBlock(g);
     }
     return head + `<section class="card" style="border-color:#E7B9B5"><span class="st red">${ico('error')}Not paid</span>
-      <p class="note" style="margin-top:9px">${esc(d.message || d.explanation || '')}</p>
+      <p class="msgbox" style="margin-top:9px;background:var(--red-t);border-color:#E7B9B5;color:#7A1D16">${esc(d.message || d.explanation || '')}</p>
       ${d.note ? `<p class="dim" style="margin-top:7px">Note from our team: ${esc(d.note)}</p>` : ''}
       <p class="dim" style="margin-top:7px">Decided by ${esc(d.decided_by || 'a claims officer')}. A person made this call, not the system.</p>
       <button class="btn primary sm" style="margin-top:10px" data-recheck="${esc(g.policy)}">Ask for a second review</button></section>` + bagBlock(g);
@@ -598,7 +657,7 @@ function bagBlock(g) {
   }
   if (g.can && g.can.includes('bag')) {
     return `<section class="card"><div class="cap">Did your bag arrive?</div>
-      <p class="note mute">Baggage cover is on this flight. If a bag did not come out, report it with the airline's report number.</p>
+      <p class="plain mute">Baggage cover is on this flight. If a bag did not come out, report it with the airline's report number.</p>
       <button class="btn sm" style="margin-top:9px" data-bag="${esc(g.policy)}">Report a lost bag</button></section>`;
   }
   return '';
@@ -640,8 +699,11 @@ SCREENS.spend = {
     if (!SV) { loadOutlets(homeAirport()).then(render); return '<p class="dim">Finding partners at your airport…</p>'; }
     const cats = SV.categories, catKey = form.cat || 'all';
     const list = SV.partners.filter(p => catKey === 'all' || (p.category || 'food') === catKey);
-    return `<section class="bal" style="padding:13px 15px"><small>To spend at ${esc(SV.airport)}</small>
+    const ports = (SV.airports && SV.airports.length ? SV.airports : [SV.airport]);
+    return `<section class="bal" style="padding:13px 15px"><small>Your points, anywhere we have partners</small>
       <b style="font-size:28px">${sgd(H.balance.spend_usd)}</b><small>${Number(H.balance.points).toLocaleString('en-US')} points</small></section>
+      ${ports.length > 1 ? `<section><div class="cap">Which airport</div><div class="chips">${ports.map(a => `<button data-port="${esc(a)}" class="${a === SV.airport ? 'on' : ''}">${esc(a)}</button>`).join('')}</div></section>` : ''}
+      <div class="cap">Partners at ${esc(SV.airport)}</div>
       <div class="chips"><button data-cat="all" class="${catKey === 'all' ? 'on' : ''}">All</button>
         ${cats.map(c => `<button data-cat="${esc(c.key)}" class="${catKey === c.key ? 'on' : ''}">${esc(c.label)}</button>`).join('')}</div>
       ${list.length ? list.map(p => {
@@ -651,7 +713,7 @@ SCREENS.spend = {
           <span><b>${esc(p.name)}</b><small>${esc(p.kind)} · ${esc(p.terminal)} · ${p.walk_min} min walk${p.offer ? ' · ' + esc(p.offer) : ''}</small></span>
           <span class="px"><b>${Number(need).toLocaleString('en-US')}</b><small>${sgd(price)}</small></span></button>`;
       }).join('') : `<div class="empty"><span class="ic">${ico('search')}</span><b>Nothing in this group</b><p>Try another group of partners.</p></div>`}
-      <p class="dim">Pick an outlet and we make a QR code. Show it at the counter; the till scans it and the points come off. Demo partners at ${esc(SV.airport)}, fictional names.</p>`;
+      <p class="dim">Pick an outlet and we make a QR code. Show it at the counter; the till scans it and the points come off. Points work at any airport where KODA has partners, not only your departure one. The outlets here are demo partners with made-up names.</p>`;
   },
 };
 
@@ -740,6 +802,73 @@ SCREENS.profile = {
   },
 };
 
+/* --- support chat: the assistant, or a person at Flightwise when one joins */
+SCREENS.chat = {
+  title: () => 'Messages',
+  body: () => {
+    const ch = CH;
+    if (!ch) { loadChat().then(render); return '<p class="dim">Opening your messages…</p>'; }
+    const human = ch.mode === 'human';
+    const me = H.customer.name;
+    return `<section class="whochip"><span class="dot ${ch.waiting && !human ? 'wait' : ''}"></span>
+        <span>You are talking to <b>${esc(ch.with)}</b>${human ? ', Flightwise Insurance' : ''}
+          <br><span class="mute">${human ? 'A person is in this chat. The assistant has stepped back.'
+            : ch.waiting ? 'A person has been asked to join. The assistant can still answer meanwhile.'
+            : 'This is our assistant. It answers from your cover and your flight status, and never decides a claim.'}</span></span></section>
+      <section class="thread">${ch.messages.map(m => {
+        const mine = m.role === 'traveler';
+        const when = new Date(m.ts * 1000).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+        if (m.role === 'system') return `<div class="bub sys">${esc(m.text)}</div>`;
+        return `<div class="bub ${mine ? 'me' : m.role === 'staff' ? 'them human' : 'them'}">
+          <span class="by">${esc(mine ? me : m.role === 'staff' ? m.author + ', Flightwise' : m.author)}</span>
+          ${esc(m.text)}<time>${when}</time></div>`;
+      }).join('')}</section>
+      <section class="composer"><textarea id="chText" maxlength="600" placeholder="${human ? 'Write to ' + esc(ch.with) : 'Ask about your cover, a claim or your points'}" rows="1">${esc(form.draft || '')}</textarea>
+        <button class="btn primary" id="chSend" aria-label="Send">${ico('arrow_forward')}</button></section>
+      <div class="chips">${['What does my cover pay?', 'Where is my claim?', 'How many points do I have?', 'Will my next flight be late?'].map(q => `<button data-quick="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      ${human ? '' : `<button class="btn" id="chPerson">${ico('support_agent')} I would like a person</button>`}
+      <p class="dim">Our assistant can explain your cover and your claim. It cannot approve or decline one, and it will pass you to a person whenever you ask.</p>`;
+  },
+};
+
+/* --- coverage visualizer for one trip */
+SCREENS.cover = {
+  title: () => 'What your cover pays',
+  body: s2 => {
+    const v = form.cover;
+    if (!v) { loadCover(s2.policy).then(render); return '<p class="dim">Loading your cover…</p>'; }
+    const r = v.rules, late = v.delay_minutes || 0, cancelled = v.flight.cancelled;
+    const t1 = +r.delay_tier1_minutes, t2 = +r.delay_tier2_minutes, max = Math.max(t2, late * 1.1, 1);
+    const reached = m => late >= m;
+    const rung = (mins, pay, label) => `<div class="lrow ${reached(mins) ? 'on' : ''}">
+        <span>${label}</span><span class="bar"><i style="width:${Math.min(100, 100 * mins / max).toFixed(1)}%"></i></span>
+        <span class="amt">${sgd(pay)}</span></div>`;
+    return `<section class="card"><div class="cap" style="display:flex;gap:8px;align-items:center"><span class="mono">${esc(v.flight.code)}</span>
+        <span class="mute" style="font-weight:400">${esc(v.flight.origin)} to ${esc(v.flight.dest)}</span>
+        <span class="grow mute" style="font-weight:400">${esc(v.booking || '')}</span></div>
+      <div class="kv"><span>Cover you hold</span><b>${esc({both: 'Delay and baggage', delay: 'Delay only', baggage: 'Baggage only', none: 'No cover'}[v.cover])}</b></div>
+      <div class="kv"><span>You paid</span><b>${sgd(v.premium || 0)}</b></div></section>
+      ${v.cover === 'none' ? '' : `<section class="card"><div class="cap">How a delay pays</div>
+        <div class="ladder">
+          <div class="lrow"><span>On time</span><span class="bar"><i style="width:2%"></i></span><span class="amt">${sgd(0)}</span></div>
+          ${rung(t1, r.delay_tier1_payout, Math.round(t1 / 60) + ' hours late')}
+          ${rung(t2, r.delay_tier2_payout, Math.round(t2 / 60) + ' hours late')}
+          <div class="lrow ${cancelled ? 'on' : ''}"><span>Cancelled</span><span class="bar"><i style="width:100%"></i></span><span class="amt">${sgd(r.cancel_payout)}</span></div>
+        </div>
+        ${late || cancelled ? `<div class="lnow" style="margin-top:10px">${ico('bolt')}${cancelled ? 'This flight was cancelled' : 'This flight is ' + hm(late) + ' late'}${v.claim ? ' · ' + (v.claim.status === 'paid' ? 'paid ' + (v.claim.points ? pts(v.claim.points) : sgd(v.claim.amount)) : v.claim.status === 'held' ? 'with a claims officer' : 'not paid') : late >= t1 ? '' : ' · under the rule, so no payout'}</div>` : ''}
+        <p class="dim" style="margin-top:8px">Paid once per flight. A longer delay moves you up to the higher rung, and we pay the difference.</p></section>`}
+      <section class="card"><div class="cap">What is covered</div>
+        ${v.covered.length ? v.covered.map(x => `<div class="yes">${ico('check')}<span><b>${esc(x.what)}</b><small>${esc(x.detail)}</small></span></div>`).join('')
+          : '<p class="dim">Nothing on this flight yet.</p>'}</section>
+      ${v.not_covered.length ? `<section class="card"><div class="cap">Not on this trip</div>
+        ${v.not_covered.map(x => `<div class="no">${ico('clear')}<span><b>${esc(x.what)}</b><small>${esc(x.detail)}</small></span></div>`).join('')}
+        <p class="dim" style="margin-top:7px">You can add what is missing from the trip, up until the flight leaves.</p></section>` : ''}
+      <section class="card"><div class="cap">Never covered</div>
+        ${v.never_covered.map(x => `<div class="no">${ico('clear')}<span><b>${esc(x)}</b></span></div>`).join('')}</section>
+      <button class="btn" data-ask="${esc(v.flight.code)}">${ico('support_agent')} Ask about this cover</button>`;
+  },
+};
+
 /* --- help */
 const FAQ = [
   ['Do I have to file a claim?', 'No. We watch your flight. When a delay or a cancellation crosses the rule, the payout is made and you get a message here.'],
@@ -755,15 +884,13 @@ SCREENS.help = {
     const R = H.rule;
     const fill = s => s.replace('{t1}', R.delay_tier1_minutes).replace('{p1}', sgd(R.delay_tier1_payout)).replace('{t2}', R.delay_tier2_minutes).replace('{p2}', sgd(R.delay_tier2_payout));
     return `<section class="card"><div class="cap">Ask about your trip</div>
-        <p class="note mute">Our assistant answers from your own cover and flight status. It never decides a claim.</p>
-        <div class="frm" style="margin-top:9px"><input id="qAsk" class="field" maxlength="160" placeholder="Am I covered if we leave 2 hours late?" value="${esc(form.q || '')}">
-          <button class="btn sm" id="qGo">Ask</button></div>
-        ${form.answer ? `<p class="note" style="margin-top:10px">${esc(form.answer)}</p>` : ''}</section>
+        <p class="plain mute">Our assistant answers from your own cover and flight status, and a person at Flightwise can join the chat whenever you ask.</p>
+        <button class="btn primary sm" style="margin-top:9px" data-go="chat">${ico('support_agent')} Open Messages</button></section>
       <section class="card"><div class="cap">Common questions</div>
         ${FAQ.map(([q, a]) => `<details style="border-top:1px solid var(--line2);padding:9px 0"><summary style="font-size:13.5px;font-weight:600;cursor:pointer">${esc(q)}</summary>
-          <p class="note mute" style="margin-top:6px">${esc(fill(a))}</p></details>`).join('')}</section>
+          <p class="plain mute" style="margin-top:6px">${esc(fill(a))}</p></details>`).join('')}</section>
       <section class="card"><div class="cap">Flightwise Insurance</div>
-        <p class="note mute">KODA is the claims platform Flightwise runs. Cover is sold against a booking and decided on published rules. In production an insurer must be licensed in each market; here everything is simulated.</p></section>`;
+        <p class="plain mute">KODA is the claims platform Flightwise runs. Cover is sold against a booking and decided on published rules. In production an insurer must be licensed in each market; here everything is simulated.</p></section>`;
   },
 };
 
@@ -799,7 +926,8 @@ function menu() {
       <button class="bk grow" id="shClose" aria-label="Close" style="background:var(--line2);color:var(--ink)">${ico('close')}</button></div>
     <div class="mlist">
       <button class="mi" data-go="profile">${ico('verified_user')}<span>My profile<small>Details, cards and how you get paid</small></span>${ico('arrow_forward', 'go')}</button>
-      <button class="mi" data-go="help">${ico('support_agent')}<span>Help<small>How cover works, and ask about your trip</small></span>${ico('arrow_forward', 'go')}</button>
+      <button class="mi" data-go="chat">${ico('support_agent')}<span>Messages<small>Ask our assistant, or a person at Flightwise</small></span>${ico('arrow_forward', 'go')}</button>
+      <button class="mi" data-go="help">${ico('info')}<span>Help<small>How cover works, in short</small></span>${ico('arrow_forward', 'go')}</button>
       <button class="mi" data-go="demo">${ico('tune')}<span>Demo controls<small>Trigger a delay or a cancellation</small></span>${ico('arrow_forward', 'go')}</button>
       ${MODE.demo ? '' : `<button class="mi" id="mOut">${ico('clear')}<span>Sign out</span></button>`}
     </div>
@@ -845,13 +973,29 @@ $('#ptsChip').onclick = () => setTab('wallet');
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-go],[data-trip],#aGo,[data-claim],[data-recheck],[data-bag],[data-add],[data-addmine],[data-buymine],[data-route],[data-fl],[data-tier],[data-cat],[data-spend],[data-voucher],[data-amt],[data-mid],[data-method],[data-default],[data-pay],[data-ev],#shClose,#cGo,#bGo,#bPay,#rGo,#gAdd,#gGo,#vScan,#vRef,#coPrev,#coGo,#pSave,#qGo,#mOut');
+  const t = e.target.closest('[data-cover],[data-ask],[data-quick],#chSend,#chPerson,[data-go],[data-trip],#aGo,[data-claim],[data-recheck],[data-bag],[data-add],[data-addmine],[data-buymine],[data-route],[data-fl],[data-tier],[data-cat],[data-port],[data-spend],[data-voucher],[data-amt],[data-mid],[data-method],[data-default],[data-pay],[data-ev],#shClose,#cGo,#bGo,#bPay,#rGo,#gAdd,#gGo,#vScan,#vRef,#coPrev,#coGo,#pSave,#mOut');
   if (!t) return;
   const d = t.dataset;
 
   if (t.id === 'shClose') return closeSheet();
   if (d.go === 'menu') { closeSheet(); return menu(); }
-  if (d.go) { closeSheet(); if (d.go === 'spend' || d.go === 'cashout' || d.go === 'profile') { await loadWallet(true); } return go({name: d.go}); }
+  if (d.go) {
+    closeSheet();
+    if (d.go === 'spend' || d.go === 'cashout' || d.go === 'profile') await loadWallet(true);
+    if (d.go === 'chat') await loadChat();
+    return go({name: d.go});
+  }
+  if (d.cover) { form = {}; await loadCover(d.cover); return go({name: 'cover', policy: d.cover}); }
+  if (d.ask) {                                  // from a cover card: open the chat with that flight in the box
+    await loadChat(); form = {draft: `What does my cover pay on ${d.ask}?`};
+    stack.push({name: 'chat'}); render(); return;
+  }
+  if (d.quick) { form.draft = d.quick; return sendChat(d.quick); }
+  if (t.id === 'chSend') { const v = $('#chText').value.trim(); if (v.length < 2) return; return sendChat(v); }
+  if (t.id === 'chPerson') {
+    try { CH = await api('/api/app/chat/person', 'POST'); form = {}; render(); } catch (err) { fail(err); }
+    return;
+  }
   if (d.trip) return go({name: 'trip', ref: d.trip});
   if (d.claim) { tab = 'claims'; return go({name: 'claim', policy: d.claim}); }
   if (d.recheck) return go({name: 'recheck', policy: d.recheck});
@@ -934,6 +1078,7 @@ document.addEventListener('click', async e => {
   }
   // wallet
   if (d.cat) { form.cat = d.cat; render(); return; }
+  if (d.port) { await loadOutlets(d.port, true); render(); return; }
   if (d.spend) {
     const [id, points] = d.spend.split('|');
     try {
@@ -985,18 +1130,18 @@ document.addEventListener('click', async e => {
     return;
   }
   // help
-  if (t.id === 'qGo') {
-    const q = $('#qAsk').value.trim(); form.q = q;
-    if (q.length < 3) return;
-    const g = H.trips.flatMap(x => x.legs).find(x => x.policy);
-    if (!g) return toast('Ask again once you have a trip with cover.', true);
-    try { form.answer = (await api(`/api/traveler/${g.policy}/ask`, 'POST', {question: q})).answer; render(); } catch (err) { fail(err); }
-    return;
-  }
   if (t.id === 'mOut') { store.set('calmy.token', null); location.reload(); return; }
   // demo
   if (d.ev) { const [code, minutes, cancelled] = d.ev.split('|'); closeSheet(); return runEvent(code, minutes, cancelled); }
 });
+async function sendChat(text) {
+  form.draft = '';
+  const typing = {role: 'traveler', author: H.customer.name, text, ts: Date.now() / 1000};
+  if (CH) { CH = {...CH, messages: [...CH.messages, typing]}; render(); }
+  try { CH = await api('/api/app/chat', 'POST', {text}); } catch (e) { fail(e); await loadChat(); }
+  render();
+}
+
 function readBag() {
   form.report = ($('#gRep') || {}).value || form.report;
   form.tag = ($('#gTag') || {}).value || form.tag;

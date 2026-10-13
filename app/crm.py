@@ -1,8 +1,8 @@
-"""Console endpoints for customers, points and partners, and the insurer staff profile."""
+"""Console endpoints for customers, points and partners, support chats, and the insurer staff profile."""
 import time
 
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import bookings, db, markets, wallet
 
@@ -15,23 +15,52 @@ def _cover(rows):
     return bookings.cover_kind(d, b)
 
 
+PARTNER_CHANNEL = "KODA partner checkout"
+
+
+def _source(pols: list[dict], bookings_rows: list[dict]) -> str:
+    """How this customer came to us.
+
+    ticket_and_cover  bought the ticket and the cover together through our own checkout
+    cover_only        already had a ticket from an airline or a travel site, and bought cover from us
+    both              has done both
+    no_cover          has a booking with us but has never bought cover
+    """
+    if not pols:
+        return "no_cover" if bookings_rows else "none"
+    channels = {(p.get("channel") or "").strip() for p in pols}
+    ours = PARTNER_CHANNEL in channels
+    elsewhere = any(ch and ch != PARTNER_CHANNEL for ch in channels)
+    if ours and elsewhere:
+        return "both"
+    if ours:
+        return "ticket_and_cover"
+    return "cover_only"
+
+
 @router.get("/customers")
-def customers(q: str = "", cover: str = "", payout: str = "", flag: str = ""):
-    """Every customer with what they hold and what they have been paid. Filters: search, cover type, payout route, risk flag."""
+def customers(q: str = "", cover: str = "", payout: str = "", flag: str = "", source: str = ""):
+    """Every customer with what they hold and what they have been paid.
+
+    Filters: search, cover type, payout route, risk flag, and how they came to us (cover only on an outside ticket,
+    or the ticket and the cover together through our own checkout).
+    """
     with db.conn() as c:
         out = []
         for cu in db.rows(c, "SELECT * FROM customers ORDER BY created_at DESC, id"):
-            pols = db.rows(c, "SELECT id,flight,delay_cover,baggage_cover,status,pnr FROM policies WHERE customer_id=? AND status IN ('active','archived')", (cu["id"],))
+            pols = db.rows(c, "SELECT id,flight,delay_cover,baggage_cover,status,pnr,channel FROM policies WHERE customer_id=? AND status IN ('active','archived')", (cu["id"],))
+            bks = db.rows(c, "SELECT ref, channel FROM bookings WHERE customer_id=?", (cu["id"],))
             kind = _cover(pols) if pols else "none"
             paid = db.rows(c, "SELECT d.amount, d.kind, d.status FROM decisions d JOIN policies p ON p.id=d.policy_id WHERE p.customer_id=?", (cu["id"],))
             bal = wallet.balance(c, cu["id"])
-            trips = db.one(c, "SELECT COUNT(DISTINCT ref) n FROM bookings WHERE customer_id=?", (cu["id"],))["n"]
+            trips = len({b["ref"] for b in bks})
             held = sum(1 for d in paid if d["status"] in ("held", "pending"))
             row = {"id": cu["id"], "name": cu["name"], "email": cu["email"], "phone": cu["phone"], "market": cu["market"],
                    "cover": kind, "policies": len(pols), "trips": trips,
                    "paid_usd": round(sum(d["amount"] for d in paid if d["status"] == "paid"), 2),
                    "claims": len(paid), "open_claims": held,
-                   "points": bal["points"], "payout": "cash" if cu["auto_topup"] else "points",
+                   "points": bal["points"], "payout": "cash" if cu["auto_topup"] else "points", "source": _source(pols, bks),
+                   "channels": sorted({(x.get("channel") or "").strip() for x in [*pols, *bks] if x.get("channel")}),
                    "joined": cu["created_at"]}
             hay = f"{cu['id']} {cu['name']} {cu['email'] or ''} {' '.join(p['pnr'] or '' for p in pols)} {' '.join(p['flight'] for p in pols)}".lower()
             if q and q.strip().lower() not in hay:
@@ -41,6 +70,8 @@ def customers(q: str = "", cover: str = "", payout: str = "", flag: str = ""):
             if payout and row["payout"] != payout:
                 continue
             if flag == "open" and not held:
+                continue
+            if source and row["source"] != source and not (source != "none" and row["source"] == "both"):
                 continue
             out.append(row)
         return out
@@ -66,7 +97,7 @@ def customer(cid: str):
                 flags.append(f"{m['label']} is saved on {n} different customer accounts")
         if any(d["status"] == "held" for p in pols for d in p["decisions"]):
             flags.append("A claim is waiting for a person to review it")
-        return {**s, "policies": pols, "bookings": refs, "flags": flags}
+        return {**s, "policies": pols, "bookings": refs, "flags": flags, "source": _source(pols, refs)}
 
 
 @router.get("/points")
@@ -91,6 +122,50 @@ def points():
             "earned": sum(b["earned"] for b in bal), "spent": sum(b["spent"] for b in bal), "cashed": sum(b["cashed"] for b in bal),
             "activity": tx, "partners": partners,
         }
+
+
+# ---------------------------------------------------------------- support chat
+
+@router.get("/chats")
+def chats():
+    """Open support chats, the ones waiting for a person first."""
+    from . import chat
+    with db.conn() as c:
+        return {"chats": chat.inbox(c), "waiting": chat.waiting_count(c), "bot": chat.BOT_NAME}
+
+
+@router.get("/chats/{chat_id}")
+def chat_one(chat_id: str):
+    from . import chat
+    with db.conn() as c:
+        if not db.one(c, "SELECT 1 FROM chats WHERE id=?", (chat_id,)):
+            raise HTTPException(404, "Chat not found.")
+        cu = db.one(c, "SELECT cu.id, cu.name, cu.email, cu.phone, cu.market FROM chats ch JOIN customers cu ON cu.id=ch.customer_id WHERE ch.id=?", (chat_id,))
+        return {**chat.state(c, chat_id), "customer": cu, "facts": chat.facts(c, cu["id"])}
+
+
+class ChatReply(BaseModel):
+    text: str | None = Field(None, max_length=600)
+    action: str | None = None          # take_over | hand_back
+
+
+@router.post("/chats/{chat_id}")
+def chat_reply(chat_id: str, body: ChatReply, x_staff: str | None = Header(None)):
+    """Take over a chat, reply as yourself, or hand it back to the assistant."""
+    from . import chat
+    with db.conn() as c:
+        st = db.one(c, "SELECT name FROM staff WHERE id=?", (x_staff,)) if x_staff else None
+        who = st["name"] if st else "Flightwise Insurance"
+        try:
+            if body.action == "take_over":
+                return chat.take_over(c, chat_id, who)
+            if body.action == "hand_back":
+                return chat.hand_back(c, chat_id, who)
+            if not (body.text or "").strip():
+                raise ValueError("Write a message first.")
+            return chat.staff_says(c, chat_id, who, body.text.strip())
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
 
 class Accept(BaseModel):

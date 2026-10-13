@@ -9,7 +9,7 @@ What is seeded
   * 46 more travelers: cover bought for both, for delay only, for baggage only, and some bookings
     (made on Trip.com, Agoda or an airline site) that never bought cover.
   * Past trips decided by the real engine: on time, short delays, 3 and 6 hour payouts, cancellations,
-    held cases from a card shared by three travelers, a burst buyer and a buy-into-a-delay case, lost bags, extra costs.
+    held cases from a card shared by three travelers, a burst buyer and a buy-into-a-delay case, and lost bags.
   * Points earned, points spent at airport partners, cash-outs and saved cards.
 
 Everything runs through the same engine as live use, then timestamps are moved into the past so the audit log,
@@ -53,7 +53,11 @@ ROUTES = [
     {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "CGK", "bc": "Jakarta", "t1": "13:20", "t2": "18:45", "n": 946},
 ]
 GEORGE, GEORGE_ID = "George", "CU-GEORGE"
+# Where the ticket was bought. Our own checkout means the traveler bought the ticket and the cover together;
+# the others mean they already had a ticket and bought cover only.
+PARTNER_CHECKOUT = "KODA partner checkout"
 CHANNELS = ["Trip.com", "Agoda", "Airline website or app", "Another travel site"]
+CHANNELS_WITH_US = CHANNELS + [PARTNER_CHECKOUT]
 
 NAMES = [
     "Somchai Kittipong", "Nattaya Srisuk", "Anan Thongchai", "Kanya Wattana", "Preecha Boonmee", "Siriporn Rattana", "Chaiwat Pongsri",
@@ -72,7 +76,6 @@ BAG_ITEMS = [
     [("Gifts for family", 25), ("Clothes", 14)],
     [("Medication and toiletries", 12), ("Clothes", 18), ("Headphones", 15)],
 ]
-EXTRA = [("Meal", 18), ("Meal", 26), ("Taxi", 34), ("Hotel", 120), ("Taxi", 65), ("Meal", 90), ("Hotel", 150)]
 
 
 def _ref(rng) -> str:
@@ -319,7 +322,8 @@ def seed_history(w: _World):
         f = w.flight(route, 1, day)
         round_trip = (n % 6 == 0) and pl["out"] in ("ontime", "future") and not pl.get("special")
         ref = _ref(rng)
-        channel = rng.choice(CHANNELS)
+        # about a fifth bought the ticket through our own checkout, the rest came with a ticket already
+        channel = PARTNER_CHECKOUT if n % 5 == 2 and not pl.get("special") else rng.choice(CHANNELS)
         d, b = cov_flags(pl["cover"])
         bought = (f["sched_ts"] - rng.randint(2, 18) * DAY) if past else (now - rng.randint(1, 10) * DAY)
         pid = w.policy(cid, name, f, ref, channel, d, b, bought, pl.get("flags"))
@@ -400,20 +404,6 @@ def seed_history(w: _World):
             engine.decide_baggage(c, claim["id"], True, REVIEWERS[k % 4])
         elif k == 3:
             engine.decide_baggage(c, claim["id"], False, "Arun Suksawat")
-    paid_delay = [p for p in policies if db.one(c, "SELECT 1 FROM decisions WHERE policy_id=? AND kind='delay' AND status='paid'", (p["pid"],))]
-    rng.shuffle(paid_delay)
-    for k, p in enumerate(paid_delay[:7]):
-        what, amount = EXTRA[k % len(EXTRA)]
-        since = time.time() - 0.001
-        try:
-            e = engine.submit_extra_claim(c, p["pid"], what, amount, None)
-        except ValueError:
-            continue
-        w.backdate([p["pid"]], p["f"]["sched_ts"] + rng.randint(5, 40) * 3600, since)
-        st = db.one(c, "SELECT status FROM decisions WHERE id=?", (e["id"] + "-D",))["status"]
-        if st == "pending" and k in (3, 6):
-            engine.decide_extra(c, e["id"], k == 3, REVIEWERS[k % 4])
-
     # ---- past trips with no payout are closed quietly
     for p in policies:
         if p["f"]["sched_ts"] < now - 3 * 3600:
