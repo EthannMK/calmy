@@ -12,11 +12,11 @@ FX_PER_USD = {"THB": 36.0, "USD": 1.0, "EUR": 0.92, "GBP": 0.79, "INR": 84.0, "S
 
 # Rules every market starts with. Thresholds are the same everywhere. Prices and payouts are
 # set by hand in local currency so the numbers look natural. They are not actuarially priced.
-BASE_THRESHOLDS = {"delay_tier1_minutes": 180, "delay_tier2_minutes": 360, "risk_threshold": 45}
+BASE_THRESHOLDS = {"delay_tier1_minutes": 180, "delay_tier2_minutes": 360, "risk_threshold": 45, "close_cover_at": 80}
 RULE_LABELS = {
     "delay_tier1_minutes": "Tier 1 delay (minutes)", "delay_tier1_payout": "Tier 1 payout",
     "delay_tier2_minutes": "Tier 2 delay (minutes)", "delay_tier2_payout": "Tier 2 payout",
-    "lost_bag_payout": "Lost bag payout", "cancel_payout": "Cancelled flight payout", "risk_threshold": "Auto pay below this risk score",
+    "lost_bag_payout": "Lost bag payout", "cancel_payout": "Cancelled flight payout", "risk_threshold": "Auto pay below this risk score", "close_cover_at": "Stop selling delay cover at this delay chance",
     "delay_premium": "Delay cover price", "baggage_premium": "Baggage cover price",
 }
 

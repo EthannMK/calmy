@@ -366,7 +366,7 @@ async function vExtra(id) {
 /* ---------- Rules ---------- */
 function vRules() {
   const r = ov.rules, m = ov.rules_market, c = m.currency;
-  const fields = [['delay_premium', `Delay cover price (${c})`], ['baggage_premium', `Baggage cover price (${c})`], ['delay_tier1_minutes', 'Tier 1 delay (minutes)'], ['delay_tier1_payout', `Tier 1 payout (${c})`], ['delay_tier2_minutes', 'Tier 2 delay (minutes)'], ['delay_tier2_payout', `Tier 2 payout (${c})`], ['cancel_payout', `Cancelled flight payout (${c})`], ['lost_bag_payout', `Lost bag payout (${c})`], ['risk_threshold', 'Pay automatically below risk score']];
+  const fields = [['delay_premium', `Delay cover price (${c})`], ['baggage_premium', `Baggage cover price (${c})`], ['delay_tier1_minutes', 'Tier 1 delay (minutes)'], ['delay_tier1_payout', `Tier 1 payout (${c})`], ['delay_tier2_minutes', 'Tier 2 delay (minutes)'], ['delay_tier2_payout', `Tier 2 payout (${c})`], ['cancel_payout', `Cancelled flight payout (${c})`], ['lost_bag_payout', `Lost bag payout (${c})`], ['risk_threshold', 'Pay automatically below risk score'], ['close_cover_at', 'Stop selling delay cover at this delay chance (%)']];
   return head('Rules', 'Set by the insurer for each market. A change applies to the next flight delay, never to past decisions.') + `
   <div class="cols rulescols"><section class="panel"><div class="ph"><h2>Rules for a market</h2></div><div class="pb" style="display:grid;gap:12px">
       <div><label class="lbl" for="rmSel">Market</label><select id="rmSel" class="field">${ov.markets.map(x => `<option value="${x.code}" ${x.code === RM ? 'selected' : ''}>${esc(x.name)} (${esc(x.currency)})</option>`).join('')}</select></div>

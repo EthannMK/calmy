@@ -40,6 +40,12 @@ def compute(flight: dict) -> dict:
         drivers.append((f"Queue of departures at {origin} growing", 12))
     cong = 4 + _h(origin) % 7
     drivers.append((f"Usual traffic at {origin}", cong))
+    # History drivers. Prototype values are derived from the code so they are stable but not real. In the cloud
+    # version they come from the saved flight history in BigQuery: how often this airline, route and aircraft type ran late.
+    airline = code.split(" ")[0]
+    drivers.append((f"{airline} flights on {origin} to {flight.get('dest', '')} ran late {10 + _h(code[:2] + origin + str(flight.get('dest', ''))) % 14}% of the time (simulated history)", _h("a" + airline) % 6))
+    if flight.get("aircraft"):
+        drivers.append((f"Aircraft type {flight['aircraft']} runs late more often than average (simulated history)", _h(str(flight["aircraft"])) % 5))
     if hour >= 17:
         drivers.append(("Evening departure, delays pile up through the day", 6))
     elif hour < 8:
@@ -49,6 +55,11 @@ def compute(flight: dict) -> dict:
     exp = round(prob / 100 * (40 + 4 * (prob - 12)) / 5) * 5 if prob > 20 else 0
     return {"probability": prob, "level": level, "drivers": drivers, "expected_delay": max(0, exp),
             "source": "Live weather + simulated airport traffic" if (live and live.get("severe")) else "Simulated weather and airport traffic"}
+
+
+def band(prob: float, close_at: float) -> str:
+    """Selling band for delay cover: open, caution (still sold, extra check on a claim) or closed (not sold)."""
+    return "closed" if prob >= close_at else "caution" if prob >= ALERT_AT else "open"
 
 
 def alert(fc: dict, flight: dict) -> dict | None:

@@ -34,6 +34,7 @@ def get_rules(c, market: str = "TH") -> dict:
     """Insurer rules for one market. Money values are in that market's currency."""
     r = {x["key"]: x["value"] for x in db.rows(c, "SELECT key, value FROM rules WHERE market=?", (market,))}
     r.setdefault("cancel_payout", r.get("delay_tier2_payout", 0))
+    r.setdefault("close_cover_at", 80)  # databases made before this rule existed
     return r
 
 

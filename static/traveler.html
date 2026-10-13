@@ -32,6 +32,16 @@
   .sub{font-size:13px;color:var(--mute);margin-top:6px}
   .cap{font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:8px}
 
+  .pcard{background:linear-gradient(150deg,#0B2A5C,#071C3F 70%);color:#fff;border-radius:18px;padding:16px 18px;position:relative;overflow:hidden;display:grid;gap:6px}
+  .pcard::after{content:'';position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(13,197,251,.28),transparent 70%)}
+  .pc-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--navy-mute)}
+  .pc-tag{font-size:12px;font-weight:600;border:1px solid var(--navy-line);border-radius:99px;padding:2px 9px;color:#C9D6E8}
+  .pc-num{display:flex;align-items:baseline;gap:8px}.pc-num b{font:800 42px/1 Figtree,sans-serif;letter-spacing:-.035em;font-variant-numeric:tabular-nums}.pc-num small{color:var(--navy-mute);font-size:14px}
+  .pc-eq{font-size:13px;color:#C9D6E8}.pc-eq b{color:#fff}
+  .pc-uses{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .pc-uses>span{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.09);color:#E6EDF8}.pc-uses .ms{font-size:15px;color:var(--cyan,#0DC5FB)}
+  .pc-foot{display:flex;justify-content:space-between;gap:10px;margin-top:8px;padding-top:10px;border-top:1px solid var(--navy-line);font-size:12.5px;color:var(--navy-mute)}.pc-foot b{color:#fff}.pc-foot b.plus{color:#7FE3B8}
+  @media(prefers-reduced-motion:no-preference){.pc-uses>span{opacity:0;animation:pop .4s ease forwards}@keyframes pop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}}
   /* start hero */
   .hero{background:var(--board);color:#fff;border-radius:18px;padding:20px 18px 6px;position:relative;overflow:hidden}
   .hero h1{font-size:29px;line-height:1.05;letter-spacing:-.035em}.hero h1::first-line{color:#fff}
@@ -233,7 +243,7 @@ function render(force) {
   if (force || v.dataset.k !== html) {
     const vk = tab + bagForm + (PID || '') + (screen || '') + mode + (chk.res ? 'r' : ''); const top = vk === v.dataset.vk ? v.scrollTop : 0; v.dataset.vk = vk;
     v.innerHTML = '<div class="fade">' + html + '</div>';
-    v.dataset.k = html; v.scrollTop = top; bind(); typeAll(v);
+    v.dataset.k = html; v.scrollTop = top; bind(); typeAll(v); runCount();
   }
 }
 
@@ -422,10 +432,30 @@ function selectedFlight() {
   return `<div class="opt on" aria-label="Selected flight"><span class="c">${esc(f.code)}</span><span class="r">${esc(f.origin)} to ${esc(f.dest)}<span class="mute"> · ${esc(f.depart_label)}</span></span><span class="mute" style="font-size:12px">${esc(f.airline || '')}</span></div>
     <button id="changeFlight" style="color:var(--cobalt);font-weight:600;font-size:13px;margin-top:8px">Change flight or day</button>`;
 }
+/* Points card on the first screen, like a fintech home. Signed in: the real balance. Signed out: a labelled example payout. */
+function heroView() {
+  const real = !!CS, pts0 = real ? CS.balance.points : 5000, usd = real ? CS.balance.spend_usd : 50, cash = real ? CS.balance.cash_usd : 40;
+  const last = real && CS.ledger[0];
+  const uses = [['paid', 'Food'], ['verified_user', 'Lounge'], ['flight', 'Taxi'], ['support_agent', 'SIM']];
+  return `<section class="pcard" aria-label="${real ? 'Your KODA points' : 'Example payout'}">
+    <div class="pc-top"><span>${real ? 'KODA points' : 'Example payout'}</span><span class="pc-tag">${real ? esc(CS.customer.name.split(' ')[0]) : 'Delay of 3h 20m'}</span></div>
+    <div class="pc-num"><b data-count="${pts0}">${pts0.toLocaleString()}</b><small>points</small></div>
+    <div class="pc-eq">Worth <b>${usd2(usd)}</b> at the airport, or <b>${usd2(cash)}</b> as cash</div>
+    <div class="pc-uses">${uses.map((u, i) => `<span style="animation-delay:${0.15 * i + 0.5}s">${ico(u[0])}${u[1]}</span>`).join('')}</div>
+    <div class="pc-foot">${real ? (last ? `<span>${esc(last.label)}</span><b class="${last.points > 0 ? 'plus' : ''}">${last.points > 0 ? '+' : ''}${last.points.toLocaleString()}</b>` : '<span>Payouts arrive here when a flight is late</span>')
+      : '<span>Delayed flights pay you in points. No forms.</span>'}</div></section>`;
+}
+let _counted = null;
+function runCount() {
+  const el = document.querySelector('[data-count]'); if (!el) return;
+  const to = +el.dataset.count, key = to + '|' + (CID || '');
+  if (_counted === key || matchMedia('(prefers-reduced-motion:reduce)').matches) { _counted = key; return; }
+  _counted = key; const t0 = performance.now(), dur = 900;
+  const step = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(to * e).toLocaleString(); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
 function startView() {
-  return `${mode === 'check' ? '' : `<section class="hero"><h1>Your flight is delayed.<br>Your payout isn't.</h1>
-      <p>Pick your flight. If it runs late or your bag is lost, we pay you automatically.</p>
-      ${routeArt()}</section>`}
+  return `${mode === 'check' ? '' : heroView()}
     <div class="seg" role="tablist" aria-label="What would you like to do"><button role="tab" data-mode="buy" class="${mode === 'buy' ? 'on' : ''}" aria-selected="${mode === 'buy'}">Add cover</button><button role="tab" data-mode="check" class="${mode === 'check' ? 'on' : ''}" aria-selected="${mode === 'check'}">Check my cover</button></div>
     ${mode === 'check' ? checkView() : buyView()}`;
 }
@@ -506,13 +536,15 @@ function coverView() {
       <button class="btn block" data-newtrip>Add another trip</button>
       ${p.baggage_cover && !S.baggage ? (S.flight.sched_ts && S.flight.sched_ts * 1000 > Date.now() ? `<div class="mute" style="font-size:13px">Lost bag? You can report it here once your flight has left.</div>` : `<button id="bagStart" class="btn block">My bag is lost</button>`) : ''}`;
   }
+  const closed = S.underwriting && S.underwriting.band === 'closed';
+  if (closed) sel.delay = false;
   const total = (sel.delay ? r.delay_premium : 0) + (sel.baggage ? r.baggage_premium : 0);
   const m = S.market, tax = m.tax_rate ? Math.round(total * m.tax_rate / (1 + m.tax_rate)) : 0;
   return `<div><h1>Add KODA to your trip</h1><p class="sub">Automatic payout for flight delays and lost bags.</p></div>
     ${flightCard(false)}
     ${forecastCard()}
     ${S.forecast && S.forecast.probability >= 55 ? '<div class="note"><b>A delay is already likely.</b> You can still add cover. A claim on cover bought now gets an extra check by a person.</div>' : ''}
-    ${coverCard('delay', 'Delay cover', r.delay_premium, `${Math.round(r.delay_tier1_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier1_payout)}</b>. ${Math.round(r.delay_tier2_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier2_payout)}</b>.`)}
+    ${closed ? `<div class="tier" style="opacity:.85;cursor:default"><div class="t"><span>Delay cover</span><span class="chip red">Closed</span></div><p class="d">A delay is already ${S.underwriting.probability}% likely on this flight, so we no longer sell delay cover for it. This keeps cover fair for everyone who bought earlier. Baggage cover is still open.</p></div>` : coverCard('delay', 'Delay cover', r.delay_premium, `${Math.round(r.delay_tier1_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier1_payout)}</b>. ${Math.round(r.delay_tier2_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier2_payout)}</b>.`)}
     ${coverCard('baggage', 'Baggage cover', r.baggage_premium, `Pays up to <b class="mono">${M(r.lost_bag_payout)}</b> if your bag is lost.`)}
     <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>No forms. ${S.customer && S.customer.payout_to.startsWith('KODA') ? 'Payouts arrive as KODA points, worth 25% more.' : 'Paid straight to ' + acct(S.policy.payout_account) + '.'}</span></div>
     ${factsBlock()}

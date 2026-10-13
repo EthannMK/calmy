@@ -140,8 +140,11 @@ def traveler_state(pid: str):
             cust = {"id": cu["id"], "name": cu["name"], "balance": wallet.balance(c, cu["id"]), "payout_to": wallet.account_for(c, cu["id"])}
         trip = db.rows(c, "SELECT b.leg, b.trip, b.flight, f.origin, f.dest, f.depart_label FROM bookings b LEFT JOIN flights f ON f.code=b.flight "
                           "WHERE b.ref=? ORDER BY b.leg", (p["pnr"],)) if p.get("pnr") else []
+        uw = None
+        if fc:
+            uw = {"band": forecast.band(fc["probability"], rules["close_cover_at"]), "probability": fc["probability"], "close_at": rules["close_cover_at"]}
         return {
-            "customer": cust, "trip": trip,
+            "customer": cust, "trip": trip, "underwriting": uw,
             "forecast": fc, "alert": al, "rights": rt, "points": pts,
             "weather": context.for_event(flight["code"], flight["origin"], bool(flight.get("cancelled")), flight["delay_minutes"]) if flight else None,
             "policy": p,
@@ -330,6 +333,8 @@ def checkout(pid: str, body: Checkout):
         rules = engine.get_rules(c, p["market"])
         total = int(rules["delay_premium"]) * body.delay + int(rules["baggage_premium"]) * body.baggage
         prob = forecast.compute(f)["probability"] if f else 0
+        if body.delay and forecast.band(prob, rules["close_cover_at"]) == "closed":
+            raise HTTPException(400, f"Delay cover is closed for this flight. A delay is already {prob}% likely, so selling cover now would be unfair to other travelers. Baggage cover is still available.")
         adverse = int(bool(body.delay) and prob >= forecast.ALERT_AT)  # AI fraud check: buying into a likely delay
         c.execute(
             "UPDATE policies SET delay_cover=?, baggage_cover=?, premium=?, status='active', created_at=?, "
@@ -369,6 +374,8 @@ def add_cover(pid: str, body: AddCover):
         if body.delay and f and f["delay_minutes"] >= 30:
             raise HTTPException(400, "This flight is already delayed, so delay cover cannot be added any more.")
         rules = engine.get_rules(c, p["market"])
+        if body.delay and f and forecast.band(forecast.compute(f)["probability"], rules["close_cover_at"]) == "closed":
+            raise HTTPException(400, "Delay cover is closed for this flight because a delay is already very likely.")
         add = int(rules["delay_premium"]) * body.delay + int(rules["baggage_premium"]) * body.baggage
         c.execute("UPDATE policies SET delay_cover=?, baggage_cover=?, premium=premium+? WHERE id=?",
                   (int(body.delay or p["delay_cover"]), int(body.baggage or p["baggage_cover"]), add, pid))
@@ -1086,6 +1093,9 @@ def get_rules(market: str = "TH"):
         return db.rows(c, "SELECT * FROM rules WHERE market=?", (market,))
 
 
+ALERT_MIN = forecast.ALERT_AT
+
+
 class RuleUpdate(BaseModel):
     values: dict[str, float]
 
@@ -1110,8 +1120,11 @@ def put_rules(body: RuleUpdate, market: str = "TH"):
             raise HTTPException(400, "Tier 2 must pay at least as much as tier 1")
         if not (1 <= merged["risk_threshold"] <= 100):
             raise HTTPException(400, "Risk threshold must be between 1 and 100")
+        if not (ALERT_MIN <= merged["close_cover_at"] <= 100):
+            raise HTTPException(400, f"Stop selling delay cover at a chance between {ALERT_MIN} and 100")
         for k, v in body.values.items():
-            c.execute("UPDATE rules SET value=? WHERE market=? AND key=?", (merged[k], market, k))
+            if c.execute("UPDATE rules SET value=? WHERE market=? AND key=?", (merged[k], market, k)).rowcount == 0:
+                c.execute("INSERT INTO rules (market,key,value,label) VALUES (?,?,?,?)", (market, k, merged[k], markets.RULE_LABELS.get(k, k)))
         db.log(c, None, "rules_updated", {"market": market, **body.values})
         return engine.get_rules(c, market)
 

@@ -30,6 +30,7 @@ Extra costs (meals, a hotel, a taxi) can be claimed with a receipt after a delay
 - Cover bought after a delay is already known. Delay cover cannot be added once the flight is 30 minutes late or more.
 - Cover added after the flight has left or been cancelled.
 - A flight the traveler did not take.
+- A flight where a delay is already very likely. Delay cover stops selling when the delay chance reaches 80% (Flightwise can change this in Rules). Baggage cover stays open.
 - Anything that happened before the cover was added.
 - A second claim of the same type on the same flight.
 - Compensation the airline owes by law. KODA pays on top of it. The traveler should still claim from the airline.

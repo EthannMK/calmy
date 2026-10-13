@@ -183,3 +183,15 @@ def test_unused_voucher_can_be_refunded_once():
     assert r.status_code == 200 and r.json()["balance"] == 5000
     assert client.post(f"/api/customer/{cid}/vouchers/{v['id']}/refund").status_code == 400
     assert client.post(f"/api/customer/CU-NOPE/vouchers/{v['id']}/refund").status_code == 404
+
+
+def test_delay_cover_closes_when_a_delay_is_already_very_likely_but_baggage_stays_open():
+    client.put("/api/console/rules?market=TH", json={"values": {"close_cover_at": 60}})
+    client.post("/api/webhook/flight-event", json={"flight": FL, "event": "storm"})
+    r = client.post("/api/policies", json={"name": "Lena Fischer", "flight": FL, "booking_ref": "ZZ9Q2P"})
+    pid = r.json()["policy"]
+    assert client.get(f"/api/traveler/{pid}").json()["underwriting"]["band"] == "closed"
+    refused = client.post(f"/api/traveler/{pid}/checkout", json={"delay": True, "baggage": True, "ack": True})
+    assert refused.status_code == 400 and "closed" in refused.json()["detail"]
+    assert client.post(f"/api/traveler/{pid}/checkout", json={"delay": False, "baggage": True, "ack": True}).status_code == 200
+    assert client.put("/api/console/rules?market=TH", json={"values": {"close_cover_at": 20}}).status_code == 400
