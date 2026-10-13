@@ -27,10 +27,10 @@ DAY = 86400
 REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 STAFF = [
-    ("ST-1", "Ethan", "", "ethan@flightwise.example", "E", "admin"),
-    ("ST-2", "Arun Suksawat", "Senior claims reviewer", "arun.suksawat@flightwise.example", "AS", "reviewer"),
-    ("ST-3", "Malinee Chaiyasit", "Customer support agent", "malinee.chaiyasit@flightwise.example", "MC", "agent"),
-    ("ST-4", "Pimchanok Tanakorn", "Head of claims", "pimchanok.tanakorn@flightwise.example", "PT", "admin"),
+    ("ST-1", "Ethan", "", "ethan@koda.example", "E", "admin"),
+    ("ST-2", "Arun Suksawat", "Senior claims reviewer", "arun.suksawat@koda.example", "AS", "reviewer"),
+    ("ST-3", "Malinee Chaiyasit", "Customer support agent", "malinee.chaiyasit@koda.example", "MC", "agent"),
+    ("ST-4", "Pimchanok Tanakorn", "Head of claims", "pimchanok.tanakorn@koda.example", "PT", "admin"),
 ]
 REVIEWERS = [s[1] for s in STAFF]
 

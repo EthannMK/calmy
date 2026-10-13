@@ -89,9 +89,9 @@ def test_console_needs_staff_and_roles_limit_what_they_can_do():
     assert client.get("/api/console/overview").status_code == 401
     tok_t, _ = _traveler()
     assert client.get("/api/console/overview", headers={"X-Session": tok_t}).status_code == 401
-    agent, _ = _staff("malinee.chaiyasit@flightwise.example")
-    rev, _ = _staff("arun.suksawat@flightwise.example")
-    adm, me = _staff("pimchanok.tanakorn@flightwise.example")
+    agent, _ = _staff("malinee.chaiyasit@koda.example")
+    rev, _ = _staff("arun.suksawat@koda.example")
+    adm, me = _staff("pimchanok.tanakorn@koda.example")
     assert me["role"] == "admin"
     H = lambda t: {"X-Session": t}  # noqa: E731
     assert client.get("/api/console/overview", headers=H(agent)).status_code == 200
@@ -103,7 +103,7 @@ def test_console_needs_staff_and_roles_limit_what_they_can_do():
 
 
 def test_decision_is_signed_by_the_session_not_the_header():
-    rev, me = _staff("arun.suksawat@flightwise.example")
+    rev, me = _staff("arun.suksawat@koda.example")
     r = client.get("/api/console/staff/me", headers={"X-Session": rev, "X-Staff": "ST-4"})
     assert r.json()["id"] == me["id"]
 

@@ -943,6 +943,8 @@ def overview(market: str = "TH"):
     }
     return {
         "ai_live": bool(os.environ.get("GOOGLE_CLOUD_PROJECT")),
+        # live: Gemini answered last time; fallback: it failed and template text is used; off: no project configured
+        "ai_status": ("fallback" if engine.AI_LAST["error"] else "live") if os.environ.get("GOOGLE_CLOUD_PROJECT") else "off",
         "performance": performance,
         "stats": {
             "active": active,
@@ -1174,7 +1176,7 @@ def review_ask(decision_id: str, body: AskTraveler, x_staff: str | None = Header
             chat.take_over(c, ch["id"], who)  # the traveler's answer goes to a person, not the assistant
         chat_id = _tell_traveler(c, d["policy_id"], who, body.text.strip(), d["id"], "info_request")
         c.execute("UPDATE decisions SET message=? WHERE id=?",
-                  (f"{who} at Flightwise asked you: {body.text.strip()} Reply in Messages and they will pick it up.", d["id"]))
+                  (f"{who} at KODA asked you: {body.text.strip()} Reply in Messages and they will pick it up.", d["id"]))
         db.log(c, d["policy_id"], "info_requested", {"decision": d["id"], "by": who, "text": body.text.strip()[:300]})
         return {"decision": d["id"], "chat": chat_id}
 

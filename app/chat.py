@@ -142,7 +142,7 @@ def _grounded(q: str, f: dict) -> tuple[str, list[str]]:
             cl = latest["claim"]
             used.append(f"claim on {latest['flight']}")
             if cl["status"] == "paid":
-                who = "automatically" if cl["decided_by"] == "system" else f"by {cl['decided_by']} at Flightwise"
+                who = "automatically" if cl["decided_by"] == "system" else f"by {cl['decided_by']} at KODA"
                 return (f"Your claim on {latest['flight']} was paid {who}: {_money(cl['amount'])}, "
                         f"{cl['points']:,} points in your wallet." if cl["points"] else
                         f"Your claim on {latest['flight']} was paid {who}: {_money(cl['amount'])}."), used
@@ -213,7 +213,7 @@ def traveler_says(cid: str, text: str) -> dict:
             c.execute("UPDATE chats SET waiting=1 WHERE id=?", (chat_id,))
             db.log(c, None, "chat_handover_asked", {"chat": chat_id, "customer": cid})
             say(c, chat_id, "bot", BOT_NAME,
-                "I have asked a person at Flightwise to join this chat. They can see everything we have said. "
+                "I have asked a person at KODA to join this chat. They can see everything we have said. "
                 "You will see their name on their messages when they reply.")
             return state(c, chat_id)
         if mode == "human":
@@ -231,7 +231,7 @@ def ask_for_person(cid: str) -> dict:
         ch = open_chat(c, cid)
         c.execute("UPDATE chats SET waiting=1 WHERE id=?", (ch["id"],))
         say(c, ch["id"], "traveler", wallet.get(c, cid)["name"], "I would like to speak to a person, please.")
-        say(c, ch["id"], "bot", BOT_NAME, "A person at Flightwise has been asked to join. You will see their name when they reply.")
+        say(c, ch["id"], "bot", BOT_NAME, "A person at KODA has been asked to join. You will see their name when they reply.")
         db.log(c, None, "chat_handover_asked", {"chat": ch["id"], "customer": cid})
         return state(c, ch["id"])
 
@@ -257,7 +257,7 @@ def take_over(c, chat_id: str, staff_name: str) -> dict:
     if not ch:
         raise ValueError("Chat not found.")
     c.execute("UPDATE chats SET mode='human', assigned_to=?, waiting=0 WHERE id=?", (staff_name, chat_id))
-    say(c, chat_id, "system", staff_name, f"{staff_name} from Flightwise Insurance has joined this chat.")
+    say(c, chat_id, "system", staff_name, f"{staff_name} from KODA has joined this chat.")
     db.log(c, None, "chat_taken_over", {"chat": chat_id, "by": staff_name})
     return state(c, chat_id)
 

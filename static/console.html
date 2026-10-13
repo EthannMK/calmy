@@ -106,7 +106,7 @@
 <div class="gate" id="gate" hidden></div>
 <div class="app">
   <aside class="rail">
-    <div class="brand"><div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><small>Flightwise Insurance</small></div></div>
+    <div class="brand"><div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span><small>Claims desk</small></div></div>
     <nav class="nav" id="nav" aria-label="Main"></nav>
     
   </aside>
@@ -126,11 +126,10 @@ let refreshing = false, liveAt = 0, LIVE = {}, EXP = null, COP = {}, CHAT = {}, 
 let CHATW = 0, CDRAFT = {};   // chats waiting for a person, and the reply being typed in each
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['chats', 'support_agent', 'Conversations'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims']]],
-  ['Book of business', [['customers', 'support_agent', 'Customers'], ['policies', 'verified_user', 'Policies'], ['points', 'paid', 'Points and partners'], ['exposure', 'bolt', 'Exposure forecast']]],
+  ['Book of business', [['customers', 'person', 'Customers'], ['policies', 'verified_user', 'Policies'], ['points', 'paid', 'Points and partners'], ['exposure', 'bolt', 'Exposure forecast']]],
   ['Governance', [['rules', 'tune', 'Rules'], ['compliance', 'balance', 'Markets and law'], ['audit', 'history', 'Audit log']]],
-  ['Evidence', [['performance', 'monitoring', 'Performance']]],
 ];
-const TITLES = {chats: 'Conversations', customers: 'Customers', points: 'Points and partners', profile: 'My profile', exposure: 'Exposure forecast', overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log', performance: 'Performance'};
+const TITLES = {chats: 'Conversations', customers: 'Customers', points: 'Points and partners', profile: 'My profile', exposure: 'Exposure forecast', overview: 'Overview', policies: 'Policies', decisions: 'Decisions', review: 'Review queue', baggage: 'Baggage claims', rules: 'Rules', compliance: 'Markets and law', audit: 'Audit log'};
 window.onhashchange = () => { route = location.hash.slice(1) || 'overview'; last = ''; FQ = ''; refresh(); };
 const flightOf = f => `${esc(f.origin)} to ${esc(f.dest)}`;
 const mk = code => (ov.markets.find(m => m.code === code) || {name: code, currency: ''});
@@ -154,13 +153,15 @@ async function paint() {
     api('/api/console/staff/me'), api('/api/console/staff'),
   ]);
   ME = me; STAFFL = sl; if (!store.get('koda.staff')) store.set('koda.staff', me.id); drawWho();
-  ov = o; LIVE = lv; EXP = ex; if (Date.now() - liveAt > 20000) liveAt = Date.now();
+  ov = o; LIVE = lv; EXP = ex;
+  const ai = $('#aiOn'); if (ai) { const st = ov.ai_status || 'live'; ai.innerHTML = aiChip(st === 'live' ? 'AI on' : st === 'fallback' ? 'AI fallback' : 'AI off');
+    ai.title = st === 'live' ? 'Gemini writes explanations and drafts.' : st === 'fallback' ? 'Gemini did not answer last time, so template text is used. Decisions are unaffected.' : 'No Google Cloud project is set, so template text is used. Decisions are unaffected.'; } if (Date.now() - liveAt > 20000) liveAt = Date.now();
   const held = ov.stats.held, bags = ov.stats.bag_waiting;
   $('#nav').innerHTML = GROUPS.map(([g, items]) => `<div class="grp"><h4>${g}</h4>${items.map(([k, ic, t]) => { const n = k === 'review' ? held : k === 'baggage' ? bags : k === 'chats' ? CHATW : 0; return `<a href="#${k}" class="${base === k ? 'on' : ''}" ${base === k ? 'aria-current="page"' : ''}>${ico(ic)}<span>${t}</span>${n ? `<span class="n">${n}</span>` : ''}</a>`; }).join('')}</div>`).join('');
   const [page, arg] = route.split('/');
-  $('#crumb').textContent = 'Flightwise Insurance  /  ' + (TITLES[page] || 'Overview');
+  $('#crumb').textContent = 'KODA  /  ' + (TITLES[page] || 'Overview');
   let html;
-  try { html = await ({chats: vChats, overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, customers: vCustomers, points: vPoints, profile: vProfile, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit, performance: vPerformance}[page] || vOverview)(arg); }
+  try { html = await ({chats: vChats, overview: vOverview, exposure: vExposure, policies: vPolicies, decisions: vDecisions, customers: vCustomers, points: vPoints, profile: vProfile, review: vReview, baggage: vBaggage, rules: vRules, compliance: vCompliance, audit: vAudit}[page] || vOverview)(arg); }
   catch (e) { html = empty('error', 'Could not load this page', esc(e)); }
   if (html !== last) { $('#view').innerHTML = `<div class="rise">${html}</div>`; last = html; bindAll(); applyRole(); typeAll($('#view')); }
 }
@@ -190,7 +191,7 @@ function vOverview() {
           <div class="route">${esc(f.origin)} <span class="ms" style="color:var(--amber);font-size:16px">flight_takeoff</span> ${esc(f.dest)} <em>${esc(f.origin_city)} to ${esc(f.dest_city)}</em></div>
           <div class="st"><i style="background:${late ? 'var(--amber)' : '#34D399'}"></i>${late ? 'Delayed ' + hm(f.delay_minutes) : 'On time'}</div>
           <div class="meta"><span>${esc(f.depart_label)}</span><span>${esc(m.name)}, ${esc(m.currency)}</span><span>${f.travelers} covered ${f.travelers === 1 ? 'traveler' : 'travelers'}</span><span>${f.source === 'live' ? 'Live status, updated ' + ago(f.fetched_at) + ' <button class="chk" data-f="' + esc(f.code) + '">Refresh</button>' : 'Scheduled'}</span></div>
-          <div class="trk">${delayTrack(f.delay_minutes, r, m.currency, true).replace('class="dtrack tall', 'class="dtrack mini')}</div></div>`;
+          <div class="trk">${delayTrack(f.delay_minutes, r, m.currency, true).replace('class="dtrack tall', 'class="dtrack compact')}</div></div>`;
       }).join('') : '<div class="boardempty">No flights loaded.</div>'}
 </section>
     <section class="panel"><div class="ph"><h2>Recent decisions</h2><a class="push" href="#decisions">All decisions</a></div>
@@ -416,26 +417,6 @@ function vCompliance() {
     <section class="panel"><div class="ph"><h2>Rules that apply in every market</h2></div><div class="pb" style="display:grid;gap:10px">${(ov.markets[0].principles || []).map(t => `<div style="display:flex;gap:10px">${ico('check', 'mute')}<span>${esc(t)}</span></div>`).join('')}</div></section></div>`;
 }
 
-/* ---------- Performance ---------- */
-function vPerformance() {
-  const p = ov.performance, none = '<span class="faint">Run a test first</span>';
-  const row = (m, manual, goal, res) => `<tr><td><b>${m}</b></td><td>${manual}</td><td>${goal}</td><td>${res}</td></tr>`;
-  const ms = p.avg_decision_ms;
-  return head('Performance', 'Manual baselines come from industry research. The last column is measured live from this prototype, so it changes as you run tests.') + `
-  <div class="panel tbl" style="margin-bottom:20px"><table><thead><tr><th>Measure</th><th>Manual process today</th><th>KODA goal</th><th>Prototype result</th></tr></thead><tbody>
-    ${row('Time to payout', 'About 14 days', 'Seconds after the event', p.decisions ? `<b class="mono">${p.seconds_to_payout}s</b> from event to payout` : none)}
-    ${row('Documents from traveler', 'Forms, receipts, airline letter', 'None', p.decisions ? `<b class="mono">${p.documents_asked}</b> asked` : none)}
-    ${row('Admin cost per policy', 'US$' + p.manual_cost_usd, 'Close to zero', p.covered_total ? `<b class="mono">US$${p.admin_cost_usd}</b> across ${p.covered_total} ${p.covered_total === 1 ? 'policy' : 'policies'}` : none)}
-    ${row('Decision time', 'Days of queue, then manual review', 'Seconds or less', ms ? `<b class="mono">${ms} ms</b> of engine time, average over ${p.decisions} ${p.decisions === 1 ? 'decision' : 'decisions'}` : none)}
-  </tbody></table></div>
-  <div class="cols" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-    <section class="panel"><div class="ph"><h2>Paid with no human step</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.auto_paid}</div><p class="mute">${p.reviewed} needed a person</p></div></section>
-    <section class="panel"><div class="ph"><h2>Cancellations paid</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.cancellations}</div><p class="mute">Cancelled flights decided by the same engine</p></div></section>
-    <section class="panel"><div class="ph"><h2>Trips archived quietly</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.archived}</div><p class="mute">No payout was due</p></div></section>
-  </div>
-  <p class="mute" style="margin-top:16px;max-width:70ch">Admin cost counts only claims a person had to review, at the US$41 manual rate from industry research, kept in US dollars because that is how the research reports it. Time to payout is measured from the flight event to the payout record. Industry reference: AI first notice of loss cuts claim turnaround by about 30% (McKinsey, 2025). KODA removes the claim step for flight delays and cancellations.</p>`;
-}
-
 /* ---------- Conversations ---------- */
 async function vChats(id) {
   const d = await api('/api/console/chats');
@@ -533,7 +514,7 @@ async function vCustomers(id) {
   const rows = await api('/api/console/customers?' + qs);
 
   const tab = (k, v, t) => `<button data-cu="${k}:${v}" class="${CU[k] === v ? 'on' : ''}">${t}</button>`;
-  return head('Customers', 'Everyone who has a booking or cover with Flightwise. The same record either way: some buy cover on a ticket they already hold, some buy the ticket and the cover together through our checkout.', searchBox('Search customers')) +
+  return head('Customers', 'Everyone who has a booking or cover with KODA. The same record either way: some buy cover on a ticket they already hold, some buy the ticket and the cover together through our checkout.', searchBox('Search customers')) +
     `<div class="panel" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">
       <div class="tabsx" role="group" aria-label="Cover">${tab('cover', '', 'All')}${tab('cover', 'both', 'Both covers')}${tab('cover', 'delay', 'Delay only')}${tab('cover', 'baggage', 'Baggage only')}${tab('cover', 'none', 'No cover')}</div>
       <div class="tabsx" role="group" aria-label="Payout">${tab('payout', '', 'Any payout')}${tab('payout', 'points', 'Points')}${tab('payout', 'cash', 'Cash to card or bank')}</div>
@@ -588,7 +569,7 @@ function vProfile() {
   <div class="grid2"><div class="panel"><div class="ph"><h2>Details</h2></div><div class="pb form">
     <label>Name<input class="field" id="pfName" value="${esc(m.name)}" maxlength="40" autocomplete="off"></label>
     <label>Job title<input class="field" id="pfTitle" value="${esc(m.title)}" maxlength="60"></label>
-    <label>Work email<input class="field" id="pfEmail" type="email" value="${esc(m.email || '')}" placeholder="name@flightwise.example"></label>
+    <label>Work email<input class="field" id="pfEmail" type="email" value="${esc(m.email || '')}" placeholder="name@koda.example"></label>
     <label class="sw"><input type="checkbox" id="pfNotify" ${m.notify ? 'checked' : ''}> Email me when a claim needs a person<small>${m.waiting} waiting now</small></label>
     <div><button class="btn primary" id="pfSave">Save profile</button> <span class="mute" id="pfMsg" role="status"></span></div></div></div>
   <div class="panel"><div class="ph"><h2>Your work</h2></div><div class="pb"><div class="grid3" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="mini"><b>${m.decisions}</b><span>Claims decided by you</span></div><div class="mini"><b>${m.waiting}</b><span>Waiting for a person</span></div></div>
@@ -660,7 +641,7 @@ function applyRole() {
   if (ME.role !== 'admin') off('#saveRules,#asAdd,[data-asdel],[data-accept],[data-rule]', 'Only an admin can change this.');
   if (ME.role === 'agent') off('.act,.eact,.bact,.act-ask', 'Your role can look but not decide. Ask a reviewer.');
 }
-$('#aiOn').innerHTML = aiChip('AI on');
+$('#aiOn').innerHTML = aiChip('AI on');  // replaced with the real state once the overview loads
 
 /* ---------- Sign in ---------- */
 let timer = null, GATE = {stage: 'email', email: '', ch: null, code: '', err: '', demos: null};
@@ -674,7 +655,7 @@ function drawGate() {
   const g = $('#gate'); g.hidden = false;
   const demo = GATE.demos || [];
   g.innerHTML = `<div class="gbox">
-    <div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span> <span class="mute" style="font-size:13px;margin-left:6px">Flightwise Insurance</span></div>
+    <div><span class="wordmark" role="img" aria-label="KODA"><i>K</i><i>O</i><i>D</i><i>A</i></span> <span class="mute" style="font-size:13px;margin-left:6px">Claims desk</span></div>
     ${GATE.stage === 'email' ? `<h1>Sign in to the insurer desk</h1>
       <p>Use your work email. We send a 6 digit code to confirm it is you.</p>
       <label>Work email<input id="gEmail" class="field" type="email" autocomplete="username" value="${esc(GATE.email)}"></label>

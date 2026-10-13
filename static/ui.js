@@ -37,7 +37,7 @@ function delayTrack(delay, r, cur, dark) {
   const label = delay > 0 ? hm(delay) + ' late' : 'On time';
   return `<div class="dtrack tall ${dark ? 'dark' : ''}" role="img" aria-label="${esc(label)}. Pays ${num(r.delay_tier1_payout)} ${cur} from ${hm(t1)} and ${num(r.delay_tier2_payout)} ${cur} from ${hm(t2)}.">
     <div class="dt-bar"><i class="dt-off" style="width:${p(t1)}%"></i><i class="dt-t1" style="width:${p(t2 - t1)}%"></i><i class="dt-t2" style="flex:1"></i>
-      <b class="dt-mark ${pos > 82 ? 'edge' : ''}" style="left:${pos}%"><span>${label}</span></b></div>
+      <b class="dt-mark ${pos > 82 ? 'edge' : pos < 12 ? 'start' : ''}" style="left:${pos}%"><span>${label}</span></b></div>
     <div class="dt-scale"><span>0</span><span style="left:${p(t1)}%">${hm(t1)}</span><span style="left:${p(t2)}%">${hm(t2)}</span></div>
     <div class="dt-pay"><span style="left:${p(t1)}%">${num(r.delay_tier1_payout)} ${cur}</span><span style="left:${p(t2)}%">${num(r.delay_tier2_payout)} ${cur}</span></div></div>`;
 }

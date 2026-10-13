@@ -27,11 +27,12 @@
   .av{width:31px;height:31px;border-radius:50%;background:var(--amber);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
   #view{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 15px 20px;display:flex;flex-direction:column;gap:13px;scrollbar-width:none}
   #view::-webkit-scrollbar{display:none}
-  .tabs{display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-top:1px solid var(--line);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
-  .tab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 9px;font-size:11.5px;font-weight:600;color:var(--mute);position:relative}
-  .tab.on{color:var(--cobalt)}
-  .tab.on::before{content:'';position:absolute;top:-1px;left:28%;right:28%;height:3px;background:var(--cobalt);border-radius:0 0 3px 3px}
-  .tab .ms{font-size:21px}
+  .tabs{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid var(--line2);flex-shrink:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0;font-size:11px;font-weight:600;color:var(--mute);border-radius:12px}
+  .tab .ms{font-size:21px;width:48px;height:28px;line-height:28px;text-align:center;border-radius:99px;transition:background .15s,color .15s}
+  .tab:hover .ms{background:var(--line2)}
+  .tab.on{color:var(--ink)}
+  .tab.on .ms{background:var(--cobalt-t);color:var(--cobalt);font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
   .fade{display:flex;flex-direction:column;gap:13px}
   @media(prefers-reduced-motion:no-preference){.fade{animation:fade .22s ease}@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}}
 
@@ -80,8 +81,7 @@
   .empty p{font-size:13px;color:var(--mute);line-height:1.5;max-width:255px}
 
   /* ---- wallet */
-  .bal{background:linear-gradient(150deg,#0B2A5C,#071C3F 72%);color:#fff;border-radius:16px;padding:16px 17px;position:relative;overflow:hidden}
-  .bal::after{content:'';position:absolute;right:-44px;top:-44px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(13,197,251,.26),transparent 70%)}
+  .bal{background:var(--navy);color:#fff;border-radius:18px;padding:17px 18px;position:relative;overflow:hidden}
   .bal small{color:var(--navy-mute);font-size:12.5px}
   .bal b{display:block;font-family:'Figtree',sans-serif;font-weight:800;font-size:37px;letter-spacing:-.035em;line-height:1.05;margin:3px 0 2px;font-variant-numeric:tabular-nums}
   .bal .two{display:flex;gap:14px;margin-top:9px;padding-top:9px;border-top:1px solid var(--navy-line);font-size:12.5px;color:var(--navy-mute)}
@@ -219,6 +219,76 @@
   .msgbox{background:var(--cobalt-t);border:1px solid #CBDCFB;color:#0A2E6E;border-radius:11px;padding:11px 13px;font-size:13px;line-height:1.5}
   .msgbox.good{background:var(--green-t);border-color:#A9DCC4;color:#0B5138}
   h1{font-size:23px;letter-spacing:-.02em}
+  /* ---- friendlier surfaces: one radius, lighter borders, a hint of depth */
+  #app{background:#F4F7FB}
+  .card,.trip,.door,.empty,.rcpt,.fl,.who{border-color:var(--line2);border-radius:16px;box-shadow:0 1px 2px rgba(7,28,63,.04)}
+  .cap{font-size:12px;letter-spacing:.01em;color:var(--mute);font-weight:700}
+  .sh{font-size:13px;font-weight:700;color:var(--ink2);margin:2px 2px 8px}
+  .stack{display:grid;gap:9px}
+  .claimref{font-size:12px;color:var(--mute);margin-top:6px}
+  .rcpt .st{justify-self:start}
+  .tl{display:grid;gap:0}
+  .tl .ev{display:grid;grid-template-columns:14px 1fr;gap:10px;position:relative;padding-bottom:12px}
+  .tl .ev:last-child{padding-bottom:0}
+  .tl .ev::before{content:'';position:absolute;left:6px;top:14px;bottom:0;border-left:2px solid var(--line2)}
+  .tl .ev:last-child::before{display:none}
+  .tl .ev i{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--cobalt);margin-top:3px}
+  .tl .ev:last-child i{background:var(--cobalt)}
+  .tl .ev b{display:block;font-size:13.5px;font-weight:600;line-height:1.35}
+  .tl .ev small{display:block;font-size:12px;color:var(--mute);margin-top:1px}
+  details.faq{border-top:1px solid var(--line2);padding:11px 0}
+  details.faq:first-of-type{border-top:0}
+  details.faq summary{list-style:none;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer}
+  details.faq summary::-webkit-details-marker{display:none}
+  details.faq summary .ms{margin-left:auto;color:var(--faint);transition:transform .15s}
+  details.faq[open] summary .ms{transform:rotate(180deg)}
+  /* greeting */
+  .hello{padding:2px 2px 0}
+  .hello h1{font-size:25px;letter-spacing:-.025em}
+  .hello p{font-size:13.5px;color:var(--mute);margin-top:3px}
+  /* next flight, as a boarding pass */
+  .pass{display:grid;gap:13px;width:100%;text-align:left;background:var(--navy);color:#fff;border-radius:20px;padding:16px 17px 15px;position:relative;box-shadow:0 10px 24px rgba(7,28,63,.18)}
+  .pass:focus-visible{outline-offset:3px}
+  .pass .p1{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--navy-mute)}
+  .pass .p1 .mono{color:#fff;font-weight:600}
+  .pass .p2{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+  .pass .ap{font-weight:800;font-size:32px;letter-spacing:-.03em;line-height:1}
+  .pass .ap small{display:block;font-size:12px;font-weight:500;color:var(--navy-mute);letter-spacing:0;margin-top:5px}
+  .pass .ap.r{text-align:right}
+  .pass .ln{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;color:#5CCFF8}
+  .pass .ln hr{border:0;border-top:2px dotted var(--navy-line);margin:0}
+  .pass .ln .ms{font-size:18px;transform:rotate(90deg)}
+  .pass .p3{display:grid;grid-template-columns:repeat(3,auto);justify-content:space-between;gap:10px;border-top:1px dashed var(--navy-line);padding-top:12px}
+  .pass .p3 small{display:block;font-size:11px;color:var(--navy-mute);margin-bottom:2px}
+  .pass .p3 b{font-size:13.5px;font-weight:700}
+  .pass .p4{display:inline-flex;align-items:center;gap:6px;justify-self:start;font-size:12.5px;font-weight:700;background:#FFF2D3;color:#6B4300;border-radius:99px;padding:4px 10px}
+  .pass .p4 .ms{font-size:15px}
+  .pass .st.none{background:rgba(255,255,255,.12);color:#fff}
+  /* rows you can act on */
+  .list{display:grid;background:#fff;border:1px solid var(--line2);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(7,28,63,.04)}
+  .todo{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 13px;background:#fff;border-top:1px solid var(--line2)}
+  .todo:first-child{border-top:0}
+  .todo:hover{background:#F8FAFD}
+  .todo.big{border:1px solid var(--line2);border-radius:16px;padding:14px}
+  .todo .ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex-shrink:0;background:var(--line2);color:var(--mute)}
+  .todo .ic .ms{font-size:19px}
+  .todo .ic.ok{background:var(--green-t);color:var(--green)}.todo .ic.warn{background:var(--amber-t);color:#B26A00}
+  .todo .ic.info{background:var(--cobalt-t);color:var(--cobalt)}.todo .ic.red{background:var(--red-t);color:var(--red)}
+  .todo b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+  .todo b .mono{font-weight:600}
+  .todo small{display:block;font-size:12.5px;color:var(--mute);margin-top:2px;line-height:1.35}
+  .todo>.ms.go{margin-left:auto;color:var(--faint);font-size:18px}
+  .todo>span:nth-child(2){min-width:0}
+  .todo .grow{flex-shrink:0;padding-left:6px}
+  .todo .st{white-space:nowrap}
+  /* quick actions */
+  .qa{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .qa button{display:grid;justify-items:center;gap:7px;padding:13px 6px 12px;background:#fff;border:1px solid var(--line2);border-radius:16px;font-size:12.5px;font-weight:600;color:var(--ink);box-shadow:0 1px 2px rgba(7,28,63,.04)}
+  .qa button:hover{border-color:var(--cobalt)}
+  .qa .ic{width:38px;height:38px;border-radius:12px;background:var(--cobalt-t);color:var(--cobalt);display:grid;place-items:center}
+  .qa .ic .ms{font-size:20px}
+  .seg button:focus-visible,.qa button:focus-visible,.todo:focus-visible{outline:2px solid var(--cobalt);outline-offset:-2px}
+
   .sub{font-size:13px;color:var(--mute);margin-top:5px;line-height:1.5}
 </style>
 </head>
@@ -236,8 +306,10 @@
   <div id="view"></div>
   <nav class="tabs" aria-label="Sections">
     <button data-tab="home" class="tab on"><span class="ms" aria-hidden="true">dashboard</span><span>Home</span></button>
+    <button data-tab="cover" class="tab"><span class="ms" aria-hidden="true">verified_user</span><span>Cover</span></button>
     <button data-tab="claims" class="tab"><span class="ms" aria-hidden="true">receipt_long</span><span>Claims</span></button>
     <button data-tab="wallet" class="tab"><span class="ms" aria-hidden="true">payments</span><span>Wallet</span></button>
+    <button data-tab="help" class="tab"><span class="ms" aria-hidden="true">support_agent</span><span>Help</span></button>
   </nav>
   <div id="push" class="pushbn" hidden></div>
 </div>
@@ -245,9 +317,9 @@
 <script src="/static/ui.js"></script>
 <script>
 /* KODA traveler app.
-   Three tabs: Home (trips and the two ways in), Claims, Wallet. Everything else lives in the avatar menu.
+   Five tabs: Home (where things stand), Cover (your flights, check a booking, book with cover), Claims, Wallet, Help.
    Screens are pushed on a stack so the back button always goes one step back. */
-const TAB_TITLES = {home: '', claims: 'Claims', wallet: 'Wallet'};
+const TAB_TITLES = {home: '', cover: 'Cover', claims: 'Claims', wallet: 'Wallet', help: 'Help'};
 let H = null;            // /api/app/home payload
 let CS = null;           // /api/customer/{id} payload (methods, vouchers, ledger)
 let SV = null;           // outlets at the airport
@@ -289,7 +361,7 @@ const LIVE_SCREENS = ['trip', 'claim'];
 const claimSig = h => JSON.stringify((h.claims || []).map(g => [g.policy, g.state, g.decision && [g.decision.status, g.decision.amount, g.decision.message], g.bag && g.bag.decision]));
 async function syncClaims() {
   const s = cur_screen();
-  if (!H || document.hidden || (s && !LIVE_SCREENS.includes(s.name)) || (!s && tab === 'wallet')) return;
+  if (!H || document.hidden || (s && !LIVE_SCREENS.includes(s.name)) || (!s && ['wallet', 'cover'].includes(tab))) return;
   if (document.activeElement && document.activeElement.matches('input,textarea,select')) return;
   let fresh;
   try { fresh = await api('/api/app/home'); } catch (e) { return; }  // a missed poll is retried on the next tick
@@ -350,13 +422,6 @@ function setTab(t) {
 }
 
 /* ---------------------------------------------------------------- shared pieces */
-function whoCard() {
-  const c = H.customer;
-  return `<button class="who" data-go="menu" aria-label="Open your profile and the menu">
-    <span class="ava">${esc(initials(c.name))}</span>
-    <span><b>${esc(c.name)}</b><small>${esc(c.email)} · ${esc(c.market === 'SG' ? 'Singapore' : c.market)}</small></span>
-    <span class="ms go" aria-hidden="true">arrow_forward</span></button>`;
-}
 const STATE_CHIP = {
   covered: ['ok', 'verified_user', 'Covered'],
   no_cover: ['none', 'shield', 'No cover'],
@@ -393,29 +458,82 @@ function tripRow(t) {
 const TABS = {};
 TABS.home = () => {
   const up = H.trips.filter(t => t.upcoming), past = H.trips.filter(t => !t.upcoming);
-  const next = up[0] && up[0].legs.find(g => !g.departed);
-  // The forecast belongs to a trip we actually cover. With nothing bought there is nothing to forecast.
-  const watched = next && next.risk && next.policy ? next : null;
-  return `<section><div class="cap">Your account</div>${whoCard()}</section>
-  ${watched ? `<section><div class="cap">Delay forecast</div>${riskStrip(watched)}</section>` : ''}
-  <section><div class="cap">Your trips</div>
-    ${up.length ? up.map(tripRow).join('') : `<div class="empty"><span class="ic">${ico('flight_takeoff')}</span><b>No trips coming up</b>
-      <p>Add a ticket you have already booked, or book a flight with cover here.</p></div>`}
+  const nextTrip = up[0], next = nextTrip && nextTrip.legs.find(g => !g.departed);
+  const open = up.flatMap(t => t.legs.filter(g => !g.departed));
+  const bare = open.filter(g => g.state === 'no_cover').length;
+  const first = (H.customer.name || '').split(' ')[0];
+  const line = !open.length ? 'No flights coming up. Add a booking to get covered.'
+    : `${open.length} ${open.length === 1 ? 'flight' : 'flights'} coming up` + (bare ? `, ${bare} without cover.` : ', all covered.');
+  const todo = attention();
+  return `<section class="hello"><h1>Hi ${esc(first)}</h1><p>${line}</p></section>
+  ${next ? passCard(nextTrip, next) : `<div class="empty"><span class="ic">${ico('flight_takeoff')}</span><b>Nothing booked yet</b>
+      <p>Check a booking you already have, or book a flight with cover.</p></div>`}
+  ${todo.length ? `<section><div class="sh">Needs you</div><div class="list">${todo.join('')}</div></section>` : ''}
+  <section class="qa">
+    <button data-cmode="check"><span class="ic">${ico('search')}</span>Check a booking</button>
+    <button data-cmode="buy"><span class="ic">${ico('flight_takeoff')}</span>Book with cover</button>
+    <button data-go="chat"><span class="ic">${ico('support_agent')}</span>Ask us</button>
   </section>
-  <section><div class="cap">Check or add cover</div>
-    <div style="display:grid;gap:8px">
-      <button class="door" data-go="check"><span class="ic">${ico('search')}</span>
-        <span><b>Check a ticket or a cover</b><small>Any booking reference: an airline, a travel site, or a partner that sells KODA cover. See exactly what is covered, and add what is missing.</small></span>${ico('arrow_forward')}</button>
-      <button class="door" data-go="buy"><span class="ic">${ico('flight_takeoff')}</span>
-        <span><b>Book a flight with cover</b><small>No ticket yet? Book through our partner checkout and the cover is added at the same time.</small></span>${ico('arrow_forward')}</button>
-    </div>
-    <p class="dim" style="margin-top:8px">KODA is the insurer behind the cover, whether you bought it here or through one of our partners. Cover always belongs to a booking, so a ticket comes first.</p>
-  </section>
-  <section><div class="cap">Questions</div>
-    <button class="door" data-go="chat"><span class="ic">${ico('support_agent')}</span>
-      <span><b>Ask about your cover</b><small>Our assistant answers from your own policy. A person at Flightwise can join the same chat whenever you want one.</small></span>${ico('arrow_forward')}</button></section>
-  ${past.length ? `<section><div class="cap">Past trips</div>${past.map(tripRow).join('')}</section>` : ''}`;
+  ${up.length > 1 ? `<section><div class="sh">Also coming up</div><div class="list">${up.slice(1).map(tripLine).join('')}</div></section>` : ''}
+  ${past.length ? `<section><div class="sh">Past trips</div><div class="list">${past.map(tripLine).join('')}</div></section>` : ''}`;
 };
+function tripLine(t) {
+  const g = t.legs.find(x => !x.departed) || t.legs[t.legs.length - 1], f = g.flight;
+  const last = t.legs[t.legs.length - 1].flight, back = t.legs.length > 1 && last.dest === f.origin;
+  return `<button class="todo" data-trip="${esc(t.ref)}"><span class="ic ${{paid: 'ok', covered: 'ok', review: 'warn', declined: 'red'}[g.state] || 'none'}">${ico(t.upcoming ? 'flight_takeoff' : 'flight')}</span>
+    <span><b>${esc(f.origin)} to ${esc(back ? f.dest + ' and back' : f.dest)}</b><small><span class="mono">${esc(f.code)}</span> · ${esc(f.depart_label)}</small></span>
+    <span class="grow">${chip(g.state)}</span></button>`;
+}
+/* The next flight as a boarding pass: where, when, what cover, and how likely a delay is, in one place. */
+function passCard(t, g) {
+  const f = g.flight, r = g.risk;
+  const late = f.cancelled ? 'Cancelled' : f.delay_minutes > 0 ? hm(f.delay_minutes) + ' late' : '';
+  return `<button class="pass" data-trip="${esc(t.ref)}" aria-label="Open trip ${esc(t.ref)}">
+    <span class="p1"><span class="mono">${esc(f.code)}</span><span>${esc(f.airline || '')}</span><span class="grow">${chip(g.state)}</span></span>
+    <span class="p2"><span class="ap">${esc(f.origin)}<small>${esc(f.origin_city || '')}</small></span>
+      <span class="ln"><hr>${ico('flight')}<hr></span>
+      <span class="ap r">${esc(f.dest)}<small>${esc(f.dest_city || '')}</small></span></span>
+    <span class="p3"><span><small>Departs</small><b>${esc(f.depart_label)}</b></span>
+      <span><small>Cover</small><b>${esc({both: 'Delay + bag', delay: 'Delay', baggage: 'Bag only', none: 'None'}[g.cover])}</b></span>
+      ${r ? `<span><small>Delay chance</small><b>${r.probability}%</b></span>` : ''}</span>
+    ${late ? `<span class="p4">${ico('schedule')}${esc(late)}</span>` : ''}
+  </button>`;
+}
+/* Only things the traveler can act on: a question from KODA, a claim to re-check, a flight with no cover. */
+function attention() {
+  const out = [], row = (attrs, tone, icon, title, sub) =>
+    `<button class="todo" ${attrs}><span class="ic ${tone}">${ico(icon)}</span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span>${ico('arrow_forward', 'go')}</button>`;
+  for (const g of H.claims) {
+    const d = g.decision, code = g.flight.code;
+    if (g.state === 'review' && d && /asked you/.test(d.message || '')) out.push(row('data-go="chat"', 'warn', 'support_agent', `We asked you a question about ${code}`, 'Reply in Messages so we can finish your claim'));
+    else if (g.state === 'review') out.push(row(`data-claim="${esc(g.policy)}"`, 'info', 'hourglass_top', `${code} is with a claims officer`, 'Nothing to do. We will message you'));
+    else if (g.state === 'declined' && g.can.includes('review')) out.push(row(`data-claim="${esc(g.policy)}"`, 'red', 'error', `${code} was not paid`, 'You can ask for a second review'));
+    else if (g.state === 'not_covered' && g.can.includes('recheck')) out.push(row(`data-claim="${esc(g.policy)}"`, 'info', 'rule', `${code} was ${hm(g.flight.delay_minutes || 0)} late`, 'Under the rule. Ask us to check again'));
+  }
+  for (const t of H.trips) for (const g of t.legs) {
+    if (g.departed) continue;
+    if (g.state === 'no_cover') out.push(row(`data-buymine="${esc(g.flight.code)}"`, 'none', 'shield', `No cover on ${g.flight.code}`, `Add delay cover from ${sgd(H.rule.delay_premium)}`));
+    else if (g.can.includes('add')) out.push(row(`data-addmine="${esc(g.policy)}|${esc(g.flight.code)}|${esc((g.missing || []).join(','))}"`, 'none', 'add', `Add ${(g.missing || []).join(' and ')} cover to ${g.flight.code}`, 'Before the flight leaves'));
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- tab: cover */
+TABS.cover = () => {
+  const legs = H.trips.filter(t => t.upcoming).flatMap(t => t.legs.filter(g => !g.departed).map(g => ({...g, ref: t.ref})));
+  const mode = form.mode || 'check';
+  return `${legs.length ? `<section><div class="sh">Your upcoming flights</div><div class="list">${legs.map(coverRow).join('')}</div></section>` : ''}
+    <section><div class="sh">${mode === 'buy' ? 'Book a flight with cover' : 'Check any booking'}</div>
+      <div class="seg" role="tablist"><button role="tab" aria-selected="${mode === 'check'}" data-cmode="check" class="${mode === 'check' ? 'on' : ''}">I have a booking</button>
+        <button role="tab" aria-selected="${mode === 'buy'}" data-cmode="buy" class="${mode === 'buy' ? 'on' : ''}">Find a flight</button></div></section>
+    ${mode === 'buy' ? SCREENS.buy.body() : SCREENS.check.body()}`;
+};
+function coverRow(g) {
+  const f = g.flight, has = g.cover !== 'none';
+  const attrs = has ? `data-cover="${esc(g.policy)}"` : `data-buymine="${esc(f.code)}"`;
+  return `<button class="todo" ${attrs}><span class="ic ${has ? 'ok' : 'none'}">${ico(has ? 'verified_user' : 'shield')}</span>
+    <span><b><span class="mono">${esc(f.code)}</span> ${esc(f.origin)} to ${esc(f.dest)}</b><small>${esc(f.depart_label)} · ${has ? esc(coverWord(g)) : 'No cover yet, tap to add'}</small></span>${ico('arrow_forward', 'go')}</button>`;
+}
 function riskStrip(g) {
   const r = g.risk, lvl = {low: 'Low', medium: 'Medium', high: 'High'}[r.level] || r.level;
   return `<section class="card fc ${r.level}">
@@ -439,7 +557,7 @@ TABS.claims = () => {
       </section>`;
   }
   return `<section>${H.claims.map(claimRow).join('')}</section>
-    <p class="dim">A claim is never declined by the system alone. Only a person can decline one, and you can always ask for another look.</p>`;
+    <p class="dim">The system never declines a claim. Only a person can, and you can ask for a second review.</p>`;
 };
 function claimRow(g) {
   const f = g.flight, d = g.decision;
@@ -447,7 +565,7 @@ function claimRow(g) {
   return `<button class="trip" data-claim="${esc(g.policy)}" style="margin-bottom:8px">
     <span class="r1"><span class="mono">${esc(f.code)}</span><span>${esc(f.origin)} to ${esc(f.dest)}</span><span class="grow mono">${esc(g.ref)}</span></span>
     <span class="r1">${ico('schedule')}${esc(f.depart_label)}${f.delay_minutes > 0 ? ' · ' + hm(f.delay_minutes) + ' late' : f.cancelled ? ' · cancelled' : ''}</span>
-    <span class="r3">${chip(g.state)}<span class="grow" style="text-align:right;font-weight:700">${amt}</span></span></button>`;
+    <span class="r3">${chip(g.state)}<span class="grow" style="text-align:right;font-weight:700">${amt || (g.can.includes('recheck') ? '<span style="color:var(--cobalt);font-weight:600">Ask us to check</span>' : g.can.includes('review') ? '<span style="color:var(--cobalt);font-weight:600">Ask for a review</span>' : '')}</span></span></button>`;
 }
 
 /* ---------------------------------------------------------------- tab: wallet */
@@ -483,14 +601,13 @@ SCREENS.check = {
   body: () => {
     const r = form.res;
     if (!r) {
-      return `<section><h1>What is covered on your ticket?</h1>
-        <p class="sub">Works for a ticket from an airline, Trip.com, Agoda or anywhere else, and for KODA cover you bought through one of our partners at checkout. Enter the reference and the last name on it.</p></section>
+      return `<p class="sub" style="margin:0">From an airline, Trip.com, Agoda or anywhere else. Use the reference and last name on the ticket.</p>
         <section class="frm">
           <label>Booking or cover reference<input id="cRef" class="field mono" maxlength="10" placeholder="SG7K2M" value="${esc(form.ref || '')}" autocapitalize="characters"></label>
           <label>Last name<input id="cSur" class="field" maxlength="40" placeholder="Lim" value="${esc(form.sur || '')}"></label>
           <button class="btn primary" id="cGo">Check the cover</button>
         </section>
-        <p class="dim">Your own trips are already on the Home tab. Use this for a ticket or a cover that is not there yet.</p>`;
+`;
     }
     return `<section><div class="cap">${esc(r.passenger)} · <span class="mono">${esc(r.ref)}</span></div>
       <p class="sub" style="margin:0">${esc(r.trip)}${r.channel ? ' · ' + (r.channel === 'KODA partner checkout' ? 'booked with cover through KODA' : 'booked with ' + esc(r.channel)) : ''}</p></section>
@@ -505,7 +622,7 @@ SCREENS.check = {
             : l.cover === 'none' ? `<p class="dim" style="margin-top:7px">${l.departed ? 'This flight has left, so cover cannot be added.' : 'Cover cannot be added to this flight.'}</p>` : ''}
         </section>`;
       }).join('')}
-      <button class="btn" data-go="check">Check another ticket</button>`;
+      <button class="btn" data-cmode="check">Check another booking</button>`;
   },
 };
 
@@ -516,8 +633,7 @@ SCREENS.buy = {
     if (form.step === 'confirm') return buyConfirm();
     if (form.step === 'results') return buyResults();
     const today = new Date().toISOString().slice(0, 10);
-    return `<section><h1>Book a flight with cover</h1>
-      <p class="sub">KODA sells cover against a booking, so the flight is booked here first. In this prototype the ticket is simulated and the cover is real in the system.</p></section>
+    return `<p class="sub" style="margin:0">No ticket yet? Book here and the cover starts with it. The ticket is simulated in this demo.</p>
       <section class="frm">
         <div class="row2"><label style="flex:1">From<input id="bFrom" class="field mono" maxlength="3" value="${esc(form.from || 'SIN')}" autocapitalize="characters"></label>
           <label style="flex:1">To<input id="bTo" class="field mono" maxlength="3" value="${esc(form.to || 'KUL')}" autocapitalize="characters"></label></div>
@@ -532,8 +648,9 @@ SCREENS.buy = {
 function buyResults() {
   const r = form.results;
   if (!r.flights.length) return `<div class="empty"><span class="ic">${ico('search')}</span><b>No flights found</b><p>Try another day or another pair of airports.</p></div>
-    <button class="btn" data-go="buy">Change the search</button>`;
-  return `<section><div class="cap">${esc(r.origin)} to ${esc(r.dest || 'anywhere')} · ${esc(r.date)}</div>
+    <button class="btn" data-cmode="buy">Change the search</button>`;
+  const day = new Date(r.date + 'T00:00:00').toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'});
+  return `<section><div class="cap">${esc(r.origin)} to ${esc(r.dest || 'anywhere')} · ${esc(day)}</div>
     <p class="sub" style="margin:0">${r.flights.length} flights. ${r.source === 'live' ? 'Live airline status.' : 'From the saved schedule; live status is checked closer to the day.'}</p></section>
     ${r.flights.map((f, i) => `<button class="fl" data-fl="${i}">
       <span class="t"><span class="mono">${esc(f.code)}</span><span>${esc(f.airline)}</span></span>
@@ -599,7 +716,8 @@ SCREENS.trip = {
   body: s => {
     const t = H.trips.find(x => x.ref === s.ref);
     if (!t) return '<p class="dim">That trip is no longer in your account.</p>';
-    return `<section><h1>${esc(t.legs[0].flight.origin_city)} to ${esc(t.legs[t.legs.length - 1].flight.dest_city)}</h1>
+    const a = t.legs[0].flight, z = t.legs[t.legs.length - 1].flight, back = t.legs.length > 1 && z.dest === a.origin;
+    return `<section><h1>${esc(a.origin_city || a.origin)} to ${esc(a.dest_city || a.dest)}${back ? ' and back' : ''}</h1>
       <p class="sub">${esc(t.trip)} · <span class="mono">${esc(t.ref)}</span>${t.channel ? ' · booked with ' + esc(t.channel) : ''} · passenger ${esc(t.passenger)}</p></section>
       ${t.legs.map(legCard).join('')}`;
   },
@@ -636,6 +754,7 @@ SCREENS.claim = {
       <div class="kv"><span>Departed</span><b>${esc(f.depart_label)}</b></div>
       ${f.cancelled ? `<div class="kv"><span>What happened</span><b>Cancelled</b></div>` : `<div class="kv"><span>Delay</span><b>${hm(f.delay_minutes || 0)}</b></div>`}
       <div class="kv"><span>Rule</span><b>Pays from ${H.rule.delay_tier1_minutes} minutes</b></div>
+      ${d ? `<div class="kv"><span>Claim reference</span><b class="mono">${esc(d.id)}</b></div>` : ''}
       <button class="btn sm" style="margin-top:10px" data-cover="${esc(g.policy)}">${ico('shield')} See what this cover pays</button></section>`;
     if (!d) {
       return head + (g.state === 'not_covered' ? `<section class="card"><div class="cap">No payout on this flight</div>
@@ -648,7 +767,7 @@ SCREENS.claim = {
         <div class="amt">${d.points ? Number(d.points).toLocaleString('en-US') : sgd(d.amount)}</div>
         <div class="dim">${d.points ? `points, worth ${sgd(d.amount)} as cash and ${sgd(Math.round(d.points / 100))} at the airport` : 'to your saved card'}</div>
         <p class="msgbox good" style="margin-top:11px">${esc(d.message || d.explanation || '')}</p>
-        ${d.decided_by && d.decided_by !== 'system' ? `<p class="dim" style="margin-top:7px">Approved by ${esc(d.decided_by)} at Flightwise Insurance.</p>` : '<p class="dim" style="margin-top:7px">Paid automatically, with no claim form.</p>'}
+        ${d.decided_by && d.decided_by !== 'system' ? `<p class="dim" style="margin-top:7px">Approved by ${esc(d.decided_by)} at KODA.</p>` : '<p class="dim" style="margin-top:7px">Paid automatically, with no claim form.</p>'}
       </section>
       <div class="row2"><button class="btn primary" data-go="spend" style="flex:1">Spend at the airport</button><button class="btn" data-go="cashout" style="flex:1">Cash out</button></div>` + bagBlock(g);
     }
@@ -683,9 +802,9 @@ function historyBlock(policy) {
   }
   if (!h || !h.length) return '';
   const when = ts => new Date(ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
-  return `<section class="card"><div class="cap">What happened, step by step</div>
-    ${h.map(x => `<div class="kv"><span>${esc(when(x.ts))}</span><b style="font-weight:500;text-align:right">${esc(x.what)}</b></div>`).join('')}
-    <p class="dim" style="margin-top:6px">This is the same record Flightwise sees.</p></section>`;
+  return `<section class="card"><div class="cap">What happened</div>
+    <div class="tl">${h.map(x => `<div class="ev"><i></i><span><b>${esc(x.what)}</b><small>${esc(when(x.ts))}</small></span></div>`).join('')}</div>
+    <p class="dim" style="margin-top:10px">Our claims team sees this same record.</p></section>`;
 }
 function bagBlock(g) {
   if (g.bag) {
@@ -708,7 +827,7 @@ function bagBlock(g) {
 SCREENS.recheck = {
   title: () => 'Ask us to check again',
   body: s => `<section><h1>Tell us what you saw</h1>
-    <p class="sub">A claims officer at Flightwise will read this with the airline record and decide. Nothing is decided by the system alone.</p></section>
+    <p class="sub">A claims officer at KODA will read this with the airline record and decide. Nothing is decided by the system alone.</p></section>
     <section class="frm"><label>What happened, in your words
       <textarea id="rNote" class="field" style="height:110px;padding:11px" maxlength="300" placeholder="The airline app showed we left 3 hours 20 minutes late.">${esc(form.note || '')}</textarea></label>
       <button class="btn primary" id="rGo" data-policy="${esc(s.policy)}">Send to a claims officer</button></section>
@@ -843,7 +962,7 @@ SCREENS.profile = {
   },
 };
 
-/* --- support chat: the assistant, or a person at Flightwise when one joins */
+/* --- support chat: the assistant, or a person at KODA when one joins */
 SCREENS.chat = {
   title: () => 'Messages',
   body: () => {
@@ -852,7 +971,7 @@ SCREENS.chat = {
     const human = ch.mode === 'human';
     const me = H.customer.name;
     return `<section class="whochip"><span class="dot ${ch.waiting && !human ? 'wait' : ''}"></span>
-        <span>You are talking to <b>${esc(ch.with)}</b>${human ? ', Flightwise Insurance' : ''}
+        <span>You are talking to <b>${esc(ch.with)}</b>${human ? ', KODA' : ''}
           <br><span class="mute">${human ? 'A person is in this chat. The assistant has stepped back.'
             : ch.waiting ? 'A person has been asked to join. The assistant can still answer meanwhile.'
             : 'This is our assistant. It answers from your cover and your flight status, and never decides a claim.'}</span></span></section>
@@ -861,7 +980,7 @@ SCREENS.chat = {
         const when = new Date(m.ts * 1000).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
         if (m.role === 'system') return `<div class="bub sys">${esc(m.text)}</div>`;
         return `<div class="bub ${mine ? 'me' : m.role === 'staff' ? 'them human' : 'them'}">
-          <span class="by">${esc(mine ? me : m.role === 'staff' ? m.author + ', Flightwise' : m.author)}</span>
+          <span class="by">${esc(mine ? me : m.role === 'staff' ? m.author + ', KODA' : m.author)}</span>
           ${esc(m.text)}<time>${when}</time></div>`;
       }).join('')}</section>
       <section class="composer"><textarea id="chText" maxlength="600" placeholder="${human ? 'Write to ' + esc(ch.with) : 'Ask about your cover, a claim or your points'}" rows="1">${esc(form.draft || '')}</textarea>
@@ -919,19 +1038,18 @@ const FAQ = [
   ['Why do you not ask for my card?', 'Payouts go to your points wallet, so no card is needed to buy cover. Save one only if you want cash.'],
   ['Is the money real?', 'No. This is a hackathon prototype. Flight data is real where we can get it; payouts, tickets and partner outlets are simulated and labelled.'],
 ];
+TABS.help = () => SCREENS.help.body();
 SCREENS.help = {
   title: () => 'Help',
   body: () => {
     const R = H.rule;
     const fill = s => s.replace('{t1}', R.delay_tier1_minutes).replace('{p1}', sgd(R.delay_tier1_payout)).replace('{t2}', R.delay_tier2_minutes).replace('{p2}', sgd(R.delay_tier2_payout));
-    return `<section class="card"><div class="cap">Ask about your trip</div>
-        <p class="plain mute">Our assistant answers from your own cover and flight status, and a person at Flightwise can join the chat whenever you ask.</p>
-        <button class="btn primary sm" style="margin-top:9px" data-go="chat">${ico('support_agent')} Open Messages</button></section>
+    return `<button class="todo big" data-go="chat"><span class="ic info">${ico('support_agent')}</span>
+        <span><b>Messages</b><small>Our assistant knows your cover. Ask for a person any time.</small></span>${ico('arrow_forward', 'go')}</button>
       <section class="card"><div class="cap">Common questions</div>
-        ${FAQ.map(([q, a]) => `<details style="border-top:1px solid var(--line2);padding:9px 0"><summary style="font-size:13.5px;font-weight:600;cursor:pointer">${esc(q)}</summary>
+        ${FAQ.map(([q, a]) => `<details class="faq"><summary>${esc(q)}${ico('expand_more')}</summary>
           <p class="plain mute" style="margin-top:6px">${esc(fill(a))}</p></details>`).join('')}</section>
-      <section class="card"><div class="cap">Flightwise Insurance</div>
-        <p class="plain mute">KODA is the claims platform Flightwise runs. Cover is sold against a booking and decided on published rules. In production an insurer must be licensed in each market; here everything is simulated.</p></section>`;
+      <p class="dim">KODA sells the cover and decides claims on published rules. This is a prototype: money and tickets are simulated.</p>`;
   },
 };
 
@@ -953,7 +1071,7 @@ SCREENS.demo = {
         </div>` : '<p class="dim">No upcoming covered flight to play with. Reset the demo from the presenter page.</p>'}
       <section class="card"><div class="cap">Who is signed in</div>
         <div class="kv"><span>Traveler</span><b>${esc(H.customer.name)}</b></div>
-        <div class="kv"><span>Insurer</span><b>Ethan at Flightwise</b></div>
+        <div class="kv"><span>Insurer</span><b>Ethan at KODA</b></div>
         <p class="dim" style="margin-top:6px">Demo mode signs both in. Sign-in with a one-time code is in the app and switched off for the demo.</p></section>`;
   },
 };
@@ -967,8 +1085,7 @@ function menu() {
       <button class="bk grow" id="shClose" aria-label="Close" style="background:var(--line2);color:var(--ink)">${ico('close')}</button></div>
     <div class="mlist">
       <button class="mi" data-go="profile">${ico('verified_user')}<span>My profile<small>Details, cards and how you get paid</small></span>${ico('arrow_forward', 'go')}</button>
-      <button class="mi" data-go="chat">${ico('support_agent')}<span>Messages<small>Ask our assistant, or a person at Flightwise</small></span>${ico('arrow_forward', 'go')}</button>
-      <button class="mi" data-go="help">${ico('info')}<span>Help<small>How cover works, in short</small></span>${ico('arrow_forward', 'go')}</button>
+      <button class="mi" data-go="chat">${ico('support_agent')}<span>Messages<small>Ask our assistant, or a person at KODA</small></span>${ico('arrow_forward', 'go')}</button>
       ${MODE.demo ? `<button class="mi" data-go="demo">${ico('tune')}<span>Demo controls<small>Trigger a delay or a cancellation</small></span>${ico('arrow_forward', 'go')}</button>` : ''}
       ${MODE.demo ? '' : `<button class="mi" id="mOut">${ico('clear')}<span>Sign out</span></button>`}
     </div>
@@ -1014,7 +1131,7 @@ $('#ptsChip').onclick = () => setTab('wallet');
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-cover],[data-ask],[data-quick],#chSend,#chPerson,[data-go],[data-trip],#aGo,[data-claim],[data-recheck],[data-bag],[data-add],[data-addmine],[data-buymine],[data-route],[data-fl],[data-tier],[data-cat],[data-port],[data-spend],[data-voucher],[data-amt],[data-mid],[data-method],[data-default],[data-pay],[data-ev],#shClose,#cGo,#bGo,#bPay,#rGo,#gAdd,#gGo,#vScan,#vRef,#coPrev,#coGo,#pSave,#mOut');
+  const t = e.target.closest('[data-cmode],[data-cover],[data-ask],[data-quick],#chSend,#chPerson,[data-go],[data-trip],#aGo,[data-claim],[data-recheck],[data-bag],[data-add],[data-addmine],[data-buymine],[data-route],[data-fl],[data-tier],[data-cat],[data-port],[data-spend],[data-voucher],[data-amt],[data-mid],[data-method],[data-default],[data-pay],[data-ev],#shClose,#cGo,#bGo,#bPay,#rGo,#gAdd,#gGo,#vScan,#vRef,#coPrev,#coGo,#pSave,#mOut');
   if (!t) return;
   const d = t.dataset;
 
@@ -1037,6 +1154,7 @@ document.addEventListener('click', async e => {
     try { CH = await api('/api/app/chat/person', 'POST'); form = {}; render(); } catch (err) { fail(err); }
     return;
   }
+  if (d.cmode) { closeSheet(); tab = 'cover'; stack = []; form = {mode: d.cmode}; render(); return; }
   if (d.trip) return go({name: 'trip', ref: d.trip});
   if (d.claim) { tab = 'claims'; return go({name: 'claim', policy: d.claim}); }
   if (d.recheck) return go({name: 'recheck', policy: d.recheck});

@@ -1,7 +1,7 @@
 # KODA cover: what is covered, how it works, who does what
 
-Insurer in the demo: Flightwise Insurance. All money is Singapore dollars in the prototype. Payouts are simulated. Flights are real where we can get them.
-Figures below are the Singapore market defaults. Flightwise can change any of them in the console under Rules, and a change applies to the next trigger only.
+Insurer in the demo: KODA. All money is Singapore dollars in the prototype. Payouts are simulated. Flights are real where we can get them.
+Figures below are the Singapore market defaults. KODA can change any of them in the console under Rules, and a change applies to the next trigger only.
 
 ## 1. The product in one minute
 
@@ -27,7 +27,7 @@ KODA is smart flight cover. A traveler adds cover to a trip they already booked,
 - Cover bought after a delay is already known. Delay cover cannot be added once the flight is 30 minutes late or more.
 - Cover added after the flight has left or been cancelled.
 - A flight the traveler did not take.
-- A flight where a delay is already very likely. Delay cover stops selling when the delay chance reaches 80% (Flightwise can change this in Rules). Baggage cover stays open.
+- A flight where a delay is already very likely. Delay cover stops selling when the delay chance reaches 80% (KODA can change this in Rules). Baggage cover stays open.
 - Anything that happened before the cover was added.
 - A second claim of the same type on the same flight.
 - Compensation the airline owes by law. KODA pays on top of it. The traveler should still claim from the airline.
@@ -70,7 +70,7 @@ One account carries every state, so a judge never signs in or switches traveler.
 5. If a delay came in under the rule, the traveler can ask a person to check it again and say what happened. It goes to the review queue marked as a traveler request.
 6. The traveler spends points on a QR voucher at an airport partner, or cashes out to a card with the rate and fee shown first.
 7. A lost bag: report it to the airline, then enter the report number and the items. A person always decides a bag claim.
-8. Messages: the KODA assistant answers from the traveler's own cover, claim and points, and a person at Flightwise can join the same chat at any time. Every message says who wrote it.
+8. Messages: the KODA assistant answers from the traveler's own cover, claim and points, and a person at KODA can join the same chat at any time. Every message says who wrote it.
 
 ### Insurer staff (the console)
 
@@ -80,7 +80,7 @@ One account carries every state, so a judge never signs in or switches traveler.
 4. Conversations: every open support chat. The ones asking for a person come first. Read the transcript, including which facts the assistant used for each reply, take the chat over, reply under your own name, and hand it back to the assistant.
 5. Customers: all customers with cover type, claims, payouts and points, and how they came to us (cover only on an outside ticket, ticket and cover through our checkout, or a booking with no cover). Open one to see trips, saved methods, points history and flags.
 6. Points and partners: points owed, spending, cash-outs, which vouchers were scanned at the outlet, and the partner directory. Switch a partner on or off.
-7. Policies, Decisions, Exposure forecast, Rules, Markets and law, Audit log and Performance cover the rest of the book.
+7. Policies, Decisions, Exposure forecast, Rules, Markets and law, and Audit log cover the rest of the book.
 8. My profile: name, title, work email, notifications. Switch reviewer from the menu at the top right.
 
 ## 7. Who decides what

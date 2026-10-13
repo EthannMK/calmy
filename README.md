@@ -5,7 +5,7 @@ and when the flight is late the rules and a risk score decide, the payout is mad
 and the insurer console shows the decision and the reason behind it.
 
 The demo is set in Singapore: the traveler is George, flying out of Changi, and the insurer is
-Flightwise Insurance, where Ethan works as the claims officer. Flight data is real where we can get
+KODA, where Ethan works as the claims officer. Flight data is real where we can get
 it. Payouts, tickets bought through our own checkout, and the airport partner outlets are simulated
 and labelled as such. No real money moves.
 
@@ -19,23 +19,25 @@ Open http://localhost:8000. Pages: `/traveler` (mobile app), `/console` (insurer
 ## Demo path (about 3 minutes)
 
 Open `/judge`. Both apps sit side by side and both are already signed in: George on the phone,
-Ethan at the insurer desk. There is no sign-in step and nothing to set up.
+Ethan at the KODA claims desk. There is no sign-in step and nothing to set up.
 
-1. **George's trips.** The phone opens on Home: who he is, the delay forecast for his next covered
-   flight, his Changi trips, and the two ways in (check a ticket he already holds, or book one with
-   cover through the partner checkout). Open a trip and tap *See what this cover pays* for the payout
-   ladder and the exclusions.
-2. **Break the flight.** In the avatar menu, Demo controls sets a delay or a cancellation on one of
-   his flights. It runs the real engine. George is paid in seconds, in points, with a message.
-3. **The claim that did not pay.** His Jakarta trip was 2h 30m late, under the 3 hour rule. He taps
+1. **Home.** The phone opens on where George stands: his next flight as a boarding pass (time, cover, delay chance),
+   a short "Needs you" list (a claim he can ask us to re-check, a flight without cover), and quick actions.
+   Five tabs: Home, Cover, Claims, Wallet, Help.
+2. **Cover.** Every upcoming flight with its cover at a glance, plus "I have a booking" (check any reference) and
+   "Find a flight" (book with cover through the partner checkout).
+3. **Break the flight.** Avatar menu, Demo controls: set a delay or a cancellation. It runs the real engine and George
+   is paid in seconds, in points. The claim shows its reference and a step-by-step history.
+4. **The claim that did not pay.** His Jakarta trip (SQ 948) was 2h 30m late, under the 3 hour rule. He taps
    *Ask us to check again* and writes what the airline told him.
-4. **Decide as the insurer.** In the console, Review queue shows the case marked *Traveler asked*
-   with George's note, the booking and the flight. Approve it and the points land on his phone,
-   signed with Ethan's name.
-5. **Spend it.** Wallet, then an outlet at Changi: a QR code is made, *Simulate the outlet scan*
-   spends it, and the insurer's Points page flips to "Scanned at the outlet".
-6. **Talk to a person.** Messages on the phone, then Conversations in the console: take over, reply,
-   and George sees Ethan's name appear in the same chat.
+5. **Decide as the insurer.** In the console, Review queue shows the case marked *Traveler asked*. Ethan can
+   *Send to the traveler* to ask for proof (it lands in George's Messages and on his Home), then approve. George's
+   phone switches to Paid on its own within a few seconds, signed with Ethan's name, and both sides show the same
+   case history. A declined claim can be sent back for one second review.
+6. **Spend it.** Wallet, then an outlet at Changi: a QR code is made, *Simulate the outlet scan* spends it, and the
+   insurer's Points page shows "Scanned at the outlet".
+7. **Talk to a person.** Help, then Messages on the phone, and Conversations in the console: take over, reply, and
+   George sees Ethan's name appear in the same chat.
 
 Flights are real and need a live key (below). Delays, cancellations and payouts are simulated and
 labelled as demo events.
@@ -79,17 +81,17 @@ and uses the template explanation.
 | No problem: trip quietly archived | `on_time` or `landed` archives the trip: no payout, no message | Built |
 | Caring message | Stored on each decision and shown as a message card in the traveler app and in the console | Built (in app; email delivery is a Gmail API step, not connected) |
 | Payout to card, bank or wallet | Payout options per market plus Card refund and Digital wallet. Money is simulated | Simulated |
-| Zero paperwork | No form, receipt or letter asked. Performance page counts documents asked | Built |
+| Zero paperwork | No form, receipt or letter asked | Built |
 | Cloud Firestore, Cloud Functions, Gmail API, Firebase rules | SQLite stands in for Firestore, the engine runs inside the Cloud Run service, and only the last four digits of the payout account are stored, never a full number | Next step |
 | Payment gateway | Premiums and payouts are simulated and labelled. The money paths are isolated behind `app/wallet.py` and the cash-out preview, so production means a PSP for premiums (Stripe or Adyen), a card-payout or local-rails partner for payouts, and the FX quote at cash-out coming from that partner instead of our indicative rate | Way forward, by design not by accident |
-| Prototype performance report | Console, Performance page: manual baselines against measured prototype results | Built |
+| Prototype performance report | Console Overview: time to payout, auto-paid share and handling cost against manual baselines | Built |
 | Baggage and fraud checks (Later) | Lost bag cover and an additive risk score already included | Built ahead of plan |
 
 ## Live demo page
 
-Open `/judge`. The two real apps sit side by side: the traveler app in a phone frame and the insurer console. One slim bar on top coaches the viewer through four steps (cover a trip, break the flight, try a risky traveler, decide as the insurer). For each step it shows the buttons to press, and a label above each app says what to do or watch on that side. A More menu holds the data sources list, links to open each app alone, and Reset demo data. The apps themselves contain no demo buttons.
+Open `/judge`. The two real apps sit side by side: the traveler app in a phone frame and the insurer console, both signed in. The top bar has Reset demo and Exit. The apps themselves contain no demo buttons apart from Demo controls in the traveler's avatar menu.
 
-Flight events go through the same webhook the product uses. The first visit in a browser session starts from clean data.
+Presenter tools (reset, simulated delays) only exist in demo mode. Set `KODA_DEMO_CODES=off` to remove them together with the demo sign-in.
 
 ## Design system
 
@@ -130,7 +132,7 @@ One traveler and one officer, so a judge never has to pick an account.
   Mastercard in THB so the cash-out currency change is visible. His account carries every scenario:
   a covered round trip to Bangkok, a booking to Hong Kong with no cover yet, a past Kuala Lumpur trip
   that was paid, and a past Jakarta trip that fell under the rule and can be re-checked.
-- **Ethan** (`ST-1`), claims officer at Flightwise, admin role, so he can decide claims, change rules
+- **Ethan** (`ST-1`), claims officer at KODA, admin role, so he can decide claims, change rules
   and take over a chat.
 - Around him, 50 more customers with mixed cover, claims, points and payout routes, so every console
   page has a real book of business. About a quarter came through our own checkout (ticket and cover

@@ -106,7 +106,8 @@ th.r,td.r{text-align:right}
 #toast.bad{background:var(--red)}#toast.hidden{display:none}
 .hidden{display:none!important}
 @media (prefers-reduced-motion:no-preference){.rise{animation:rise .28s ease both}@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}}
-.dtrack.mini{padding:26px 0 4px}.dtrack.mini .dt-scale,.dtrack.mini .dt-pay{display:none}
+.dtrack.compact{padding:26px 0 4px}.dtrack.compact .dt-scale,.dtrack.compact .dt-pay{display:none}
+.dt-mark.start span{transform:none;left:-2px}
 
 /* AI identity: one violet-blue gradient used only where the system decides or explains, so it reads at a glance */
 :root{--ai1:#0A62EA;--ai2:#0560EB;--ai-t:#E6F6FE}

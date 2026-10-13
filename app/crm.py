@@ -155,7 +155,7 @@ def chat_reply(chat_id: str, body: ChatReply, x_staff: str | None = Header(None)
     from . import chat
     with db.conn() as c:
         st = db.one(c, "SELECT name FROM staff WHERE id=?", (x_staff,)) if x_staff else None
-        who = st["name"] if st else "Flightwise Insurance"
+        who = st["name"] if st else "KODA"
         try:
             if body.action == "take_over":
                 return chat.take_over(c, chat_id, who)
@@ -234,7 +234,7 @@ def staff_update(sid: str, body: StaffUpdate):
         if body.email is not None:
             e = body.email.strip()
             if e and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", e):
-                raise HTTPException(400, "Enter a valid work email, for example name@flightwise.example.")
+                raise HTTPException(400, "Enter a valid work email, for example name@koda.example.")
             st["email"] = e
         if body.notify is not None:
             st["notify"] = int(body.notify)
