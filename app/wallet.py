@@ -246,7 +246,7 @@ def spend(c, cid: str, partner: dict, points: int, code: str, rid: str) -> None:
 
 
 def vouchers(c, cid: str, limit: int = 8) -> list[dict]:
-    rows = db.rows(c, "SELECT r.id, r.code, r.points, r.created_at, t.name partner, t.airport FROM redemptions r JOIN partners t ON t.id=r.partner_id "
+    rows = db.rows(c, "SELECT r.id, r.code, r.points, r.created_at, r.status, r.used_at, t.name partner, t.airport, t.category, t.terminal, t.offer FROM redemptions r JOIN partners t ON t.id=r.partner_id "
                       "WHERE r.customer_id=? ORDER BY r.created_at DESC LIMIT ?", (cid, limit))
     for r in rows:
         r["refunded"] = bool(db.one(c, "SELECT 1 FROM wallet_tx WHERE id=?", ("refund:" + r["id"],)))
@@ -260,6 +260,8 @@ def refund_voucher(c, cid: str, rid: str) -> dict:
         raise ValueError("Voucher not found.")
     if db.one(c, "SELECT 1 FROM wallet_tx WHERE id=?", ("refund:" + rid,)):
         raise ValueError("This voucher was already refunded.")
+    if r.get("status") == "used":
+        raise ValueError("This voucher was already used at the outlet, so it cannot be refunded.")
     c.execute("INSERT INTO wallet_tx (id,customer_id,kind,points,usd,label,created_at) VALUES (?,?,?,?,?,?,?)",
               ("refund:" + rid, cid, "refund", r["points"], round(r["points"] / markets.POINTS_PER_USD, 2), f"Refund, unused voucher at {r['partner']}", time.time()))
     return {"id": rid, "points": r["points"], "balance": balance(c, cid)["points"]}

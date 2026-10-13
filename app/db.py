@@ -132,16 +132,29 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 """
 
+_open = threading.local()
+
+
 @contextmanager
 def conn():
-    """Yield a connection guarded by a lock so the demo is safe under threads."""
+    """Yield a connection guarded by a lock so the demo is safe under threads.
+
+    The lock is reentrant, so one request can nest calls that each open a connection. A nested call reuses the
+    connection already open on this thread: two connections would deadlock on the first one's write transaction.
+    """
     with _lock:
+        held = getattr(_open, "c", None)
+        if held is not None:
+            yield held                   # inner block: same transaction, the outer block commits it
+            return
         c = sqlite3.connect(DB_PATH)
         c.row_factory = sqlite3.Row
+        _open.c = c
         try:
             yield c
             c.commit()
         finally:
+            _open.c = None
             c.close()
 
 
@@ -156,7 +169,8 @@ MIGRATIONS = [
     ("policies", "customer_id", "TEXT"), ("policies", "payout_follow", "INTEGER DEFAULT 0"), ("policies", "ref_verified", "INTEGER DEFAULT 0"),
     ("decisions", "payout", "TEXT"),
     ("partners", "category", "TEXT DEFAULT 'food'"), ("partners", "offer", "TEXT"), ("partners", "price_usd", "INTEGER DEFAULT 0"),
-    ("redemptions", "customer_id", "TEXT"), ("staff", "role", "TEXT DEFAULT 'agent'"),
+    ("redemptions", "customer_id", "TEXT"), ("redemptions", "status", "TEXT DEFAULT 'ready'"), ("redemptions", "used_at", "REAL"),
+    ("payment_methods", "currency", "TEXT DEFAULT 'SGD'"), ("staff", "role", "TEXT DEFAULT 'agent'"),
 ]
 
 

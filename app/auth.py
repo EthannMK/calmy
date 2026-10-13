@@ -247,6 +247,10 @@ def guard(request: Request) -> JSONResponse | None:
             return _denied(401, "Sign in to see your points and details.")
         if s["subject"] != cid:
             return _denied(403, "This account belongs to someone else.")
+    elif path.startswith("/api/app/") and path != "/api/app/mode" and not path.startswith("/api/app/qr/"):
+        s = who(tok)
+        if not s or s["kind"] != "traveler":
+            return _denied(401, "Sign in to see your trips.")
     elif path.startswith("/api/console/"):
         s = who(tok)
         if not s or s["kind"] != "staff":

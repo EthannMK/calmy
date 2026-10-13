@@ -1244,5 +1244,7 @@ def console_page():
 from . import crm  # noqa: E402
 app.include_router(crm.router)
 app.include_router(auth.router)
+from . import mobile  # noqa: E402
+app.include_router(mobile.router)
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

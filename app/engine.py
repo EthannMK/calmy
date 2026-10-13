@@ -77,7 +77,7 @@ def features(c, p: dict) -> dict:
     wallet_only = (acct or "").startswith(markets.POINTS_RAIL)
     same_person = db.rows(
         c,
-        "SELECT id FROM policies WHERE status='active' AND ABS(COALESCE(created_at, ?) - ?) <= 7200 "
+        "SELECT id, pnr FROM policies WHERE status='active' AND ABS(COALESCE(created_at, ?) - ?) <= 7200 "
         "AND ((payout_account=? AND payout_account NOT LIKE ?) OR LOWER(TRIM(traveler))=? OR (customer_id IS NOT NULL AND customer_id=?))",
         (t0, t0, acct, markets.POINTS_RAIL + "%", name, cid),
     )
@@ -96,7 +96,8 @@ def features(c, p: dict) -> dict:
     changed = bool(p.get("sched_at_purchase") and f.get("scheduled") and p["sched_at_purchase"] != f["scheduled"])
     return {
         **p,
-        "f_covers_2h": max(p["f_covers_2h"], len(same_person)),
+        # The two legs of one booking are one purchase, so they count once.
+        "f_covers_2h": max(p["f_covers_2h"], len({r["pnr"] or r["id"] for r in same_person})),
         "f_shared_account": int(bool(p["f_shared_account"]) or others_on_account > 0),
         "f_prior_claims": int(bool(p["f_prior_claims"]) or prior_paid > 0),
         "f_schedule_changed": int(bool(p["f_schedule_changed"]) or changed),
@@ -302,6 +303,35 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
         partners.sync(c, p["id"])
         results.append({"policy": p["id"], "decision": did, "status": status, "score": score})
     return results
+
+
+def request_recheck(c, policy_id: str, note: str) -> dict:
+    """The traveler asks a person to look at a delay that did not reach the payout rule. A person decides; the system never denies."""
+    p = db.one(c, "SELECT * FROM policies WHERE id=?", (policy_id,))
+    if not p or not p["delay_cover"]:
+        raise ValueError("This trip has no delay cover to re-check.")
+    f = db.one(c, "SELECT * FROM flights WHERE code=?", (p["flight"],)) or {}
+    if not f.get("delay_minutes") and not f.get("cancelled"):
+        raise ValueError("There is no recorded delay on this flight.")
+    if db.one(c, "SELECT 1 FROM decisions WHERE policy_id=? AND kind='delay'", (policy_id,)):
+        raise ValueError("This trip already has a claim.")
+    rules = get_rules(c, p["market"] or "SG")
+    cur = currency_of(p["market"] or "SG")
+    amount = int(rules["delay_tier1_payout"])
+    minutes = int(f.get("delay_minutes") or 0)
+    did = _new_id("RQ")
+    reasons = [f"Traveler asked for a re-check: the recorded delay of {minutes} minutes is below the {rules['delay_tier1_minutes']} minute rule.",
+               "Needs a person to check the airline record."]
+    c.execute(
+        "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
+        "delay_minutes,created_at,decided_by,note,trigger,message,context) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (did, policy_id, "delay", "held", amount, 0, json.dumps(reasons), json.dumps(_timeline("Paid", amount, p["payout_account"], "held")),
+         CLAUSE_DELAY, f"Re-check asked by the traveler. The recorded delay was {minutes} minutes, below the {rules['delay_tier1_minutes']} minute rule. "
+                       f"If the airline record shows a longer delay, the payout would be {money(amount, cur)}.",
+         minutes, time.time(), None, "Traveler note: " + (note.strip() or "none"), "recheck",
+         "We have sent your request to a claims officer. You will get a message here when it is decided.", json.dumps({})))
+    db.log(c, policy_id, "recheck_requested", {"decision": did, "note": note.strip()[:300]})
+    return db.one(c, "SELECT * FROM decisions WHERE id=?", (did,))
 
 
 def enrich_explanations(decision_ids: list[str]) -> None:

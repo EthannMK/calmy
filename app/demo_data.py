@@ -215,6 +215,8 @@ def _demo_george(w: _World):
     cid = w.customer(GEORGE_ID, GEORGE, "SG", 140, "+65 8123 4567")
     c.execute("UPDATE customers SET email=? WHERE id=?", ("george.lim@example.com", cid))
     w.method(cid, "card", "Visa ending 4242", "4242", GEORGE, True, 60)
+    w.method(cid, "card", "Mastercard ending 8812", "8812", GEORGE, False, 30)
+    c.execute("UPDATE payment_methods SET currency='THB' WHERE customer_id=? AND last4='8812'", (cid,))
     # 1. Upcoming round trip to Bangkok, delay and baggage cover on both legs. Covered.
     out, back = w.flight(r[("SIN", "BKK")], 1, 2), w.flight(r[("SIN", "BKK")], 2, 6)
     for leg, f in ((1, out), (2, back)):
