@@ -12,6 +12,9 @@ KODA is smart flight cover. A traveler adds cover to a trip they already booked,
 | Delay cover | S$5 | S$45 when the flight is 3 hours late or more. S$90 at 6 hours or more. S$90 if the flight is cancelled. |
 | Baggage cover | S$2 | Up to S$40 for a bag that is lost. |
 
+The two prices above are **unvalidated product assumptions**, not market-tested or actuarially set prices. Working,
+competitor comparison and what would be needed to price this properly: `docs/PRICING_RESEARCH.md`.
+
 ## 2. What is covered
 
 - A delay of 3 hours or more on the covered flight, measured by the airline's real status feed.

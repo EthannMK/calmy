@@ -1,6 +1,9 @@
 # KODA demo policy: rules as implemented
 
-Status of this document: **proposed demo-policy assumptions**, not a licensed policy wording. Where a rule comes from
+Status of this document: **proposed demo-policy assumptions**, not a licensed policy wording. The premium amounts are
+unvalidated product assumptions; see `docs/PRICING_RESEARCH.md`. The FlySmart citations below were taken from an
+earlier read of the policy wording and **could not be re-verified on 13 Oct 2026**, because the host blocks automated
+retrieval. Check them by hand before quoting them anywhere (`P-7` in the decision register). Where a rule comes from
 KODA's own published wording (`docs/COVERAGE_AND_WORKFLOW.md`, the in-app cover screens), it says so. Where it is a
 design choice, it says that too. Nothing here claims compliance with Singapore law or MAS requirements.
 
@@ -40,7 +43,7 @@ next day = 3h 15m).
 - The demo controls and the flight-status webhook are treated as final reports from a named source; the source is
   recorded on every claim.
 
-Why: the closest real product, DBS/Chubb's FlySmart DelayCover (automatic, fixed amounts, Changi departures), defines
+Why: the closest real product, DBS and POSB's "FlySmart Flight Delay Cover" (automatic, fixed amounts, Changi departures), defines
 the delay as *Actual Departure Time minus Scheduled Departure Time*, from a flight-data provider. Traditional cover
 measures differently: AIG Travel Guard (Section E) uses *arrival* at least 6 hours late, paid per 6-hour block, against
 a letter from the carrier. Both are contractual choices; neither is a legal rule.
@@ -131,7 +134,9 @@ shows no probability-like confidence, and on a disputed delay says it cannot ver
 ## Sources
 
 - GIA, *Travel Insurance* consumer guide (updated after 1 July 2024): https://gia.org.sg/images/resources/For-Consumers-PDF-file/GIA_TravelInsurance_Guide.pdf
-- DBS TravellerShield Plus, FlySmart DelayCover policy wording (Chubb): https://dbs.com.sg/iwov-resources/media/pdf/insurance/travellershield/policy-wording-flysmart-delaycover.pdf
+- DBS TravellerShield Plus, "FlySmart Flight Delay Cover" policy wording (Chubb). Hosted at
+  https://www.posb.com.sg/iwov-resources/media/pdf/insurance/travellershield/policy-wording-flysmart-delaycover.pdf
+  (the DBS path also serves it). Automated retrieval is blocked, so this one has to be opened by hand.
 - AIG Travel Guard Direct policy wording (on or after 18 Jan 2025): https://www.aig.sg/content/dam/aig/apac/singapore/travel/travel-guard-direct-policy-wording-on-after-18-jan-2025.pdf
 - MoneySense, introduction to general insurance (fair and prompt claims handling under the General Insurance Code of Practice): https://www.moneysense.gov.sg/introduction-to-general-insurance/
 - Not reachable from here: the AIG Travel Guard wording dated 1 Dec 2023 (fetch error), and AviationStack's field documentation (renders only with JavaScript). Timestamp handling is verified against the code and real-record test fixtures instead.
