@@ -342,7 +342,8 @@ async function vReview(id) {
   if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the AI is unsure about appear here for a person to decide.');
   const d = q.find(x => x.id === id) || q[0];
   const info = await api('/api/console/decision/' + d.policy_id);
-  const srcChip = x => x.source === 'recheck' ? '<span class="chip blue"><i></i>Traveler asked</span>' : '<span class="chip held"><i></i>Risk check</span>';
+  const srcChip = x => (x.source === 'recheck' ? '<span class="chip blue"><i></i>Traveler asked</span>' : '<span class="chip held"><i></i>Risk check</span>')
+    + (x.second_review ? ' <span class="chip blue"><i></i>Second review</span>' : '') + (x.asked ? ' <span class="chip"><i></i>Waiting on traveler</span>' : '');
   if (!COP[d.id]) { COP[d.id] = await api('/api/console/copilot/' + d.id); upgradeCopilot(d.id); } const cp = COP[d.id]; if (DRAFT[d.id] == null) DRAFT[d.id] = cp.draft; CHAT[d.id] = CHAT[d.id] || [];
   const p = info.policy, f = info.flight, th = info.rules.risk_threshold, cur = p.currency, parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
   return head('Review queue', `${q.length} ${q.length === 1 ? 'claim needs' : 'claims need'} a person. The system never declines a claim on its own.`) + `
@@ -360,7 +361,8 @@ async function vReview(id) {
       <p style="line-height:1.5">${esc(cp.why[0])}</p>
       ${cp.evidence.length ? `<div class="mute" style="font-size:13px"><b style="color:var(--ink)">Evidence</b><br>${cp.evidence.map(esc).join('<br>')}</div>` : ''}
       <div><label class="lbl" for="draft">Draft message to the traveler</label><textarea id="draft" data-d="${esc(d.id)}" rows="4" class="field">${esc(DRAFT[d.id])}</textarea>
-        <button class="btn sm" id="copyDraft" style="margin-top:8px">${ico('download')}Copy message</button></div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm primary act-ask" id="sendDraft" data-id="${esc(d.id)}">${ico('arrow_forward')}Send to the traveler</button><button class="btn sm" id="copyDraft">${ico('download')}Copy message</button></div>
+        ${d.asked ? `<p class="mute" style="font-size:12px;margin-top:6px">${esc(d.asked.by)} asked the traveler: ${esc(d.asked.text)} Their reply arrives in Conversations.</p>` : `<p class="mute" style="font-size:12px;margin-top:6px">Sends to the traveler's Messages under your name. The claim stays here until you decide.</p>`}</div>
       <div><label class="lbl" for="ask">Ask about this claim</label>
         ${CHAT[d.id].map(m => `<div class="note ${m.who === 'you' ? '' : 'info'}" style="margin-bottom:6px"><b>${m.who === 'you' ? 'You' : 'Copilot'}:</b> ${esc(m.text)}</div>`).join('')}
         <div style="display:flex;gap:8px"><input id="ask" class="field" data-d="${esc(d.id)}" placeholder="Why was it held? What should I do?" maxlength="300"><button class="btn primary" id="askBtn">Ask</button></div></div></div></section>
@@ -370,7 +372,8 @@ async function vReview(id) {
         : `<button class="btn" id="invGo" data-d="${esc(d.id)}">${ico('search')}Investigate this claim</button>`}</div></section>
     <section class="panel"><div class="ph"><h2>Your decision</h2></div><div class="pb"><label class="lbl" for="note">Reason, saved in the audit log</label><textarea id="note" rows="3" class="field" placeholder="Why you approve or decline"></textarea>
       <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div><p class="mute" style="font-size:12px;margin-top:10px">The KODA AI can pay or ask for help. Only a person can decline.</p></div></section>
-    <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div></div></section></div></div>`;
+    <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div></div></section>
+    ${info.history && info.history.length ? `<section class="panel"><div class="ph"><h2>Case history</h2><span class="push mute" style="font-size:12px">The traveler sees the same steps, without the risk score.</span></div><div class="pb"><ol style="margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px">${info.history.map(x => `<li><span class="mono mute">${esc(new Date(x.ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</span> ${esc(x.what)}</li>`).join('')}</ol></div></section>` : ''}</div></div>`;
 }
 
 /* ---------- Baggage ---------- */
@@ -614,6 +617,12 @@ function bindAll() {
     try { await api('/api/console/chats/' + b.dataset.c, 'POST', {action: b.dataset.a}); toast(b.dataset.a === 'take_over' ? 'You are in this chat now.' : 'Handed back to the assistant.', 'ok'); } catch (e) { fail(e); }
     last = ''; refresh();
   });
+  const sd = $('#sendDraft'); if (sd) sd.onclick = async () => {
+    const text = (($('#draft') || {}).value || '').trim(); if (text.length < 5) return fail('Write the question for the traveler first.');
+    sd.disabled = true;
+    try { await api('/api/console/review/' + sd.dataset.id + '/ask', 'POST', {text}); toast('Sent to the traveler. Their reply will arrive in Conversations.', 'ok'); } catch (e) { fail(e); }
+    last = ''; refresh();
+  };
   const cd = $('#copyDraft'); if (cd) cd.onclick = async () => { try { await navigator.clipboard.writeText(($('#draft') || {}).value || ''); toast('Message copied.', 'ok'); } catch (e) { toast('Select the text and copy it.', 'ok'); } };
   const askGo = async () => {
     const i = $('#ask'); if (!i || i.value.trim().length < 2) return;
@@ -649,7 +658,7 @@ function applyRole() {
   if (!ME) return;
   const off = (sel, why) => document.querySelectorAll(sel).forEach(e => { e.disabled = true; e.title = why; });
   if (ME.role !== 'admin') off('#saveRules,#asAdd,[data-asdel],[data-accept],[data-rule]', 'Only an admin can change this.');
-  if (ME.role === 'agent') off('.act,.eact,.bact', 'Your role can look but not decide. Ask a reviewer.');
+  if (ME.role === 'agent') off('.act,.eact,.bact,.act-ask', 'Your role can look but not decide. Ask a reviewer.');
 }
 $('#aiOn').innerHTML = aiChip('AI on');
 

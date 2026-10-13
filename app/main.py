@@ -629,13 +629,10 @@ def request_review(pid: str):
     """The traveler asks a person to look at a declined claim again. No claim is ever denied by the system alone."""
     with db.conn() as c:
         _policy(c, pid)
-        d = db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay' AND status='declined'", (pid,))
-        if not d:
-            raise HTTPException(400, "There is no declined claim to review.")
-        c.execute("UPDATE decisions SET status='held', decided_by=NULL, note=? WHERE id=?",
-                  ("Traveler asked for a second review. Earlier note: " + (d["note"] or "none"), d["id"]))
-        db.log(c, pid, "review_requested", {"decision": d["id"]})
-        return _decision(db.one(c, "SELECT * FROM decisions WHERE id=?", (d["id"],)))
+        try:
+            return _decision(engine.request_second_review(c, pid))  # one rule for both apps, see engine.request_second_review
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
 
 class BagItem(BaseModel):
@@ -832,6 +829,9 @@ def demo_live(body: LiveReplay):
         p = _policy(c, body.policy)
         if p["status"] != "active" or not p["delay_cover"]:
             raise HTTPException(400, "Add delay cover first, then replay a real flight.")
+        # A claim is never deleted: its points are already in the wallet, so a replay on top of it would pay twice.
+        if db.one(c, "SELECT 1 FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],)):
+            raise HTTPException(400, "This trip already has a claim. Reset the demo data to replay a real flight on it.")
     try:
         f = live.lookup(body.flight)
     except live.LiveError as e:
@@ -839,7 +839,6 @@ def demo_live(body: LiveReplay):
     with db.conn() as c:
         live.upsert_flight(c, f)
         c.execute("UPDATE policies SET flight=?, sched_at_purchase=? WHERE id=?", (f["code"], f["scheduled"], p["id"]))
-        c.execute("DELETE FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],))  # fresh replay
         results = engine.run_delay(c, f["code"], f["delay_minutes"])
         db.log(c, p["id"], "live_replay", {"flight": f["code"], "delay": f["delay_minutes"]})
     _enrich_later(results)
@@ -986,7 +985,7 @@ def console_decision(policy_id: str):
         p = _policy(c, policy_id)
         d = _decision(db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (policy_id,)))
         return {"policy": p, "flight": _flight(c, p["flight"]), "decision": d, "rules": engine.get_rules(c, p["market"]),
-                "market": markets.public(p["market"])}
+                "market": markets.public(p["market"]), "history": engine.case_history(c, policy_id, staff=True)}
 
 
 @app.get("/api/console/exposure")
@@ -1088,6 +1087,13 @@ def traveler_ask(pid: str, body: TravelerAsk):
     return agent.answer_traveler(p, body.question, status)
 
 
+def _open_question(c, decision_id: str) -> dict | None:
+    """The reviewer's latest question to the traveler on this claim, unless the claim has been reopened since."""
+    e = db.one(c, "SELECT type, detail FROM events WHERE type IN ('info_requested','review_requested') AND detail LIKE ? ORDER BY ts DESC, id DESC LIMIT 1",
+               (f'%"{decision_id}"%',))
+    return json.loads(e["detail"]) if e and e["type"] == "info_requested" else None
+
+
 @app.get("/api/console/review")
 def review_queue():
     """Delay claims waiting for a person: risk holds from the engine and re-checks asked for by travelers.
@@ -1104,7 +1110,9 @@ def review_queue():
             rows.append({**_decision(d), "policy": {k: p.get(k) for k in ("id", "traveler", "flight", "pnr", "channel", "market", "currency",
                                                                            "delay_cover", "baggage_cover", "premium", "payout_account", "ref_verified")},
                          "flight": {k: f.get(k) for k in ("code", "airline", "origin", "dest", "depart_label", "delay_minutes", "cancelled")},
-                         "customer": cu, "source": "recheck" if d.get("trigger") == "recheck" else "risk"})
+                         "customer": cu, "source": "recheck" if d.get("trigger") == "recheck" else "risk",
+                         "second_review": engine.second_reviews_used(c, d["id"]) > 0,
+                         "asked": _open_question(c, d["id"])})
         return rows
 
 
@@ -1119,16 +1127,56 @@ def _reviewer(c, staff_id):
     return st["name"] if st else "Ethan"
 
 
+def _tell_traveler(c, policy_id: str, author: str, text: str, claim_id: str, kind: str) -> str | None:
+    """Put a claim message in the traveler's own Messages thread, tagged with the claim, so both apps share one history."""
+    from . import chat
+    p = db.one(c, "SELECT customer_id, flight FROM policies WHERE id=?", (policy_id,))
+    if not p or not p.get("customer_id"):
+        return None  # older policies without an account have no Messages thread; the claim card still shows the message
+    ch = chat.open_chat(c, p["customer_id"])
+    chat.say(c, ch["id"], "staff", author, f"Claim {claim_id} on {p['flight']}: {text}", {"claim": claim_id, "kind": kind})
+    return ch["id"]
+
+
 @app.post("/api/console/review/{decision_id}")
 def review(decision_id: str, body: Review, x_staff: str | None = Header(None)):
     if body.action not in ("approve", "decline"):
         raise HTTPException(400, "action must be approve or decline")
     with db.conn() as c:
+        who = _reviewer(c, x_staff)
         try:
-            d = engine.decide_held(c, decision_id, body.action == "approve", _reviewer(c, x_staff), body.note)
+            d = engine.decide_held(c, decision_id, body.action == "approve", who, body.note)
         except ValueError as e:
             raise HTTPException(400, str(e))
+        _tell_traveler(c, d["policy_id"], who, d["message"] or "", d["id"], "decision")
         return _decision(d)
+
+
+class AskTraveler(BaseModel):
+    text: str = Field(..., min_length=5, max_length=600)
+
+
+@app.post("/api/console/review/{decision_id}/ask")
+def review_ask(decision_id: str, body: AskTraveler, x_staff: str | None = Header(None)):
+    """Ask the traveler for more information on a held claim. The claim stays with a person; the question goes to the
+    traveler's Messages with the reviewer's name, and their reply reaches the reviewer in Conversations, not the assistant."""
+    from . import chat
+    with db.conn() as c:
+        d = db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,))
+        if not d or d["status"] != "held":
+            raise HTTPException(400, "This claim is not waiting for a decision.")
+        who = _reviewer(c, x_staff)
+        p = db.one(c, "SELECT customer_id FROM policies WHERE id=?", (d["policy_id"],)) or {}
+        if not p.get("customer_id"):
+            raise HTTPException(400, "This traveler has no account in the app, so there is nowhere to send the question.")
+        ch = chat.open_chat(c, p["customer_id"])
+        if not (ch["mode"] == "human" and ch["assigned_to"] == who):
+            chat.take_over(c, ch["id"], who)  # the traveler's answer goes to a person, not the assistant
+        chat_id = _tell_traveler(c, d["policy_id"], who, body.text.strip(), d["id"], "info_request")
+        c.execute("UPDATE decisions SET message=? WHERE id=?",
+                  (f"{who} at Flightwise asked you: {body.text.strip()} Reply in Messages and they will pick it up.", d["id"]))
+        db.log(c, d["policy_id"], "info_requested", {"decision": d["id"], "by": who, "text": body.text.strip()[:300]})
+        return {"decision": d["id"], "chat": chat_id}
 
 
 @app.get("/api/console/baggage")
@@ -1148,10 +1196,13 @@ def baggage_decide(claim_id: str, body: Review, x_staff: str | None = Header(Non
     if body.action not in ("approve", "decline"):
         raise HTTPException(400, "action must be approve or decline")
     with db.conn() as c:
+        who = _reviewer(c, x_staff)
         try:
-            return _decision(engine.decide_baggage(c, claim_id, body.action == "approve", _reviewer(c, x_staff)))
+            d = engine.decide_baggage(c, claim_id, body.action == "approve", who)
         except ValueError as e:
             raise HTTPException(400, str(e))
+        _tell_traveler(c, d["policy_id"], who, d["message"] or "", claim_id, "decision")
+        return _decision(d)
 
 
 @app.get("/api/console/extra")

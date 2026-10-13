@@ -69,7 +69,7 @@ def _leg(c, row, rules_cache) -> dict:
         leg["missing"] = miss
     elif d:
         leg["state"] = {"paid": "paid", "held": "review", "declined": "declined"}.get(d["status"], "review")
-        if d["status"] == "declined":
+        if engine.can_ask_second_review(c, d):
             leg["can"] = ["review"]
     elif pol["delay_cover"] and (f.get("delay_minutes") or 0) > 0:
         leg["state"] = "not_covered"
@@ -296,6 +296,17 @@ def chat_person(request: Request):
     """The traveler asks for a human. The chat is flagged for the insurer and the assistant steps back."""
     from . import chat
     return chat.ask_for_person(_cid(request))
+
+
+@router.get("/api/app/history/{policy}")
+def history(policy: str, request: Request):
+    """What happened on this trip, step by step: the same record the insurer sees, in plain words."""
+    cid = _cid(request)
+    with db.conn() as c:
+        p = db.one(c, "SELECT customer_id FROM policies WHERE id=?", (policy,))
+        if not p or p["customer_id"] != cid:
+            raise HTTPException(404, "Trip not found.")
+        return {"policy": policy, "history": engine.case_history(c, policy)}
 
 
 @router.get("/api/app/cover/{policy}")

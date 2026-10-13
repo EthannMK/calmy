@@ -279,9 +279,28 @@ async function boot() {
 }
 async function loadHome() {
   try { H = await api('/api/app/home'); } catch (e) { return fail(e); }
+  HIST = {};
   $('#avatar').textContent = initials(H.customer.name);
   render();
 }
+/* Keep claims in step with the insurer: a decision made on the claims desk shows up here without a reload.
+   Only screens that read the home summary are refreshed, and never while the traveler is typing or filling a form. */
+const LIVE_SCREENS = ['trip', 'claim'];
+const claimSig = h => JSON.stringify((h.claims || []).map(g => [g.policy, g.state, g.decision && [g.decision.status, g.decision.amount, g.decision.message], g.bag && g.bag.decision]));
+async function syncClaims() {
+  const s = cur_screen();
+  if (!H || document.hidden || (s && !LIVE_SCREENS.includes(s.name)) || (!s && tab === 'wallet')) return;
+  if (document.activeElement && document.activeElement.matches('input,textarea,select')) return;
+  let fresh;
+  try { fresh = await api('/api/app/home'); } catch (e) { return; }  // a missed poll is retried on the next tick
+  if (claimSig(fresh) === claimSig(H) && fresh.balance.points === H.balance.points) return;
+  const before = Object.fromEntries((H.claims || []).map(g => [g.policy, g.state]));
+  H = fresh; CS = null; HIST = {}; render();
+  const moved = (H.claims || []).find(g => before[g.policy] && before[g.policy] !== g.state && ['paid', 'declined'].includes(g.state));
+  if (moved) pushNote(moved.state === 'paid' ? 'Your claim was approved' : 'Your claim was decided',
+    `${moved.flight.code}: ${moved.decision && moved.decision.message ? moved.decision.message : 'Open Claims to see the decision.'}`);
+}
+setInterval(syncClaims, 4000);
 async function loadWallet(force) {
   if (CS && !force) return;
   try { CS = await api(`/api/customer/${H.customer.id}`); } catch (e) { fail(e); }
@@ -645,9 +664,29 @@ SCREENS.claim = {
       <p class="msgbox" style="margin-top:9px;background:var(--red-t);border-color:#E7B9B5;color:#7A1D16">${esc(d.message || d.explanation || '')}</p>
       ${d.note ? `<p class="dim" style="margin-top:7px">Note from our team: ${esc(d.note)}</p>` : ''}
       <p class="dim" style="margin-top:7px">Decided by ${esc(d.decided_by || 'a claims officer')}. A person made this call, not the system.</p>
-      <button class="btn primary sm" style="margin-top:10px" data-recheck="${esc(g.policy)}">Ask for a second review</button></section>` + bagBlock(g);
+      ${g.can && g.can.includes('review')
+        ? `<button class="btn primary sm" style="margin-top:10px" data-recheck="${esc(g.policy)}">Ask for a second review</button>`
+        : `<button class="btn sm" style="margin-top:10px" data-go="chat">${ico('support_agent')} Message us</button>`}</section>` + bagBlock(g);
   },
 };
+/* The case history: the same record the claims desk reads, so both sides agree on what happened and when. */
+let HIST = {};
+const claimBody = SCREENS.claim.body;
+SCREENS.claim.body = s => claimBody(s) + historyBlock(s.policy);
+function historyBlock(policy) {
+  if (!policy) return '';
+  const h = HIST[policy];
+  if (h === undefined) {
+    HIST[policy] = null;
+    api(`/api/app/history/${encodeURIComponent(policy)}`).then(r => { HIST[policy] = r.history; const s = cur_screen(); if (s && s.name === 'claim' && s.policy === policy) render(); })
+      .catch(() => { HIST[policy] = []; });
+  }
+  if (!h || !h.length) return '';
+  const when = ts => new Date(ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+  return `<section class="card"><div class="cap">What happened, step by step</div>
+    ${h.map(x => `<div class="kv"><span>${esc(when(x.ts))}</span><b style="font-weight:500;text-align:right">${esc(x.what)}</b></div>`).join('')}
+    <p class="dim" style="margin-top:6px">This is the same record Flightwise sees.</p></section>`;
+}
 function bagBlock(g) {
   if (g.bag) {
     const st = g.bag.status;
@@ -930,7 +969,7 @@ function menu() {
       <button class="mi" data-go="profile">${ico('verified_user')}<span>My profile<small>Details, cards and how you get paid</small></span>${ico('arrow_forward', 'go')}</button>
       <button class="mi" data-go="chat">${ico('support_agent')}<span>Messages<small>Ask our assistant, or a person at Flightwise</small></span>${ico('arrow_forward', 'go')}</button>
       <button class="mi" data-go="help">${ico('info')}<span>Help<small>How cover works, in short</small></span>${ico('arrow_forward', 'go')}</button>
-      <button class="mi" data-go="demo">${ico('tune')}<span>Demo controls<small>Trigger a delay or a cancellation</small></span>${ico('arrow_forward', 'go')}</button>
+      ${MODE.demo ? `<button class="mi" data-go="demo">${ico('tune')}<span>Demo controls<small>Trigger a delay or a cancellation</small></span>${ico('arrow_forward', 'go')}</button>` : ''}
       ${MODE.demo ? '' : `<button class="mi" id="mOut">${ico('clear')}<span>Sign out</span></button>`}
     </div>
     <p class="dim">KODA prototype for the Google Cloud AI Builder Cup. Flight data is real where available; money is simulated.</p>

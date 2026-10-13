@@ -236,9 +236,17 @@ def _denied(code: int, text: str) -> JSONResponse:
 
 def guard(request: Request) -> JSONResponse | None:
     """Return an error response when the request needs a session it does not have. None lets it through."""
+    path, method = request.url.path, request.method
+    # Presenter tools (reset, simulated delays, sample travelers) exist only in demo mode. Outside it they would let
+    # anyone wipe the data or trigger payouts, so they are switched off together with the demo sign-in.
+    if path.startswith("/api/demo/") and not demo_codes():
+        return _denied(404, "Not available.")
+    # The flight status feed can be given a shared secret. Unset keeps the open demo webhook working as before.
+    hook_secret = os.environ.get("KODA_WEBHOOK_SECRET")
+    if path == "/api/webhook/flight-event" and hook_secret and not secrets.compare_digest(request.headers.get("x-webhook-secret", ""), hook_secret):
+        return _denied(401, "Webhook secret missing or wrong.")
     if not enabled():
         return None
-    path, method = request.url.path, request.method
     tok = request.headers.get("x-session")
     if path.startswith("/api/customer/"):
         cid = path.split("/")[3]
