@@ -36,6 +36,8 @@ def _decision(c, pid):
     # approval is internal and stays on the claims desk.
     if d and d["status"] == "paid":
         d["note"] = None
+        from . import payments
+        d["payment"] = payments.summary(c, d["id"], d["amount"])["state"]  # approval and payment are shown apart
     return d
 
 
@@ -74,6 +76,8 @@ def _leg(c, row, rules_cache) -> dict:
         leg["missing"] = miss
     elif d:
         leg["state"] = {"paid": "paid", "held": "review", "declined": "declined"}.get(d["status"], "review")
+        if d["status"] == "paid" and d.get("payment") == "failed":
+            leg["state"] = "pay_retry"
         if engine.can_ask_second_review(c, d):
             leg["can"] = ["review"]
     elif pol["delay_cover"] and (f.get("delay_minutes") or 0) > 0:

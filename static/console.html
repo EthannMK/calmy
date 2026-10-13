@@ -128,6 +128,9 @@
   .decide{border-color:var(--navy);box-shadow:0 6px 18px rgba(7,28,63,.08)}
   .dbtns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.dbtns .btn.primary{flex:1}
   #decHint.err{color:var(--red)}
+  .verify{display:grid;gap:6px;margin-bottom:12px;padding:12px;border:1px dashed var(--cobalt);border-radius:var(--r);background:#F7FAFF}
+  .vrow2{display:flex;gap:12px;align-items:center}.vrow2 .field{max-width:140px}
+  #vprev.ok{color:var(--green);font-weight:600}#vprev.err{color:var(--amber-d);font-weight:600}
   details.inv summary{gap:10px}
   @media(max-width:1280px){.wsgrid{grid-template-columns:1fr}.wsgrid .side{position:static}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.facts>div:nth-child(3){border-left:0}.facts>div:nth-child(n+3){border-top:1px solid var(--line2)}}
   @media(max-width:1100px){.split.rq{grid-template-columns:1fr}.rq .qlist{max-height:320px}}
@@ -339,7 +342,7 @@ async function vDecisions(pid) {
       `<div class="panel tbl"><table><thead><tr><th>Traveler</th><th>Flight</th><th>What happened</th><th>Outcome</th><th class="r">Amount</th></tr></thead><tbody>${list.map(d => `<tr class="click" onclick="location.hash='decisions/${esc(d.policy_id)}'">
         <td>${esc(d.traveler || '')}<br><small class="mute mono" style="font-size:11px">${esc(d.policy_id)}</small></td>
         <td class="mono">${esc(d.flight || '')}</td>
-        <td>${d.trigger === 'cancel' ? 'Cancelled' : d.trigger === 'recheck' ? 'Traveler asked us to check again' : hm(d.delay_minutes || 0) + ' late'}</td>
+        <td>${d.trigger === 'cancel' ? 'Cancelled' : d.trigger === 'recheck' ? 'Traveler asked us to check again' : d.trigger === 'late_report' ? 'Reported after the trip closed' : hm(d.delay_minutes || 0) + ' late'}</td>
         <td>${outcomeChip(d)}</td><td class="r mono">${money(d.amount, d.currency)}</td></tr>`).join('')}</tbody></table></div>` :
       empty('gavel', 'No decisions yet', 'Decisions appear when a flight is delayed or cancelled.'));
   }
@@ -353,8 +356,16 @@ async function vDecisions(pid) {
   const cx = d.trigger === 'cancel';
   const sub = {'Event detected': cx ? `Flight ${esc(f.code)} cancelled` : `Scheduled ${esc(f.scheduled)}, ${hm(d.delay_minutes)} late`, 'Traveler notified': 'Caring message sent', 'Traveler told a person will look': 'Holding message sent', 'Delay detected': `Scheduled ${esc(f.scheduled)}, ${hm(d.delay_minutes)} late`, 'Policy matched': 'Cover is active for this flight', 'Risk checked': d.risk_score >= th ? 'Flagged, sent to a person' : 'Fraud checks passed', 'Paid': declined ? 'Not paid' : `${money(d.amount, cur)} sent to ${esc(p.payout_account)}`, 'Held for review': 'Waiting for a person'};
   const parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
+  const A = info.assessment || {}, pay = A.payment || {payments: []};
+  const payPanel = declined ? (ME && ME.role === 'admin' ? `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Reopen as an exception</h2><span class="push mute small">Admins only. Beyond the standard second review.</span></div><div class="pb" style="display:grid;gap:8px">
+      <textarea id="reopenWhy" class="field" rows="2" placeholder="Why this claim deserves another look (kept on the record)"></textarea>
+      <div><button class="btn" id="reopenGo" data-id="${esc(d.id)}">${ico('restore')}Reopen for review</button></div></div></section>` : '')
+    : `<section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Payment</h2><span class="srcchip push">${ico('info')}Simulated</span></div><div class="pb">
+      <ul class="rc">${pay.payments.map(x => `<li class="${x.status === 'succeeded' ? 'ok' : 'no'}">${ico(x.status === 'succeeded' ? 'check' : 'warning_amber')}<span>${x.seq === 1 ? 'Payout' : 'Top-up'} of ${money(x.amount, cur)} to ${esc(x.rail || '')}${x.attempts > 1 ? ` <span class="mute">(${x.attempts} attempts)</span>` : ''}</span>
+        <b>${x.status === 'failed' ? `<button class="btn sm pretry" data-p="${esc(x.id)}">${ico('refresh')}Retry</button>` : esc(x.status)}</b></li>`).join('') || '<li class="na">' + ico('info') + '<span>No transfer recorded</span><b></b></li>'}</ul>
+      <p class="mute small">Approved total ${money(d.amount, cur)}, sent ${money(pay.sent || 0, cur)}. Approval and payment are separate: a failed transfer is retried in place and never sent twice. No real money moves in this prototype.</p></div></section>`;
   return `<p class="mute" style="margin-bottom:8px"><a href="#decisions">Decisions</a> / <span class="mono">${esc(p.id)}</span></p>` +
-    head(declined ? `Declined ${money(d.amount, cur)}` : `Paid ${money(d.amount, cur)}`, `${esc(p.traveler)} on ${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}`, chip) + `
+    head(declined ? `Declined ${money(d.amount, cur)}` : `Approved ${money(d.amount, cur)}`, `${esc(p.traveler)} on ${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}`, chip) + payPanel + `
   <div class="panel" style="margin-bottom:20px"><div class="ph"><h2>${cx ? 'Cancellation event' : 'Delay against the payout rules'}</h2><span class="push mute">${esc(mkt.name)}, ${esc(cur)}</span></div><div class="pb">${cx ? `<div class="note info"><b>${esc(f.code)} was cancelled.</b> Rule: cancelled flights pay ${money(rules.cancel_payout, cur)} at once, with no waiting tier.</div>` : delayTrack(d.delay_minutes, rules, cur)}</div></div>
   <div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><section class="panel"><div class="ph"><h2>Decision timeline</h2>${auto ? `<span class="chip push mono">${d.elapsed_ms ? 'Scoring step: ' + d.elapsed_ms + ' ms' : '8s'}</span>` : ''}</div><div class="pb tl">
       ${d.timeline.map(s => `<div><span class="dot ${s.pending ? 'wait' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span><div><b>${esc(s.label)}</b><div class="mute" style="font-size:13px">${sub[s.label] || ''}</div></div><span class="mono mute" style="font-size:12px">${s.sec}s</span></div>`).join('')}</div></section>
@@ -381,21 +392,22 @@ function upgradeCopilot(id) {
    each labelled for where it comes from: Rules (fixed), AI (advice only) or You (the decision). */
 let QF = 'all'; const NOTE = {};  // reasons being typed, kept across refreshes
 const waited = ts => { const m = Math.max(0, Math.round((Date.now() / 1000 - ts) / 60)); return m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'; };
-const why = x => x.asked ? ['Waiting on traveler', ''] : x.source === 'recheck' ? [x.second_review ? 'Second review' : 'Traveler asked', 'blue'] : ['Risk check', 'held'];
-const nextStep = x => x.asked ? 'Read the reply in Conversations' : x.source === 'recheck' ? 'Check the airline record' : 'Weigh the risk signals';
+const why = x => x.asked ? ['Waiting on traveler', ''] : x.trigger === 'late_report' ? ['Conflicting reports', 'red'] : x.source === 'recheck' ? [x.second_review ? 'Second review' : 'Traveler asked', 'blue'] : ['Risk check', 'held'];
+const nextStep = x => x.asked ? 'Read the reply in Conversations' : (x.source === 'recheck' || x.trigger === 'late_report') ? 'Check the airline record' : 'Weigh the risk signals';
 const explainChip = () => ov && ov.ai_status === 'live' ? aiChip('Worded by Gemini') : `<span class="srcchip">${ico('rule')}Template wording</span>`;
 const src = (k) => k === 'rules' ? `<span class="srcchip">${ico('rule')}Rules</span>` : k === 'you' ? `<span class="srcchip you">${ico('person')}You decide</span>` : aiChip('AI · advice only');
 async function vReview(id) {
   const all = await api('/api/console/review');
   if (!all.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the system holds, and re-checks travelers ask for, appear here for a person to decide.');
-  const n = {all: all.length, recheck: all.filter(x => x.source === 'recheck').length, risk: all.filter(x => x.source === 'risk').length, waiting: all.filter(x => x.asked).length};
+  const n = {all: all.length, recheck: all.filter(x => x.source === 'recheck').length, report: all.filter(x => x.source === 'report').length, risk: all.filter(x => x.source === 'risk').length, waiting: all.filter(x => x.asked).length};
   const q = all.filter(x => QF === 'all' || (QF === 'waiting' ? x.asked : x.source === QF))
     .filter(x => matchQ(x.id, x.policy.traveler, x.flight.code, x.policy.pnr, (x.customer || {}).name))
     .sort((a, b) => a.created_at - b.created_at);
   const d = all.find(x => x.id === id) || q[0] || all[0];
   const info = await api('/api/console/decision/' + d.policy_id);
   if (!COP[d.id]) { COP[d.id] = await api('/api/console/copilot/' + d.id); upgradeCopilot(d.id); } const cp = COP[d.id]; if (DRAFT[d.id] == null) DRAFT[d.id] = cp.draft; CHAT[d.id] = CHAT[d.id] || [];
-  const p = info.policy, f = info.flight || {}, R = info.rules, th = R.risk_threshold, cur = p.currency;
+  const p = info.policy, f = info.flight || {}, R = info.rules, th = R.risk_threshold, cur = p.currency, A = info.assessment || {};
+  const ev = (info.decision && info.decision.evidence) || {};
   const parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
   const t1 = +R.delay_tier1_minutes, late = d.delay_minutes || 0, cx = !!f.cancelled;
   const [wl, wc] = why(d);
@@ -405,11 +417,11 @@ async function vReview(id) {
     d.source === 'recheck' ? [null, 'Risk score', 'Not scored: a re-check always goes to a person'] : [d.risk_score < th, `Risk score under the auto-pay limit of ${th}`, 'Score ' + d.risk_score],
     [!!p.ref_verified, 'Booking matches the airline record', p.ref_verified ? 'Matched' : 'Not matched'],
   ];
-  const fil = [['all', 'All'], ['recheck', 'Traveler asked'], ['risk', 'Risk check'], ['waiting', 'Waiting on traveler']];
+  const fil = [['all', 'All'], ['recheck', 'Traveler asked'], ['report', 'Conflicting reports'], ['risk', 'Risk check'], ['waiting', 'Waiting on traveler']].filter(([k]) => k !== 'report' || n.report);
   return head('Review queue', `${all.length} ${all.length === 1 ? 'claim needs' : 'claims need'} a person. Longest wait first. The system never declines on its own.`, searchBox('Search claims')) + `
   <div class="tabsx" style="margin-bottom:14px">${fil.map(([k, t]) => `<button data-qf="${k}" class="${QF === k ? 'on' : ''}">${t} <span class="cnt">${n[k]}</span></button>`).join('')}</div>
   <div class="split rq"><section class="panel"><div class="qlist">${q.length ? q.map(x => { const [l, c] = why(x); return `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}">
-      <div class="q1"><b>${esc((x.customer && x.customer.name) || x.policy.traveler)}</b><span class="mono">${money(x.amount, x.policy.currency)}</span></div>
+      <div class="q1"><b>${esc((x.customer && x.customer.name) || x.policy.traveler)}</b><span class="mono">${x.amount ? money(x.amount, x.policy.currency) : '<span class="mute">from record</span>'}</span></div>
       <div class="q2"><span class="mono">${esc(x.flight.code)}</span> ${esc(x.flight.origin)} to ${esc(x.flight.dest)} · ${x.flight.cancelled ? 'cancelled' : hm(x.delay_minutes || 0) + ' late'}</div>
       <div class="q3"><span class="chip ${c}"><i></i>${l}</span>${x.source === 'risk' ? `<span class="rk ${x.risk_score >= th ? 'hi' : ''}">Risk ${x.risk_score}</span>` : ''}<span class="wait">${ico('schedule')}${waited(x.created_at)}</span></div>
       <div class="q4">${esc(nextStep(x))}</div></a>`; }).join('') : '<p class="mute" style="padding:16px">No claim matches this filter.</p>'}</div></section>
@@ -418,7 +430,7 @@ async function vReview(id) {
     <section class="panel wshead"><div class="pb">
       <div class="wst"><h2>${esc(p.traveler)}</h2><span class="chip ${wc}"><i></i>${wl}</span><span class="mono mute">${esc(d.id)}</span><span class="push mute">${ico('schedule')} Waiting ${waited(d.created_at)}</span></div>
       <div class="facts">
-        <div><small>If approved</small><b class="mono">${money(d.amount, cur)}</b><span>to ${esc(p.payout_account)}</span></div>
+        <div><small>If approved</small>${A.needs_verified_delay ? `<b>From the record</b><span>${money(A.p1, cur)} from ${hm(A.t1)}, ${money(A.p2, cur)} from ${hm(A.t2)}</span>` : `<b class="mono">${money(d.amount, cur)}</b><span>to ${esc(p.payout_account)}</span>`}</div>
         <div><small>Flight</small><b><span class="mono">${esc(f.code || '')}</span> ${esc(f.origin || '')} to ${esc(f.dest || '')}</b><span>${esc(f.airline || '')}, ${esc(f.depart_label || '')}</span></div>
         <div><small>${cx ? 'Event' : 'Delay'}</small><b>${cx ? 'Cancelled' : hm(late)}</b><span>Rule pays from ${hm(t1)}</span></div>
         <div><small>Booking</small><b class="mono">${esc(p.pnr || '-')}</b><span>${esc(p.channel || 'direct')}${p.ref_verified ? ', matched' : ''}</span></div>
@@ -429,17 +441,31 @@ async function vReview(id) {
         <section class="panel"><div class="ph"><h2>Rule check</h2>${src('rules')}</div><div class="pb"><ul class="rc">${checks.map(([okv, t, v]) =>
           `<li class="${okv === null ? 'na' : okv ? 'ok' : 'no'}">${ico(okv === null ? 'info' : okv ? 'check' : 'warning_amber')}<span>${esc(t)}</span><b>${esc(v)}</b></li>`).join('')}</ul>
           <p class="mute small">${d.source === 'recheck' ? 'The recorded delay is under the rule, which is why nothing was paid. The traveler says the airline record differs.' : d.risk_score >= th ? 'The delay qualifies. The risk score is over the limit, so the system held it for you instead of paying.' : 'Every rule passes.'}</p></div></section>
+        <section class="panel"><div class="ph"><h2>Entitlement</h2>${src('rules')}</div><div class="pb"><ul class="rc">
+          <li class="na">${ico('schedule')}<span>Recorded delay</span><b>${A.cancelled ? 'Cancelled' : hm(A.recorded_minutes || 0)}</b></li>
+          <li class="na">${ico('rule')}<span>Tier on the recorded figure</span><b>${esc(A.tier || 'none, ' + A.rule)}</b></li>
+          <li class="na">${ico('payments')}<span>Total if approved</span><b>${A.needs_verified_delay ? 'set from the verified delay' : money(A.entitled_total || 0, cur)}</b></li>
+          <li class="na">${ico('check')}<span>Already sent on this claim</span><b>${money(A.sent || 0, cur)}</b></li></ul>
+          <p class="mute small">Tiers: ${money(A.p1, cur)} from ${hm(A.t1)}, ${money(A.p2, cur)} from ${hm(A.t2)}, ${money(A.pc, cur)} if cancelled. One claim per trip; a later, larger figure raises the total and only the difference is sent.</p></div></section>
+        ${ev.conflict ? `<section class="panel"><div class="ph"><h2>Conflicting reports</h2>${src('rules')}</div><div class="pb"><ul class="rc">
+          <li class="no">${ico('history')}<span>Earlier: ${esc(ev.previous.status)}</span><b>${ev.previous.at ? esc(new Date(ev.previous.at * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})) : ''}</b></li>
+          ${ev.reports.map(r => `<li class="no">${ico('warning_amber')}<span>Then: ${r.cancelled ? 'cancelled' : hm(r.minutes) + ' late'}, from ${esc(r.source)}</span><b>${esc(new Date(r.at * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</b></li>`).join('')}</ul>
+          <p class="mute small">Nothing was paid or refused automatically. Check the airline's record and enter the verified delay to approve, or decline with the reason.</p></div></section>` : ''}
         ${d.source === 'recheck' ? `<section class="panel"><div class="ph"><h2>What the traveler says</h2></div><div class="pb"><p class="quote">${esc(d.note || 'No note left.')}</p></div></section>`
           : `<section class="panel"><div class="ph"><h2>Risk signals</h2>${src('rules')}</div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}</div></section>`}
         ${info.history && info.history.length ? `<section class="panel"><div class="ph"><h2>Case history</h2><span class="push mute small">Shared with the traveler</span></div><div class="pb"><ol class="hist">${info.history.map(x => `<li><span>${esc(x.what)}</span><time>${esc(new Date(x.ts * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}))}</time></li>`).join('')}</ol></div></section>` : ''}
       </div>
       <div class="stack side">
         <section class="panel decide"><div class="ph"><h2>Your decision</h2>${src('you')}</div><div class="pb">
-          <label class="lbl" for="note">Reason <span class="mute" style="font-weight:400">kept in the audit log; a decline reason is shown to the traveler</span></label>
+          ${A.needs_verified_delay ? `<div class="verify"><label class="lbl" for="vmin">Delay in the airline's record</label>
+            <div class="vrow2"><input id="vmin" class="field mono" type="number" min="0" max="2880" step="1" placeholder="minutes" data-t1="${A.t1}" data-t2="${A.t2}" data-p1="${A.p1}" data-p2="${A.p2}" data-pc="${A.pc}" data-cur="${esc(cur)}">
+              <label class="sw"><input type="checkbox" id="vcx"> Cancelled</label></div>
+            <p class="small" id="vprev">Enter the verified figure. The payout is calculated from it by the same rules.</p></div>` : ''}
+          <label class="lbl" for="note">Reason <span class="mute" style="font-weight:400">required to decline${A.needs_verified_delay ? ' or approve' : ''}; a decline reason is shown to the traveler</span></label>
           <textarea id="note" data-d="${esc(d.id)}" rows="3" class="field" placeholder="For example: airline record confirms 3h 20m">${esc(NOTE[d.id] || '')}</textarea>
           <div class="dbtns"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button>
             <button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div>
-          <p class="mute small" id="decHint">Approving pays ${money(d.amount, cur)} at once and tells the traveler. Declining needs a reason and a second click.</p></div></section>
+          <p class="mute small" id="decHint">${A.needs_verified_delay ? 'Approving pays the amount calculated from the verified delay above' : 'Approving pays ' + money(d.amount, cur) + ' at once'} and tells the traveler. Declining needs a reason and a second click.</p></div></section>
         <section class="panel"><div class="ph"><h2>Ask the traveler</h2></div><div class="pb" style="display:grid;gap:8px">
           <textarea id="draft" data-d="${esc(d.id)}" rows="4" class="field" aria-label="Message to the traveler">${esc(DRAFT[d.id])}</textarea>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm primary act-ask" id="sendDraft" data-id="${esc(d.id)}">${ico('arrow_forward')}Send to the traveler</button><button class="btn sm" id="copyDraft">${ico('download')}Copy</button></div>
@@ -668,6 +694,13 @@ function bindAll() {
   });
   const dr = $('#draft'); if (dr) dr.oninput = () => { DRAFT[dr.dataset.d] = dr.value; };
   const nt = $('#note'); if (nt && nt.dataset.d) nt.oninput = () => { NOTE[nt.dataset.d] = nt.value; };
+  const vm = $('#vmin'), vc = $('#vcx'), vp = $('#vprev');
+  const preview = () => { if (!vm || !vp) return; const t = vm.dataset, m = +vm.value, cx = vc && vc.checked;
+    if (!cx && vm.value === '') { vp.textContent = 'Enter the verified figure. The payout is calculated from it by the same rules.'; vp.className = 'small'; return; }
+    const amt = cx ? +t.pc : m >= +t.t2 ? +t.p2 : m >= +t.t1 ? +t.p1 : 0, tier = cx ? 'cancelled' : m >= +t.t2 ? 'tier 2' : m >= +t.t1 ? 'tier 1' : null;
+    vp.textContent = amt ? `Pays ${money(amt, t.cur)} (${tier}). This is what Approve will send.` : `${hm(m)} is under the ${hm(+t.t1)} rule: nothing is payable. Decline with the reason, or ask the traveler.`;
+    vp.className = amt ? 'small ok' : 'small err'; };
+  if (vm) { vm.oninput = preview; if (vc) vc.onchange = preview; }
   const cm = $('#cmsg'); if (cm) cm.oninput = () => { CDRAFT[cm.dataset.c] = cm.value; };
   const ct = $('#ctrans'); if (ct) ct.scrollTop = ct.scrollHeight;   // newest message in view
   document.querySelectorAll('.creply').forEach(b => b.onclick = async () => {
@@ -688,6 +721,9 @@ function bindAll() {
     try { await api('/api/console/review/' + sd.dataset.id + '/ask', 'POST', {text}); toast('Sent to the traveler. Their reply will arrive in Conversations.', 'ok'); } catch (e) { fail(e); }
     last = ''; refresh();
   };
+  document.querySelectorAll('.pretry').forEach(b => b.onclick = async () => { b.disabled = true; try { const r = await api('/api/console/payments/' + b.dataset.p + '/retry', 'POST'); toast(r.status === 'succeeded' ? 'Payment sent (simulated).' : 'The transfer failed again.', r.status === 'succeeded' ? 'ok' : true); } catch (e) { fail(e); } last = ''; refresh(); });
+  const ro = $('#reopenGo'); if (ro) ro.onclick = async () => { const why = ($('#reopenWhy').value || '').trim(); if (why.length < 10) return fail('Give the reason for the exception.');
+    ro.disabled = true; try { await api('/api/console/review/' + ro.dataset.id + '/reopen', 'POST', {reason: why}); toast('Reopened. It is back in the review queue.', 'ok'); location.hash = 'review/' + ro.dataset.id; } catch (e) { fail(e); ro.disabled = false; } };
   const cd = $('#copyDraft'); if (cd) cd.onclick = async () => { try { await navigator.clipboard.writeText(($('#draft') || {}).value || ''); toast('Message copied.', 'ok'); } catch (e) { toast('Select the text and copy it.', 'ok'); } };
   const askGo = async () => {
     const i = $('#ask'); if (!i || i.value.trim().length < 2) return;
@@ -703,7 +739,8 @@ function bindAll() {
     if (b.dataset.a === 'decline' && !note) { if (hint) { hint.textContent = 'Write the reason first. The traveler will see it.'; hint.classList.add('err'); } $('#note').focus(); return; }
     if (b.dataset.a === 'decline' && !b.dataset.sure) { b.dataset.sure = '1'; b.innerHTML = ico('close') + 'Confirm decline'; if (hint) hint.textContent = 'Click again to decline. This tells the traveler now.'; return; }
     document.querySelectorAll('.act').forEach(x => x.disabled = true); b.innerHTML = b.dataset.a === 'approve' ? 'Approving…' : 'Declining…';
-    try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note}); delete NOTE[b.dataset.id]; toast(b.dataset.a === 'approve' ? 'Approved and paid. The traveler has been told.' : 'Declined. The traveler has been told why.', 'ok'); }
+    const vm = $('#vmin'), vc = $('#vcx'), extra = vm ? {verified_minutes: vm.value === '' ? null : +vm.value, verified_cancelled: !!(vc && vc.checked)} : {};
+    try { await api('/api/console/review/' + b.dataset.id, 'POST', {action: b.dataset.a, note, ...extra}); delete NOTE[b.dataset.id]; toast(b.dataset.a === 'approve' ? 'Approved and paid. The traveler has been told.' : 'Declined. The traveler has been told why.', 'ok'); }
     catch (e) { fail(e); }
     last = ''; refresh();
   });

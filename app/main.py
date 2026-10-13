@@ -72,6 +72,7 @@ def _decision(d):
     for k in ("reasons", "timeline", "breakdown"):
         d[k] = json.loads(d[k]) if d.get(k) else []
     d["context"] = json.loads(d["context"]) if d.get("context") else None
+    d["evidence"] = json.loads(d["evidence"]) if d.get("evidence") else {}
     return d
 
 
@@ -624,13 +625,17 @@ def redeem_points(pid: str, body: Redeem):
         return r
 
 
+class ReviewAsk(BaseModel):
+    note: str = Field("", max_length=300)
+
+
 @app.post("/api/traveler/{pid}/review-request")
-def request_review(pid: str):
+def request_review(pid: str, body: ReviewAsk | None = None):
     """The traveler asks a person to look at a declined claim again. No claim is ever denied by the system alone."""
     with db.conn() as c:
         _policy(c, pid)
         try:
-            return _decision(engine.request_second_review(c, pid))  # one rule for both apps, see engine.request_second_review
+            return _decision(engine.request_second_review(c, pid, (body.note if body else "")))  # one rule for both apps
         except ValueError as e:
             raise HTTPException(400, str(e))
 
@@ -737,8 +742,8 @@ def demo_delay(body: Delay):
         covered = db.one(
             c, "SELECT COUNT(*) n FROM policies WHERE flight=? AND status='active' AND delay_cover=1", (body.flight,)
         )["n"]
-        results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.cancelled)
-        c.execute("UPDATE flights SET sim=1 WHERE code=?", (body.flight,))  # a demo event now owns this flight's status
+        results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.cancelled, source="demo controls")
+        c.execute("UPDATE flights SET sim=1, delay_basis='demo' WHERE code=?", (body.flight,))  # a demo event now owns this flight's status
     _enrich_later(results)
     return {"results": results, "covered": covered}
 
@@ -767,7 +772,7 @@ def flight_event(body: FlightEvent):
             c.execute("UPDATE flights SET stress=? WHERE origin=(SELECT origin FROM flights WHERE code=?)", (2 if body.event == "storm" else 0, body.flight))
             return {"event": body.event, "results": [], "archived": 0, "forecast": forecast.compute(_flight(c, body.flight))}
         if body.event in ("delayed", "cancelled"):
-            results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.event == "cancelled")
+            results = engine.run_delay(c, body.flight, body.minutes, cancelled=body.event == "cancelled", source="flight status webhook")
             _enrich_later(results)
             return {"event": body.event, "results": results, "archived": 0}
         c.execute("UPDATE flights SET delay_minutes=?, cancelled=0 WHERE code=?", (body.minutes, body.flight))
@@ -839,7 +844,7 @@ def demo_live(body: LiveReplay):
     with db.conn() as c:
         live.upsert_flight(c, f)
         c.execute("UPDATE policies SET flight=?, sched_at_purchase=? WHERE id=?", (f["code"], f["scheduled"], p["id"]))
-        results = engine.run_delay(c, f["code"], f["delay_minutes"])
+        results = engine.run_delay(c, f["code"], f["delay_minutes"], source="live replay") if track.payable(f) else []
         db.log(c, p["id"], "live_replay", {"flight": f["code"], "delay": f["delay_minutes"]})
     _enrich_later(results)
     return {"flight": f, "results": results, "paid": bool(results)}
@@ -985,8 +990,10 @@ def console_policies():
 def console_decision(policy_id: str):
     with db.conn() as c:
         p = _policy(c, policy_id)
-        d = _decision(db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (policy_id,)))
-        return {"policy": p, "flight": _flight(c, p["flight"]), "decision": d, "rules": engine.get_rules(c, p["market"]),
+        raw = db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (policy_id,))
+        d = _decision(dict(raw)) if raw else None
+        return {"policy": p, "flight": _flight(c, p["flight"]), "decision": d, "assessment": engine.assess(c, raw) if raw else None,
+                "rules": engine.get_rules(c, p["market"]),
                 "market": markets.public(p["market"]), "history": engine.case_history(c, policy_id, staff=True)}
 
 
@@ -1112,7 +1119,7 @@ def review_queue():
             rows.append({**_decision(d), "policy": {k: p.get(k) for k in ("id", "traveler", "flight", "pnr", "channel", "market", "currency",
                                                                            "delay_cover", "baggage_cover", "premium", "payout_account", "ref_verified")},
                          "flight": {k: f.get(k) for k in ("code", "airline", "origin", "dest", "depart_label", "delay_minutes", "cancelled")},
-                         "customer": cu, "source": "recheck" if d.get("trigger") == "recheck" else "risk",
+                         "customer": cu, "source": {"recheck": "recheck", "late_report": "report"}.get(d.get("trigger"), "risk"),
                          "second_review": engine.second_reviews_used(c, d["id"]) > 0,
                          "asked": _open_question(c, d["id"])})
         return rows
@@ -1120,7 +1127,10 @@ def review_queue():
 
 class Review(BaseModel):
     action: str  # approve | decline
-    note: str = ""
+    note: str = Field("", max_length=600)
+    # For a re-check or a late report: the delay in the airline's record, which sets the payout through the same rules
+    verified_minutes: int | None = Field(None, ge=0, le=2880)
+    verified_cancelled: bool = False
 
 
 def _reviewer(c, staff_id):
@@ -1147,11 +1157,38 @@ def review(decision_id: str, body: Review, x_staff: str | None = Header(None)):
     with db.conn() as c:
         who = _reviewer(c, x_staff)
         try:
-            d = engine.decide_held(c, decision_id, body.action == "approve", who, body.note)
+            d = engine.decide_held(c, decision_id, body.action == "approve", who, body.note, body.verified_minutes, body.verified_cancelled)
         except ValueError as e:
             raise HTTPException(400, str(e))
         _tell_traveler(c, d["policy_id"], who, d["message"] or "", d["id"], "decision")
         return _decision(d)
+
+
+class Reopen(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=300)
+
+
+@app.post("/api/console/review/{decision_id}/reopen")
+def review_reopen(decision_id: str, body: Reopen, x_staff: str | None = Header(None)):
+    """Admins only: reopen a declined claim beyond the standard one second review. Always recorded with the reason."""
+    with db.conn() as c:
+        try:
+            d = engine.reopen_exception(c, decision_id, _reviewer(c, x_staff), body.reason)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        _tell_traveler(c, d["policy_id"], _reviewer(c, x_staff), d["message"], d["id"], "reopened")
+        return _decision(d)
+
+
+@app.post("/api/console/payments/{payment_id}/retry")
+def payment_retry(payment_id: str):
+    """Retry a failed (simulated) payment. The same payment row is retried; a new one is never created."""
+    from . import payments
+    with db.conn() as c:
+        try:
+            return payments.retry(c, payment_id)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
 
 class AskTraveler(BaseModel):

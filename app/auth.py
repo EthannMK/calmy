@@ -227,7 +227,7 @@ def demo_accounts():
 # Console actions that need more than a signed-in agent. Matched on method and path prefix.
 _ADMIN = [("PUT", "/api/console/rules"), ("POST", "/api/console/airspace"), ("DELETE", "/api/console/airspace"),
           ("PUT", "/api/console/partners")]
-_DECIDE = [("POST", "/api/console/review/"), ("POST", "/api/console/baggage/"), ("POST", "/api/console/extra/")]
+_DECIDE = [("POST", "/api/console/review/"), ("POST", "/api/console/baggage/"), ("POST", "/api/console/extra/"), ("POST", "/api/console/payments/")]
 
 
 def _denied(code: int, text: str) -> JSONResponse:
@@ -275,8 +275,8 @@ def guard(request: Request) -> JSONResponse | None:
         s = who(tok)
         if not s or s["kind"] != "staff":
             return _denied(401, "Sign in to the insurer desk.")
-        if any(method == m and path.startswith(p) for m, p in _ADMIN) and s["role"] != "admin":
-            return _denied(403, "Only an admin can change rules, airspace alerts and partners.")
+        if (any(method == m and path.startswith(p) for m, p in _ADMIN) or (method == "POST" and path.endswith("/reopen"))) and s["role"] != "admin":
+            return _denied(403, "Only an admin can do this: change rules, airspace alerts or partners, or reopen a claim as an exception.")
         if any(method == m and path.startswith(p) for m, p in _DECIDE) and s["role"] not in ("admin", "reviewer"):
             return _denied(403, "Your role can look but not decide. Ask a reviewer.")
         if path.startswith("/api/console/staff/") and method == "PUT" and s["role"] != "admin" and path.rsplit("/", 1)[1] != s["subject"]:

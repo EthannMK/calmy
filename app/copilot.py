@@ -17,7 +17,13 @@ def recommend(d: dict, p: dict, traveler_name: str, cur: str, others_on_account:
     has = lambda s: any(s in t for t in labels)
     score = d.get("risk_score") or 0
     evidence = [f"{t} (+{pts})" for t, pts in parts if pts and not t.startswith("Base")]
-    if has("share the same contact") or others_on_account:
+    if d.get("trigger") in ("recheck", "late_report"):
+        # The recorded figure is exactly what is in doubt, so the copilot cannot call it confirmed.
+        action, conf = PROOF, 50
+        why = [("The traveler says the airline's record differs from the delay we recorded. " if d.get("trigger") == "recheck" else
+                "Two reports about this flight disagree. ") +
+               "Neither the copilot nor the system can verify the airline record: check it, then enter the verified delay to decide."]
+    elif has("share the same contact") or others_on_account:
         action, conf = ESCALATE, min(92, 60 + score // 3)
         why = ["The payout account is shared with other profiles. That is the strongest sign of organised misuse, so a senior reviewer should look."]
     elif has("Flight time changed") or has("delay was already likely") or has("Several covers"):
@@ -32,6 +38,9 @@ def recommend(d: dict, p: dict, traveler_name: str, cur: str, others_on_account:
         PROOF: f"Hi {first}, we are sorry about your delay. To finish checking your claim for {{flight}} we need your booking confirmation email showing when the trip was booked. A reply to this message is enough.",
         ESCALATE: f"Hi {first}, thank you for your patience. A senior specialist is looking at your claim for {{flight}} and will contact you within one working day. You do not need to do anything now.",
     }
+    if d.get("trigger") in ("recheck", "late_report"):  # a disputed delay needs the airline's own record, not the booking
+        drafts[PROOF] = (f"Hi {first}, thanks for letting us know. To check your claim for {{flight}} we need the airline's record of the delay: "
+                         "a delay letter or email from the airline, or a screenshot of its app showing the actual departure time. A reply to this message is enough.")
     return {"action": action, "confidence": int(conf), "why": why, "evidence": evidence, "draft": drafts[action],
             "label": {APPROVE: "Approve", PROOF: "Ask for proof", ESCALATE: "Escalate to a senior reviewer"}[action],
             "never_declines": "The copilot advises. Only a person can decline a claim."}

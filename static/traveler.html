@@ -372,7 +372,7 @@ async function loadHome() {
 /* Keep claims in step with the insurer: a decision made on the claims desk shows up here without a reload.
    Only screens that read the home summary are refreshed, and never while the traveler is typing or filling a form. */
 const LIVE_SCREENS = ['trip', 'claim'];
-const claimSig = h => JSON.stringify((h.claims || []).map(g => [g.policy, g.state, g.decision && [g.decision.status, g.decision.amount, g.decision.message], g.bag && g.bag.decision]));
+const claimSig = h => JSON.stringify((h.claims || []).map(g => [g.policy, g.state, g.decision && [g.decision.status, g.decision.amount, g.decision.message, g.decision.payment], g.bag && g.bag.decision]));
 async function syncClaims() {
   const s = cur_screen();
   if (!H || document.hidden || (s && !LIVE_SCREENS.includes(s.name)) || (!s && ['wallet', 'cover'].includes(tab))) return;
@@ -442,6 +442,7 @@ const STATE_CHIP = {
   paid: ['ok', 'paid', 'Paid'],
   review: ['warn', 'hourglass_top', 'With a person'],
   declined: ['red', 'error', 'Not paid'],
+  pay_retry: ['warn', 'refresh', 'Approved, sending'],
   not_covered: ['none', 'rule', 'Below the rule'],
   completed: ['none', 'check', 'Trip finished'],
   ended: ['none', 'check', 'Trip finished'],
@@ -585,7 +586,7 @@ TABS.claims = () => {
 };
 function claimRow(g) {
   const f = g.flight, d = g.decision;
-  const amt = d && d.status === 'paid' ? (d.points ? pts(d.points) : sgd(d.amount)) : d ? sgd(d.amount) : '';
+  const amt = d && d.status === 'paid' ? (d.points ? pts(d.points) : sgd(d.amount)) : d && d.amount ? sgd(d.amount) : '';
   return `<button class="trip" data-claim="${esc(g.policy)}" style="margin-bottom:8px">
     <span class="r1"><span class="mono">${esc(f.code)}</span><span>${esc(f.origin)} to ${esc(f.dest)}</span><span class="grow mono">${esc(g.ref)}</span></span>
     <span class="r1">${ico('schedule')}${esc(f.depart_label)}${f.delay_minutes > 0 ? ' · ' + hm(f.delay_minutes) + ' late' : f.cancelled ? ' · cancelled' : ''}</span>
@@ -793,9 +794,11 @@ SCREENS.claim = {
         : `<p class="dim">Nothing to claim on this flight.</p>`) + bagBlock(g);
     }
     if (d.status === 'paid') {
-      return head + `<section class="rcpt"><span class="st ok">${ico('check')}Paid</span>
+      const retrying = d.payment === 'failed';
+      return head + `<section class="rcpt"><span class="st ${retrying ? 'warn' : 'ok'}">${ico(retrying ? 'refresh' : 'check')}${retrying ? 'Approved, transfer being retried' : 'Paid'}</span>
         <div class="amt">${d.points ? Number(d.points).toLocaleString('en-US') : sgd(d.amount)}</div>
         <div class="dim">${d.points ? `points in your KODA wallet, worth ${sgd(d.amount)} as cash and ${sgd(Math.round(d.points / 100))} at the airport` : `to ${esc(d.payout || 'your saved card')}`}</div>
+        ${retrying ? '<p class="sim">Your claim is approved, but the transfer did not go through yet. We will send it again; you do not need to do anything.</p>' : ''}
         ${d.points ? '' : '<p class="sim">Card and bank transfers are simulated in this demo. No real money moved.</p>'}
         <p class="msgbox good" style="margin-top:11px">${esc(d.message || d.explanation || '')}</p>
         ${d.decided_by && d.decided_by !== 'system' ? `<p class="dim" style="margin-top:7px">Approved by ${esc(d.decided_by)} at KODA.</p>` : '<p class="dim" style="margin-top:7px">Paid automatically, with no claim form.</p>'}
@@ -805,8 +808,8 @@ SCREENS.claim = {
     if (d.status === 'held') {
       return head + `<section class="card"><div class="cap">With a claims officer</div>
         <div class="step"><span class="dot">${ico('check')}</span><span><b>We picked up the flight event</b><small>${esc(f.depart_label)}</small></span></div>
-        <div class="step"><span class="dot">${ico('check')}</span><span><b>Checked against your cover</b><small>Would pay ${sgd(d.amount)}</small></span></div>
-        <div class="step"><span class="dot wait">${ico('hourglass_top')}</span><span><b>A person is looking at it</b><small>${d.trigger === 'recheck' ? 'You asked us to check again.' : 'Our checks need a human decision.'}</small></span></div>
+        <div class="step"><span class="dot">${ico('check')}</span><span><b>Checked against your cover</b><small>${d.amount ? 'Would pay ' + sgd(d.amount) : `Pays ${sgd(H.rule.delay_tier1_payout)} if the airline's record shows ${Math.round(H.rule.delay_tier1_minutes / 60)} hours or more`}</small></span></div>
+        <div class="step"><span class="dot wait">${ico('hourglass_top')}</span><span><b>A person is looking at it</b><small>${d.trigger === 'recheck' ? 'You asked us to check again.' : d.trigger === 'late_report' ? 'Two reports about your flight disagree, so a person checks the airline record.' : 'Our checks need a human decision.'}</small></span></div>
         <p class="msgbox" style="margin-top:9px">${esc(d.message || 'We will send you a message here as soon as it is decided.')}</p>
         ${d.note ? `<p class="dim" style="margin-top:7px">On file: ${esc(d.note)}</p>` : ''}</section>` + bagBlock(g);
     }
@@ -815,8 +818,10 @@ SCREENS.claim = {
       ${d.note ? `<p class="dim" style="margin-top:7px">Note from our team: ${esc(d.note)}</p>` : ''}
       <p class="dim" style="margin-top:7px">Decided by ${esc(d.decided_by || 'a claims officer')}. A person made this call, not the system.</p>
       ${g.can && g.can.includes('review')
-        ? `<button class="btn primary sm" style="margin-top:10px" data-recheck="${esc(g.policy)}">Ask for a second review</button>`
-        : `<button class="btn sm" style="margin-top:10px" data-go="chat">${ico('support_agent')} Message us</button>`}</section>` + bagBlock(g);
+        ? `<p class="dim" style="margin-top:7px">You can ask for one second review. Tell us what is new, such as the airline's delay letter, and a different look is taken at the whole claim.</p>
+           <button class="btn primary sm" style="margin-top:10px" data-recheck="${esc(g.policy)}" data-second="1">Ask for a second review</button>`
+        : `<p class="dim" style="margin-top:7px">This claim has had its second review. If you have new information, message us and a senior officer can look at it.</p>
+           <button class="btn sm" style="margin-top:10px" data-go="chat">${ico('support_agent')} Message us</button>`}</section>` + bagBlock(g);
   },
 };
 /* The case history: the same record the claims desk reads, so both sides agree on what happened and when. */
@@ -856,10 +861,11 @@ function bagBlock(g) {
 
 /* --- ask for a re-check */
 SCREENS.recheck = {
-  title: () => 'Ask us to check again',
-  body: s => `<section><h1>Tell us what you saw</h1>
-    <p class="sub">A claims officer at KODA will read this with the airline record and decide. Nothing is decided by the system alone.</p></section>
-    <section class="frm"><label>What happened, in your words
+  title: s => s.second ? 'Second review' : 'Ask us to check again',
+  body: s => `<section><h1>${s.second ? 'What is new?' : 'Tell us what you saw'}</h1>
+    <p class="sub">${s.second ? 'A claims officer looks at the whole claim again with what you send. This is the one second review for this claim, so include everything you have.'
+      : 'A claims officer at KODA will read this with the airline record and decide. The payout follows the same rules as always, from the airline\'s figure.'}</p></section>
+    <section class="frm"><label>${s.second ? 'What is new (required)' : 'What happened, in your words'}
       <textarea id="rNote" class="field" style="height:110px;padding:11px" maxlength="300" placeholder="The airline app showed we left 3 hours 20 minutes late.">${esc(form.note || '')}</textarea></label>
       <button class="btn primary" id="rGo" data-policy="${esc(s.policy)}">Send to a claims officer</button></section>
     <p class="dim">You will get a message in the app when it is decided. You can also attach nothing at all; we will still look.</p>`,
@@ -1189,7 +1195,7 @@ document.addEventListener('click', async e => {
   if (d.hint && HINT) { form.ref = HINT.ref; form.sur = HINT.surname; render(); return; }
   if (d.trip) return go({name: 'trip', ref: d.trip});
   if (d.claim) { tab = 'claims'; return go({name: 'claim', policy: d.claim}); }
-  if (d.recheck) return go({name: 'recheck', policy: d.recheck});
+  if (d.recheck) return go({name: 'recheck', policy: d.recheck, second: !!d.second});
   if (d.bag) return go({name: 'bag', policy: d.bag});
   if (d.add) {               // from the "check my ticket" result
     const [ref, flight, missing] = d.add.split('|');

@@ -99,16 +99,29 @@ def _parse_ts(s):
         return None
 
 
+def delay_info(dep: dict) -> tuple[int, str]:
+    """Departure delay in minutes and where it came from.
+
+    actual:    actual departure minus scheduled departure. The only basis a final payout uses (see track.py).
+    estimated: the airline's estimated departure minus scheduled. A forecast: shown, never paid on by default.
+    reported:  the feed's own delay field, used only when there are no timestamps. Also a forecast.
+    none:      nothing usable.
+    Both timestamps are read in the same (airport local) clock, so midnight and time zones cancel out."""
+    sched = _parse_ts(dep.get("scheduled"))
+    for key in ("actual", "estimated"):
+        t = _parse_ts(dep.get(key))
+        if sched and t:
+            return max(0, int((t - sched).total_seconds() // 60)), key
+    try:
+        v = int(dep.get("delay") or 0)
+        return (max(0, v), "reported") if v else (0, "none")
+    except (TypeError, ValueError):
+        return 0, "none"
+
+
 def delay_minutes(dep: dict) -> int:
     """Delay from timestamps first, falling back to the reported field."""
-    sched = _parse_ts(dep.get("scheduled"))
-    best = _parse_ts(dep.get("actual")) or _parse_ts(dep.get("estimated"))
-    if sched and best:
-        return max(0, int((best - sched).total_seconds() // 60))
-    try:
-        return max(0, int(dep.get("delay") or 0))
-    except (TypeError, ValueError):
-        return 0
+    return delay_info(dep)[0]
 
 
 def _local_ts(sched: datetime | None, tz: str | None) -> float | None:
@@ -138,7 +151,8 @@ def normalize(rec: dict) -> dict | None:
         "dest": arr["iata"], "dest_city": (arr.get("airport") or arr["iata"]).replace(" International Airport", ""),
         "depart_label": sched.strftime("%a %d %b, %H:%M") if sched else "",
         "scheduled": sched.strftime("%H:%M") if sched else "",
-        "delay_minutes": delay_minutes(dep),
+        "delay_minutes": delay_info(dep)[0],
+        "delay_basis": delay_info(dep)[1],
         "status": rec.get("flight_status") or "unknown",
         "flight_date": rec.get("flight_date"),
         "sched_ts": _local_ts(sched, dep.get("timezone")),
@@ -212,12 +226,12 @@ def upsert_flight(c, f: dict):
     """Store or refresh a real flight so the engine and screens treat it like any other."""
     c.execute(
         "INSERT INTO flights (code,airline,origin,origin_city,dest,dest_city,depart_label,scheduled,"
-        "delay_minutes,travelers,source,fetched_at,flight_date,sched_ts,market) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+        "delay_minutes,travelers,source,fetched_at,flight_date,sched_ts,market,delay_basis) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
         "ON CONFLICT(code) DO UPDATE SET airline=excluded.airline, origin=excluded.origin, origin_city=excluded.origin_city, "
         "dest=excluded.dest, dest_city=excluded.dest_city, depart_label=excluded.depart_label, scheduled=excluded.scheduled, "
         "delay_minutes=excluded.delay_minutes, source='live', fetched_at=excluded.fetched_at, "
-        "flight_date=excluded.flight_date, sched_ts=excluded.sched_ts, market=excluded.market",
+        "flight_date=excluded.flight_date, sched_ts=excluded.sched_ts, market=excluded.market, delay_basis=excluded.delay_basis",
         (f["code"], f["airline"], f["origin"], f["origin_city"], f["dest"], f["dest_city"], f["depart_label"],
          f["scheduled"], f["delay_minutes"], 0, "live", f["fetched_at"] if "fetched_at" in f else time.time(), f.get("flight_date"), f.get("sched_ts"),
-         f.get("market", "GLOBAL")),
+         f.get("market", "GLOBAL"), f.get("delay_basis")),
     )

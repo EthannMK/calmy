@@ -136,3 +136,14 @@ def test_trip_link_does_not_show_points():
     assert client.get(f"/api/traveler/{r['policy']}", headers={"X-Session": other}).status_code == 404
     s = client.get(f"/api/traveler/{r['policy']}", headers={"X-Session": r["session"]}).json()
     assert "balance" not in s["customer"]
+
+
+def test_only_an_admin_can_reopen_a_claim_beyond_the_review_limit():
+    rev, _ = _staff("arun.suksawat@koda.example")
+    adm, _ = _staff("ethan@koda.example")
+    held = client.get("/api/console/review", headers={"X-Session": adm}).json()[0]["id"]
+    assert client.post(f"/api/console/review/{held}", json={"action": "decline", "note": "Record does not support it"}, headers={"X-Session": rev}).status_code == 200
+    reason = {"reason": "Airline confirmed a data error by phone"}
+    assert client.post(f"/api/console/review/{held}/reopen", json=reason, headers={"X-Session": rev}).status_code == 403
+    assert client.post(f"/api/console/review/{held}/reopen", json=reason, headers={"X-Session": adm}).status_code == 200
+    assert client.post("/api/console/payments/PY-NONE/retry", headers={"X-Session": _staff("malinee.chaiyasit@koda.example")[0]}).status_code == 403

@@ -242,9 +242,10 @@ def test_declined_claim_can_be_reviewed_again():
         did = q[0]["id"]
         client.post(f"/api/console/review/{did}", json={"action": "decline", "note": "x"})
         pol = q[0]["policy_id"]
-        r = client.post(f"/api/traveler/{pol}/review-request")
+        assert client.post(f"/api/traveler/{pol}/review-request").status_code == 400  # a second review needs a reason
+        r = client.post(f"/api/traveler/{pol}/review-request", json={"note": "The airline letter says 3h20"})
         assert r.status_code == 200 and r.json()["status"] == "held"
-        assert client.post(f"/api/traveler/{pol}/review-request").status_code == 400  # nothing declined now
+        assert client.post(f"/api/traveler/{pol}/review-request", json={"note": "The airline letter says 3h20"}).status_code == 400  # nothing declined now
 
 
 def test_bag_claim_needs_real_input():

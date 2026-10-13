@@ -184,6 +184,8 @@ MIGRATIONS = [
     ("partners", "category", "TEXT DEFAULT 'food'"), ("partners", "offer", "TEXT"), ("partners", "price_usd", "INTEGER DEFAULT 0"),
     ("redemptions", "customer_id", "TEXT"), ("redemptions", "status", "TEXT DEFAULT 'ready'"), ("redemptions", "used_at", "REAL"),
     ("payment_methods", "currency", "TEXT DEFAULT 'SGD'"), ("staff", "role", "TEXT DEFAULT 'agent'"),
+    ("decisions", "evidence", "TEXT"),       # JSON: what a person must weigh (conflicting reports, verified delay)
+    ("flights", "delay_basis", "TEXT"),      # actual | estimated | reported | demo: where the current delay figure came from
 ]
 
 
@@ -193,6 +195,8 @@ def init():
         if old and "market" not in old:  # rules from before markets existed: rebuild and reseed
             c.execute("DROP TABLE rules")
         c.executescript(SCHEMA)
+        from . import payments  # its own table, kept apart from claim decisions
+        payments.init(c)
         for table, col, typ in MIGRATIONS:
             have = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
             if col not in have:
@@ -265,7 +269,7 @@ def seed_rules(c):
 def reset():
     """Wipe everything and reseed. Backs the Reset demo data button."""
     with conn() as c:
-        for t in ("chat_messages", "chats", "decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules",
+        for t in ("payments", "chat_messages", "chats", "decisions", "baggage", "expenses", "events", "redemptions", "partners", "policies", "flights", "rules",
                   "customers", "payment_methods", "wallet_tx", "bookings", "staff", "airspace_alerts"):  # api_usage is kept
             c.execute(f"DELETE FROM {t}")
         seed(c)

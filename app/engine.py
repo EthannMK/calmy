@@ -51,13 +51,27 @@ def money(amount, currency: str) -> str:
     return f"{sym}{int(amount):,}" if sym else f"{int(amount):,} {currency}"
 
 
+def entitlement(rules: dict, minutes: int | None, cancelled: bool = False) -> dict:
+    """The one payout calculation for delay cover. Automatic decisions, late reports, re-checks and reviewer approvals
+    all use it, so a person can never pay a different amount from the published rules.
+
+    Delay cover is one benefit with one ceiling (Calmy's wording: S$45 from 3 hours, S$90 from 6 hours, S$90 if
+    cancelled, and no second claim of the same type on the same flight). So this returns the *total* the disruption
+    is worth; whatever was already paid is subtracted by the caller, never added on top."""
+    t1, t2 = int(rules["delay_tier1_minutes"]), int(rules["delay_tier2_minutes"])
+    if cancelled:
+        return {"tier": "cancelled", "amount": int(rules["cancel_payout"]), "rule": "Flight cancelled", "threshold": None}
+    m = int(minutes or 0)
+    if m >= t2:
+        return {"tier": "tier 2", "amount": int(rules["delay_tier2_payout"]), "rule": f"{_hm(t2)} or more", "threshold": t2}
+    if m >= t1:
+        return {"tier": "tier 1", "amount": int(rules["delay_tier1_payout"]), "rule": f"{_hm(t1)} or more", "threshold": t1}
+    return {"tier": None, "amount": 0, "rule": f"under {_hm(t1)}", "threshold": t1}
+
+
 def payout_for_delay(rules: dict, minutes: int) -> int:
     """Highest tier whose delay threshold is met, else 0."""
-    if minutes >= rules["delay_tier2_minutes"]:
-        return int(rules["delay_tier2_payout"])
-    if minutes >= rules["delay_tier1_minutes"]:
-        return int(rules["delay_tier1_payout"])
-    return 0
+    return entitlement(rules, minutes)["amount"]
 
 
 # ---------------------------------------------------------------- risk
@@ -250,7 +264,7 @@ def _new_id(prefix: str) -> str:
 
 # ---------------------------------------------------------------- trigger
 
-def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> list[dict]:
+def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False, source: str = "flight data") -> list[dict]:
     """Simulator or live entry point: set the flight delay and process every policy.
 
     A policy already decided is never paid twice. If the delay later grows into
@@ -263,14 +277,12 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
     policies = db.rows(
         c, "SELECT * FROM policies WHERE flight=? AND status='active' AND delay_cover=1", (flight_code,)
     )
-    # A delay reported after the trip was closed as on time is not paid by the system (that needs a person's decision),
-    # but it is never dropped silently: it goes on the trip's record, once per reported delay.
+    # A delay reported after the trip was closed as on time: the two reports disagree. It is never paid or refused by
+    # the system; it goes to a person with both reports side by side, once per trip.
     for p in db.rows(c, "SELECT * FROM policies WHERE flight=? AND status='archived' AND delay_cover=1", (flight_code,)):
-        late = int(get_rules(c, p["market"] or "TH")["cancel_payout"]) if cancelled else payout_for_delay(get_rules(c, p["market"] or "TH"), minutes)
-        seen = db.one(c, "SELECT 1 FROM events WHERE policy_id=? AND type='event_after_close' AND detail=?", (p["id"], json.dumps({"minutes": minutes, "cancelled": cancelled})))
-        if late and not seen:
-            db.log(c, p["id"], "event_after_close", {"minutes": minutes, "cancelled": cancelled})
-            results.append({"policy": p["id"], "status": "after_close"})
+        r = late_report(c, p, minutes, cancelled, source)
+        if r:
+            results.append(r)
     for p in policies:
         wallet.refresh(c, p)  # the traveler's current choice of points or saved card decides where this goes
         # Money and rules follow the policy's own market (where the traveler bought cover).
@@ -278,20 +290,27 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
         cur = currency_of(market)
         rules = get_rules(c, market)
         t0 = time.perf_counter()
-        amount = int(rules["cancel_payout"]) if cancelled else payout_for_delay(rules, minutes)
-        db.log(c, p["id"], "cancel_detected" if cancelled else "delay_detected", {"flight": flight_code, "minutes": minutes})
+        amount = entitlement(rules, minutes, cancelled)["amount"]
+        db.log(c, p["id"], "cancel_detected" if cancelled else "delay_detected", {"flight": flight_code, "minutes": minutes, "source": source})
         if amount == 0:
             continue
         prior = db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],))
         if prior:
-            if not cancelled and prior["status"] in ("paid", "held") and amount > prior["amount"]:
-                extra = amount - prior["amount"]
-                c.execute(
-                    "UPDATE decisions SET amount=?, delay_minutes=?, explanation=? WHERE id=?",
-                    (amount, minutes, template_explanation("delay", amount, minutes, rules, cur), prior["id"]),
-                )
+            # One claim per trip. A worse outcome (a longer delay, or a cancellation after a delay payout) raises the
+            # total to what that outcome is worth; only the difference is sent. A smaller figure never lowers it.
+            total = max(int(prior["amount"]), amount)
+            if prior["status"] in ("paid", "held") and total > prior["amount"]:
+                extra = total - int(prior["amount"])
+                kept = prior["delay_minutes"] if cancelled else minutes
+                c.execute("UPDATE decisions SET amount=?, delay_minutes=?, explanation=?, clause=? WHERE id=?",
+                          (total, kept, template_explanation("cancel" if cancelled else "delay", total, kept, rules, cur),
+                           CLAUSE_CANCEL if cancelled else prior["clause"], prior["id"]))
+                db.log(c, p["id"], "tier_upgrade", {"decision": prior["id"], "extra": extra, "total": total, "cause": "cancelled" if cancelled else "delay"})
+                if prior["status"] == "paid":
+                    c.execute("UPDATE decisions SET message=? WHERE id=?",
+                              (caring_message(flight_code, cancelled, kept, total, "paid", p["payout_account"], cur), prior["id"]))
+                    wallet.stamp(c, prior["id"])  # sends the difference, once
                 partners.sync(c, p["id"])
-                db.log(c, p["id"], "tier_upgrade", {"decision": prior["id"], "extra": extra, "total": amount})
                 results.append({"policy": p["id"], "decision": prior["id"], "status": "upgraded", "extra": extra})
             continue  # double claim prevention
         feats = features(c, p)
@@ -324,6 +343,52 @@ def run_delay(c, flight_code: str, minutes: int, cancelled: bool = False) -> lis
     return results
 
 
+def late_report(c, p: dict, minutes: int, cancelled: bool, source: str) -> dict | None:
+    """A delay or cancellation reported for a trip already closed as on time. Both reports are kept and a person decides.
+    Repeats update the same review; nothing is paid until a person approves with the verified figure."""
+    rules = get_rules(c, p["market"] or "TH")
+    worth = entitlement(rules, minutes, cancelled)["amount"]
+    if not worth:
+        return None
+    now = time.time()
+    report = {"minutes": int(minutes or 0), "cancelled": bool(cancelled), "source": source, "at": now}
+    closed = db.one(c, "SELECT ts, detail FROM events WHERE policy_id=? AND type='trip_archived' ORDER BY ts DESC LIMIT 1", (p["id"],)) or {}
+    d = db.one(c, "SELECT * FROM decisions WHERE policy_id=? AND kind='delay'", (p["id"],))
+    if d:
+        if d["status"] != "held" or d.get("trigger") != "late_report":
+            return None  # the trip already has a claim; that claim's own path applies
+        ev = json.loads(d.get("evidence") or "{}")
+        if any(r["minutes"] == report["minutes"] and r["cancelled"] == report["cancelled"] for r in ev.get("reports", [])):
+            return None  # the same report again: no new task, no new payment
+        ev.setdefault("reports", []).append(report)
+        c.execute("UPDATE decisions SET evidence=?, amount=MAX(amount, ?), delay_minutes=MAX(delay_minutes, ?) WHERE id=?",
+                  (json.dumps(ev), worth, report["minutes"], d["id"]))
+        db.log(c, p["id"], "late_report_updated", {"decision": d["id"], **report})
+        return {"policy": p["id"], "decision": d["id"], "status": "late_report_updated"}
+    cur = currency_of(p["market"] or "TH")
+    feats = features(c, p)
+    score, _ = risk_score(feats)
+    what = "a cancellation" if cancelled else f"a delay of {_hm(minutes)}"
+    when_closed = time.strftime("%d %b %H:%M", time.localtime(closed["ts"])) if closed.get("ts") else "earlier"
+    reasons = [f"The trip was closed as on time ({when_closed}).",
+               f"Afterwards {source} reported {what}.",
+               "The two reports disagree, so a person checks the airline record before anything is paid or refused."]
+    evidence = {"conflict": True, "previous": {"status": "on time, trip closed", "at": closed.get("ts")}, "reports": [report]}
+    did = _new_id("RQ")
+    c.execute(
+        "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
+        "delay_minutes,created_at,decided_by,note,trigger,message,context,evidence) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (did, p["id"], "delay", "held", worth, score, json.dumps(reasons), json.dumps(_timeline("Paid", worth, p["payout_account"], "held")),
+         CLAUSE_CANCEL if cancelled else CLAUSE_DELAY,
+         f"Conflicting reports: the trip was closed as on time, then {what} was reported. If the airline record confirms it, the cover pays {money(worth, cur)}.",
+         int(minutes or 0), now, None, None, "late_report",
+         f"We received a new report about your flight {p['flight']} after it was marked on time. A claims officer is checking the airline's record. "
+         "You do not need to do anything; we will message you here.", json.dumps({}), json.dumps(evidence)))
+    c.execute("UPDATE decisions SET breakdown=? WHERE id=?", (json.dumps(risk_parts(feats)), did))
+    db.log(c, p["id"], "late_report_review", {"decision": did, **report})
+    return {"policy": p["id"], "decision": did, "status": "held", "score": score}
+
+
 def request_recheck(c, policy_id: str, note: str) -> dict:
     """The traveler asks a person to look at a delay that did not reach the payout rule. A person decides; the system never denies."""
     p = db.one(c, "SELECT * FROM policies WHERE id=?", (policy_id,))
@@ -339,24 +404,25 @@ def request_recheck(c, policy_id: str, note: str) -> dict:
         raise ValueError("There is no recorded delay on this flight.")
     rules = get_rules(c, p["market"] or "SG")
     cur = currency_of(p["market"] or "SG")
-    amount = int(rules["delay_tier1_payout"])
     minutes = int(f.get("delay_minutes") or 0)
+    amount = 0  # nothing is owed on the recorded figure; a reviewer sets the payout from the verified delay
     did = _new_id("RQ")
     reasons = [f"Traveler asked for a re-check: the recorded delay of {minutes} minutes is below the {int(rules['delay_tier1_minutes'])} minute rule.",
-               "Needs a person to check the airline record."]
+               "Needs a person to check the airline record. The payout is calculated from the verified delay, by the same rules."]
     c.execute(
         "INSERT INTO decisions (id,policy_id,kind,status,amount,risk_score,reasons,timeline,clause,explanation,"
         "delay_minutes,created_at,decided_by,note,trigger,message,context) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (did, policy_id, "delay", "held", amount, 0, json.dumps(reasons), json.dumps(_timeline("Paid", amount, p["payout_account"], "held")),
          CLAUSE_DELAY, f"Re-check asked by the traveler. The recorded delay was {minutes} minutes, below the {int(rules['delay_tier1_minutes'])} minute rule. "
-                       f"If the airline record shows a longer delay, the payout would be {money(amount, cur)}.",
+                       f"If the airline record shows {_hm(int(rules['delay_tier1_minutes']))} or more, the cover pays {money(rules['delay_tier1_payout'], cur)}, "
+                       f"or {money(rules['delay_tier2_payout'], cur)} from {_hm(int(rules['delay_tier2_minutes']))}.",
          minutes, time.time(), None, "Traveler note: " + (note.strip() or "none"), "recheck",
          "We have sent your request to a claims officer. You will get a message here when it is decided.", json.dumps({})))
     db.log(c, policy_id, "recheck_requested", {"decision": did, "note": note.strip()[:300]})
     return db.one(c, "SELECT * FROM decisions WHERE id=?", (did,))
 
 
-SECOND_REVIEWS = 1  # a declined claim can go back to a person once; after that the traveler is pointed to Messages
+SECOND_REVIEWS = 1  # demo rule (a product choice, not a legal one): one second review, then exceptions are an admin's call
 
 
 def second_reviews_used(c, decision_id: str) -> int:
@@ -374,6 +440,8 @@ def request_second_review(c, policy_id: str, note: str = "") -> dict:
         raise ValueError("There is no declined claim to review.")
     if not can_ask_second_review(c, d):
         raise ValueError("This claim has already had a second review. If you have new information, send it to us in Messages.")
+    if len((note or "").strip()) < 10:
+        raise ValueError("Tell us what is new, for example what the airline's record or letter says.")
     earlier = f"Declined by {d['decided_by'] or 'a claims officer'}" + (f": {d['note']}" if d.get("note") else "")
     c.execute("UPDATE decisions SET status='held', decided_by=NULL, note=?, message=? WHERE id=?",
               (f"Second review asked. Traveler note: {note.strip() or 'none'}. Earlier: {earlier}",
@@ -383,6 +451,37 @@ def request_second_review(c, policy_id: str, note: str = "") -> dict:
 
 
 # ---------------------------------------------------------------- case history
+
+def reopen_exception(c, decision_id: str, admin: str, reason: str) -> dict:
+    """An admin reopens a declined claim beyond the standard review limit. Always with a reason, always on the record."""
+    d = db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,))
+    if not d or d["status"] != "declined":
+        raise ValueError("Only a declined claim can be reopened.")
+    if len((reason or "").strip()) < 10:
+        raise ValueError("Give the reason for the exception.")
+    c.execute("UPDATE decisions SET status='held', decided_by=NULL, note=?, message=? WHERE id=?",
+              (f"Reopened as an exception by {admin}: {reason.strip()}",
+               "A senior officer has reopened your claim for another look. You will get a message here when it is decided.", decision_id))
+    db.log(c, d["policy_id"], "review_exception", {"decision": decision_id, "by": admin, "reason": reason.strip()[:300]})
+    return db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,))
+
+
+def assess(c, d: dict) -> dict:
+    """What the rules say about a claim, for the reviewer: recorded figure, tier, total, already sent, still owed."""
+    from . import payments
+    p = db.one(c, "SELECT * FROM policies WHERE id=?", (d["policy_id"],)) or {}
+    f = db.one(c, "SELECT * FROM flights WHERE code=?", (p.get("flight"),)) or {}
+    rules = get_rules(c, p.get("market") or "TH")
+    rec = entitlement(rules, d.get("delay_minutes"), bool(f.get("cancelled")) and d.get("trigger") != "recheck")
+    pay = payments.summary(c, d["id"], d["amount"] if d["status"] == "paid" else None)
+    needs = d.get("trigger") in ("recheck", "late_report") and d["status"] == "held"
+    total = int(d["amount"] or 0)
+    return {"recorded_minutes": int(d.get("delay_minutes") or 0), "cancelled": bool(f.get("cancelled")),
+            "tier": rec["tier"], "rule": rec["rule"], "t1": int(rules["delay_tier1_minutes"]), "t2": int(rules["delay_tier2_minutes"]),
+            "p1": int(rules["delay_tier1_payout"]), "p2": int(rules["delay_tier2_payout"]), "pc": int(rules["cancel_payout"]),
+            "entitled_total": total, "sent": pay["sent"], "remaining": max(0, total - pay["sent"]) if d["status"] == "paid" else total,
+            "needs_verified_delay": needs, "payment": pay, "evidence": json.loads(d.get("evidence") or "{}")}
+
 
 def case_history(c, policy_id: str, staff: bool = False) -> list[dict]:
     """One timeline per trip, read from the audit log, so the traveler and the insurer see the same record of what
@@ -404,7 +503,8 @@ def case_history(c, policy_id: str, staff: bool = False) -> list[dict]:
         elif t == "decision_held":
             what = f"Sent to a claims officer for a {money(d.get('amount', 0), cur)} claim" + (f" (risk score {d.get('score')})" if staff else "")
         elif t == "tier_upgrade":
-            what = f"Delay grew past the next level: topped up by {money(d.get('extra', 0), cur)}"
+            what = (f"Flight cancelled after the delay payout: topped up by {money(d.get('extra', 0), cur)} to {money(d.get('total', 0), cur)}"
+                    if d.get("cause") == "cancelled" else f"Delay grew past the next level: topped up by {money(d.get('extra', 0), cur)}")
         elif t == "recheck_requested":
             what = "Traveler asked for a re-check" + (f": {d['note']}" if d.get("note") else "")
         elif t == "info_requested":
@@ -419,6 +519,16 @@ def case_history(c, policy_id: str, staff: bool = False) -> list[dict]:
             what = f"Lost bag reported, {money(d.get('total', 0), cur)} declared"
         elif t == "trip_archived":
             what = "Flight ended with no covered event, trip archived"
+        elif t == "late_report_review":
+            what = ("A cancellation" if d.get("cancelled") else f"A delay of {_hm(d.get('minutes') or 0)}") + \
+                   f" was reported after the trip was closed as on time ({d.get('source', 'flight data')}). Sent to a claims officer"
+        elif t == "late_report_updated":
+            what = f"Another report: {'cancelled' if d.get('cancelled') else _hm(d.get('minutes') or 0)} ({d.get('source', 'flight data')})"
+        elif t == "evidence_verified":
+            what = (f"{by or 'A claims officer'} checked the airline record: " + ("cancelled" if d.get("cancelled") else _hm(d.get("verified_minutes") or 0)) +
+                    f", {d.get('tier') or 'no tier'}, {money(d.get('amount', 0), cur)}")
+        elif t == "review_exception":
+            what = f"Reopened as an exception by {by or 'an admin'}" + (f": {d['reason']}" if staff and d.get("reason") else "")
         elif t == "event_after_close":
             what = ("Cancellation" if d.get("cancelled") else f"A delay of {_hm(d.get('minutes') or 0)}") + \
                    " was reported after this trip was closed as on time. Nothing was paid automatically."
@@ -445,10 +555,39 @@ def enrich_explanations(decision_ids: list[str]) -> None:
             c.execute("UPDATE decisions SET explanation=? WHERE id=?", (text, did))
 
 
-def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) -> dict:
+def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str,
+                verified_minutes: int | None = None, verified_cancelled: bool = False) -> dict:
+    """A person decides a held claim.
+
+    Re-checks and late reports exist because the recorded figure is in doubt, so they can only be approved with the
+    figure from the airline's record; the payout is then calculated by entitlement(), the same function the automatic
+    path uses. A reviewer cannot type an amount. A decline, and an approval that overrides the recorded data, need a reason."""
     d = db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,))
     if not d or d["status"] != "held":
         raise ValueError("decision is not waiting for review")
+    note = (note or "").strip()
+    if not approve and not note:
+        raise ValueError("Give the reason for declining. The traveler will see it.")
+    if approve and d.get("trigger") in ("recheck", "late_report"):
+        if verified_minutes is None and not verified_cancelled:
+            raise ValueError("Enter the delay shown in the airline's record, or mark the flight cancelled. The payout is calculated from it.")
+        if not note:
+            raise ValueError("Give the reason, for example where the verified delay comes from.")
+        pol0 = db.one(c, "SELECT market FROM policies WHERE id=?", (d["policy_id"],)) or {}
+        rules = get_rules(c, pol0.get("market") or "TH")
+        ent = entitlement(rules, verified_minutes, verified_cancelled)
+        if not ent["amount"]:
+            raise ValueError(f"A verified delay of {_hm(int(verified_minutes or 0))} is under the {_hm(int(rules['delay_tier1_minutes']))} rule, "
+                             "so nothing is payable. Decline it with the reason, or ask the traveler for the airline's record.")
+        ev = json.loads(d.get("evidence") or "{}")
+        ev["verified"] = {"minutes": None if verified_cancelled else int(verified_minutes), "cancelled": bool(verified_cancelled), "by": reviewer, "at": time.time(), "reason": note}
+        c.execute("UPDATE decisions SET amount=?, delay_minutes=?, evidence=?, clause=? WHERE id=?",
+                  (ent["amount"], d["delay_minutes"] if verified_cancelled else int(verified_minutes), json.dumps(ev),
+                   CLAUSE_CANCEL if verified_cancelled else CLAUSE_DELAY, decision_id))
+        db.log(c, d["policy_id"], "evidence_verified", {"decision": decision_id, "by": reviewer, "recorded_minutes": d["delay_minutes"],
+                                                        "verified_minutes": verified_minutes, "cancelled": bool(verified_cancelled),
+                                                        "tier": ent["tier"], "amount": ent["amount"]})
+        d = db.one(c, "SELECT * FROM decisions WHERE id=?", (decision_id,))
     status = "paid" if approve else "declined"
     tl = json.loads(d["timeline"])
     msg = d.get("message")
@@ -458,7 +597,7 @@ def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) ->
         wallet.refresh(c, db.one(c, "SELECT * FROM policies WHERE id=?", (d["policy_id"],)))
         pol = db.one(c, "SELECT payout_account, currency FROM policies WHERE id=?", (d["policy_id"],)) or {}
         flight_code = db.one(c, "SELECT flight FROM policies WHERE id=?", (d["policy_id"],))["flight"]
-        if d.get("trigger") == "recheck":
+        if d.get("trigger") in ("recheck", "late_report"):
             cur2 = pol.get("currency", "SGD")
             acct = pol.get("payout_account", "your account")
             where = ("your KODA wallet" if acct.startswith(markets.POINTS_RAIL) else acct)

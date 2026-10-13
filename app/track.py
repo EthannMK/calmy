@@ -4,10 +4,21 @@ A flight is refreshed when someone looks at a policy on it and its data is stale
 a person presses Check now. There is no always-on poller, because the free flight data plan
 allows only 100 requests a month. The cache and monthly budget live in live.py.
 """
+import os
 import threading
 import time
 
 from . import context, db, engine, live
+
+
+def pay_on_estimate() -> bool:
+    """Off by default: a payout needs the actual departure time. On restores paying on the airline's estimate."""
+    return os.environ.get("KODA_PAY_ON_ESTIMATE", "0") == "1"
+
+
+def payable(fresh: dict) -> bool:
+    """Whether live data is final enough to decide money on: an actual departure, or a cancellation."""
+    return fresh.get("status") == "cancelled" or fresh.get("delay_basis") == "actual" or pay_on_estimate()
 
 STALE_SECONDS = 30 * 60          # refresh at most this often for passive viewing
 WINDOW_BEFORE, WINDOW_AFTER = 12 * 3600, 36 * 3600  # only track flights near their departure
@@ -37,8 +48,14 @@ def refresh_flight(code: str) -> dict:
     context.prefetch(fresh["origin"])  # network call, before the database lock
     with db.conn() as c:
         live.upsert_flight(c, fresh)
-        results = engine.run_delay(c, code, fresh["delay_minutes"], cancelled=(fresh.get("status") == "cancelled"))
-        db.log(c, None, "flight_checked", {"flight": code, "delay": fresh["delay_minutes"], "status": fresh["status"]})
+        if payable(fresh):
+            results = engine.run_delay(c, code, fresh["delay_minutes"], cancelled=(fresh.get("status") == "cancelled"), source="live flight data")
+        else:
+            # A forecast: shown on the screens (the flight row now carries it), but no claim and no payout until the
+            # airline records the actual departure.
+            results = []
+            db.log(c, None, "delay_forecast", {"flight": code, "minutes": fresh["delay_minutes"], "basis": fresh.get("delay_basis")})
+        db.log(c, None, "flight_checked", {"flight": code, "delay": fresh["delay_minutes"], "status": fresh["status"], "basis": fresh.get("delay_basis")})
     ids = [r["decision"] for r in results if r.get("decision")]
     if ids:
         threading.Thread(target=engine.enrich_explanations, args=(ids,), daemon=True).start()

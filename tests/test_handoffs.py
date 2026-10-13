@@ -86,11 +86,11 @@ def test_traveler_home_offers_second_review_only_once():
         g = _leg(client.get("/api/app/home", headers=H).json(), pid)
         assert g["state"] == "not_covered" and "recheck" in g["can"]
         did = client.post("/api/app/recheck", json={"policy": pid, "note": ""}, headers=H).json()["id"]
-        client.post(f"/api/console/review/{did}", json={"action": "decline", "note": ""})
+        client.post(f"/api/console/review/{did}", json={"action": "decline", "note": "Airline record shows 2h"})
         g = _leg(client.get("/api/app/home", headers=H).json(), pid)
         assert g["state"] == "declined" and "review" in g["can"]
-        client.post("/api/app/recheck", json={"policy": pid, "note": ""}, headers=H)
-        client.post(f"/api/console/review/{did}", json={"action": "decline", "note": ""})
+        client.post("/api/app/recheck", json={"policy": pid, "note": "The airline letter says 3h20"}, headers=H)
+        client.post(f"/api/console/review/{did}", json={"action": "decline", "note": "Letter checked, still 2h"})
         g = _leg(client.get("/api/app/home", headers=H).json(), pid)
         assert g["state"] == "declined" and "review" not in g["can"]
 
@@ -99,9 +99,9 @@ def test_approval_pays_once_and_lands_in_the_travelers_messages():
     with client:
         pid, H, cid = _trip_under_the_rule()
         did = client.post("/api/app/recheck", json={"policy": pid, "note": "3h20"}, headers=H).json()["id"]
-        d = client.post(f"/api/console/review/{did}", json={"action": "approve", "note": "airline record 3h20"}).json()
+        d = client.post(f"/api/console/review/{did}", json={"action": "approve", "note": "airline record 3h20", "verified_minutes": 200}).json()
         assert d["status"] == "paid" and d["decided_by"]
-        assert client.post(f"/api/console/review/{did}", json={"action": "approve", "note": ""}).status_code == 400  # double click
+        assert client.post(f"/api/console/review/{did}", json={"action": "approve", "note": "again", "verified_minutes": 200}).status_code == 400  # double click
         _, msgs = _chat(cid)
         staff = [m for m in msgs if m["role"] == "staff"]
         assert len(staff) == 1 and did in staff[0]["text"] and staff[0]["author"] == d["decided_by"]
@@ -129,7 +129,7 @@ def test_reviewer_can_ask_the_traveler_and_the_claim_stays_held():
         _, msgs = _chat(cid)
         assert sum(1 for m in msgs if m["role"] == "system" and "joined" in m["text"]) == 1
         # Only a held claim can be asked about.
-        client.post(f"/api/console/review/{did}", json={"action": "approve", "note": ""})
+        client.post(f"/api/console/review/{did}", json={"action": "approve", "note": "Email confirms 3h20", "verified_minutes": 200})
         assert client.post(f"/api/console/review/{did}/ask", json={"text": "One more thing?"}).status_code == 400
 
 
@@ -166,11 +166,11 @@ def test_both_apps_read_the_same_case_history():
         pid, H, _ = _trip_under_the_rule()
         did = client.post("/api/app/recheck", json={"policy": pid, "note": "3h20 on the airline app"}, headers=H).json()["id"]
         client.post(f"/api/console/review/{did}/ask", json={"text": "Could you send the airline's email?"})
-        client.post(f"/api/console/review/{did}", json={"action": "approve", "note": "email confirms 3h20"})
+        client.post(f"/api/console/review/{did}", json={"action": "approve", "note": "email confirms 3h20", "verified_minutes": 200})
         mine = [x["type"] for x in client.get(f"/api/app/history/{pid}", headers=H).json()["history"]]
         desk = client.get(f"/api/console/decision/{pid}").json()["history"]
         assert mine == [x["type"] for x in desk]  # same steps, same order
-        assert mine[:2] == ["policy_active", "delay_detected"] and mine[-3:] == ["recheck_requested", "info_requested", "review_paid"]
+        assert mine[:2] == ["policy_active", "delay_detected"] and mine[-4:] == ["recheck_requested", "info_requested", "evidence_verified", "review_paid"]
         traveler_text = " ".join(x["what"] for x in client.get(f"/api/app/history/{pid}", headers=H).json()["history"])
         assert "risk score" not in traveler_text and "email confirms" not in traveler_text  # staff-only details stay on the desk
         assert any("email confirms" in x["what"] for x in desk)
@@ -215,17 +215,21 @@ def test_lost_bag_can_be_claimed_after_the_flight_lands():
         assert r.status_code == 400 and "no baggage cover" in r.json()["detail"]
 
 
-def test_delay_after_trip_closed_is_recorded_not_dropped():
+def test_delay_after_trip_closed_goes_to_review_once_and_pays_nothing_by_itself():
     with client:
         q = client.post("/api/policies", json={"name": "Closed Early", "flight": "OA 204"}).json()
         client.post(f"/api/traveler/{q['policy']}/checkout", json={"delay": True, "baggage": False, "ack": True})
         client.post("/api/webhook/flight-event", json={"flight": "OA 204", "event": "on_time"})
-        for _ in range(2):
+        for _ in range(2):  # the same late report twice
             client.post("/api/webhook/flight-event", json={"flight": "OA 204", "event": "delayed", "minutes": 250})
-        hist = client.get(f"/api/console/decision/{q['policy']}").json()["history"]
-        late = [h for h in hist if h["type"] == "event_after_close"]
-        assert len(late) == 1 and "after this trip was closed" in late[0]["what"]
-        assert client.get(f"/api/console/decision/{q['policy']}").json()["decision"] is None  # no payout made by the system
+        info = client.get(f"/api/console/decision/{q['policy']}").json()
+        d = info["decision"]
+        assert d["status"] == "held" and d["trigger"] == "late_report" and len(d["evidence"]["reports"]) == 1
+        assert d["evidence"]["previous"]["status"].startswith("on time")
+        q2 = [x for x in client.get("/api/console/review").json() if x["policy_id"] == q["policy"]]
+        assert len(q2) == 1  # one review task, not two
+        with db.conn() as c:
+            assert not db.rows(c, "SELECT * FROM payments WHERE decision_id=?", (d["id"],))  # nothing sent
 
 
 def test_auto_paid_claim_lists_only_checks_that_ran():

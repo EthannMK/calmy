@@ -187,6 +187,9 @@ def stamp(c, decision_id: str) -> None:
     d = db.one(c, "SELECT d.id, d.status, d.payout, p.payout_account FROM decisions d JOIN policies p ON p.id=d.policy_id WHERE d.id=?", (decision_id,))
     if d and d["status"] == "paid" and not d["payout"]:
         c.execute("UPDATE decisions SET payout=? WHERE id=?", (d["payout_account"], decision_id))
+    if d and d["status"] == "paid":
+        from . import payments
+        payments.settle(c, decision_id)  # sends only what is still owed, so repeat calls are harmless
 
 
 # ------------------------------------------------------------------ points
