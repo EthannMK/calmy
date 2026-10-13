@@ -211,3 +211,10 @@ def airspace_remove(aid: str):
         db.log(c, None, "airspace_alert_removed", {"id": aid})
     forecast.invalidate_airspace()
     return {"ok": True}
+
+
+@router.get("/model")
+def model_card():
+    """The forecast model's data, accuracy on unseen flights and limits."""
+    from . import forecast
+    return forecast.card()

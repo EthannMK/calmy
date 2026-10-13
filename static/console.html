@@ -208,6 +208,7 @@ function exposureStrip() {
 }
 async function vExposure() {
   const AL = await api('/api/console/airspace').catch(() => []);
+  const MC = await api('/api/console/model').catch(() => ({}));
   if (!EXP) return head('Exposure forecast', '') + empty('error', 'Not available', 'Try again in a moment.');
   const e = EXP, covered = e.flights.filter(f => f.covered > 0);
   const lvl = f => `<span class="chip ${f.level === 'high' ? 'held' : f.level === 'medium' ? 'blue' : 'paid'}"><i></i>${f.level === 'high' ? 'High' : f.level === 'medium' ? 'Medium' : 'Low'}</span>${f.band === 'closed' ? ' <span class="chip red">Cover closed</span>' : ''}`;
@@ -222,6 +223,17 @@ async function vExposure() {
       <label>What is happening<input id="asLabel" class="field" maxlength="80" placeholder="Airspace closed over the region"></label>
       <label>Impact<select id="asLvl" class="field"><option value="moderate">Moderate, +15</option><option value="severe">Severe, +30</option></select></label><button class="btn primary" id="asAdd">Add alert</button></div>
     ${AL.length ? AL.map(a => `<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line2)"><b class="mono">${esc(a.airport)}</b><span style="flex:1">${esc(a.label)}</span><span class="chip held">+${a.points}</span><span class="mute" style="font-size:12px">${esc(a.created_by)}</span><button class="btn sm" data-asdel="${esc(a.id)}">Remove</button></div>`).join('') : '<p class="mute" style="margin:12px 0 0">No alerts. Flights are scored on weather, traffic, history and current delay only.</p>'}</div></section>
+  <section class="panel" style="margin-bottom:20px"><div class="ph"><h2>Forecast model</h2><span class="push mute">${MC.model ? 'Trained model' : 'Rule fallback'}</span></div><div class="pb">${MC.model ? `
+    <p style="margin:0 0 14px">${esc(MC.model)}, trained on ${esc(MC.data)}. It predicts: ${esc(MC.target.toLowerCase())}.</p>
+    <div class="kpis" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:14px">
+      <div><div class="mute" style="font-size:12px">Flights it learned from</div><div class="disp" style="font-size:22px">${Number(MC.train_rows).toLocaleString()}</div></div>
+      <div><div class="mute" style="font-size:12px">Flights it was tested on</div><div class="disp" style="font-size:22px">${Number(MC.test_rows).toLocaleString()}</div></div>
+      <div><div class="mute" style="font-size:12px">Ranking score (AUC)</div><div class="disp" style="font-size:22px">${MC.auc}</div><div class="mute" style="font-size:12px">0.5 is a coin flip, 1.0 is perfect</div></div>
+      <div><div class="mute" style="font-size:12px">Late flights found in top 20% of scores</div><div class="disp" style="font-size:22px">${MC.late_flights_caught_in_top_20pct}%</div><div class="mute" style="font-size:12px">20% would be random</div></div></div>
+    <div class="mute" style="font-size:13px;margin-bottom:6px">${esc(MC.split)}. When it said a chance, how often the flight was really late:</div>
+    <div class="tbl"><table><thead><tr><th>Model said</th><th class="r">Flights</th><th class="r">Average said</th><th class="r">Really late</th></tr></thead><tbody>
+      ${MC.reliability.map(r => `<tr><td>${esc(r.band)}</td><td class="r mono">${Number(r.flights).toLocaleString()}</td><td class="r mono">${r.predicted}%</td><td class="r mono">${r.actual}%</td></tr>`).join('')}</tbody></table></div>
+    <div style="margin-top:12px">${MC.limits.map(l => `<div class="mute" style="font-size:13px;padding:2px 0">${esc(l)}</div>`).join('')}</div>` : '<p class="mute">The trained model is not loaded. The forecast is using a simple time-of-day rule.</p>'}</div></section>
   <section class="panel"><div class="ph"><h2>Flights by delay risk</h2>${aiChip('KODA AI')}<span class="push mute">${esc(e.method)}</span></div>
     <div class="tbl"><table><thead><tr><th>Flight</th><th>Risk</th><th>Chance of delay</th><th class="r">Covered</th><th class="r">Expected payout</th><th class="r">Price now</th><th class="r">Suggested price</th></tr></thead><tbody>
     ${e.flights.map(f => `<tr style="vertical-align:top"><td><b class="mono">${esc(f.flight)}</b><div class="mute" style="font-size:12px">${esc(f.route)}</div></td><td>${lvl(f)}</td>

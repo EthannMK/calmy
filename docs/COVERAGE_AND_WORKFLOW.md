@@ -95,7 +95,7 @@ The risk score adds up readable signals, each with its points: cover bought whil
 
 Rules decide the money. A delay of 3 hours pays $40. That is a rule on purpose, because it is cheap, instant and auditable. AI works on what rules cannot: ranking odd cases, writing a clear message for each traveler, and forecasting delays.
 
-Delay forecast. Each flight gets a delay chance from weather, airport traffic, time of day, the airline and route history, the aircraft type when known, the current delay, and any airspace alert set by a person. Every driver is shown in plain words. In this prototype the history values are simulated and the score is not a trained model. In production the same inputs feed a model trained on saved flight history.
+Delay forecast. Each flight gets a delay chance. The base chance comes from a trained model that looks at hour, weekday, distance and weather. It was trained on 336,776 real flights and tested on later months it had not seen (ranking score 0.68, where 0.5 is a coin flip). Live facts are then added as separate drivers: a delay already running, live weather, a storm, and airspace alerts set by a person. Every driver is shown in plain words. Limits: the training data is New York 2013, so it does not know Thai airlines or routes yet. The model card in the console shows the numbers. In production the model is retrained on saved flights from our own region.
 
 Selling bands. Under 55%: cover is sold normally. 55% to 79%: cover is sold, the traveler gets an early warning, and a claim gets an extra check by a person. 80% or more: delay cover is closed for that flight and baggage stays open. The traveler is told why. The threshold is set in the console under Rules.
 

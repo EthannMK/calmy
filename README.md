@@ -87,7 +87,7 @@ status colors always carry a label, one axis only, values labeled directly.
 
 | Where | Feature | How it works in the prototype |
 |---|---|---|
-| Traveler | Delay forecast and early alert | `app/forecast.py`: a readable score from weather (live Open-Meteo when reachable, else simulated), airport traffic, time of day and the current delay. At 55% or more a covered traveler gets an alert. Presenter buttons "Storm builds" and "Weather clears" drive it. |
+| Traveler | Delay forecast and early alert | `app/forecast.py`: a trained model for the base chance, then live weather, the current delay and airspace alerts as readable drivers. At 55% or more a covered traveler gets an alert. Presenter buttons "Storm builds" and "Weather clears" drive it. |
 | Traveler | Your rights card | `app/rights.py`: what the airline may also owe by market (EU261, UK261, US DOT, APPR, DGCA, ANAC, CAAT). Weather counts as extraordinary, so cash compensation shows as unlikely. Gemini rewords the summary when configured. Not legal advice. |
 | Traveler | Points payout and airport restaurants | Payout rail "KODA points" pays 25% more as points (1 point = 1 cent). The Wallet tab lists only restaurants that accepted points and are open during the wait, picks the best one, and issues a voucher code. The directory (`app/partners.py`) is fictional prototype data. |
 | Fraud | Adverse selection check | Cover bought while the forecast was already 55% or more adds 35 points to the risk score, so the claim goes to a person. It is never declined by the system. |
@@ -99,7 +99,7 @@ status colors always carry a label, one axis only, values labeled directly.
 | Traveler | Calendar flight picker | Pick any date up to a month ahead, then a flight; only the chosen flight stays on screen. The traveler says where the ticket was bought (airline, Trip.com, Agoda or another site) and enters the booking reference from it, which is stored on the policy. KODA sells the cover, not the ticket, so it works beside any booking site. A lost bag can only be reported once the flight has left. Later dates use the saved real schedule (`app/schedule.py`), labelled "Scheduled flight"; live status is checked closer to the day. |
 | Data | Saved real schedule and BigQuery sync | `tools/sync_flights.py` pulls real departures from AviationStack, loads BigQuery table `koda.flights_snapshot` and writes `data/flights_snapshot.json`, which ships in the image as the offline fallback. Run it before the demo: `AVIATIONSTACK_KEY=... python3 tools/sync_flights.py --project <project>` (about 6 requests). `--from-bq` rebuilds the JSON from BigQuery. |
 
-The forecast is a transparent score, not a trained model. In production the same inputs feed BigQuery ML.
+The base delay chance comes from a trained model (`tools/train_model.py`, gradient boosted trees on 336,776 real flights, tested on later months it never saw). Live delay, live weather and insurer airspace alerts are added as readable drivers. The model card is in the console under Exposure forecast. It was trained on New York flights from 2013, not Thai flights, and the card says so.
 
 
 ## Customers, points wallet and bookings

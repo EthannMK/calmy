@@ -1,0 +1,67 @@
+{
+ "model": "Gradient boosted trees (scikit-learn HistGradientBoosting)",
+ "data": "nycflights13, 336,776 real departures from New York in 2013 (CC0 licence), joined to hourly airport weather",
+ "target": "Departure delayed 30 minutes or more",
+ "features": [
+  "hour",
+  "weekday",
+  "distance_km",
+  "wind_kmh",
+  "visibility_km",
+  "precip_mm",
+  "temp_c"
+ ],
+ "train_rows": 245723,
+ "test_rows": 82798,
+ "split": "Trained on January to September, tested on October to December",
+ "base_rate_pct": 15.9,
+ "auc": 0.684,
+ "brier": 0.1041,
+ "brier_always_base_rate": 0.1097,
+ "late_flights_caught_in_top_20pct": 38.2,
+ "reliability": [
+  {
+   "band": "0-5%",
+   "flights": 8097,
+   "predicted": 4.2,
+   "actual": 3.7
+  },
+  {
+   "band": "5-10%",
+   "flights": 24842,
+   "predicted": 7.2,
+   "actual": 6.5
+  },
+  {
+   "band": "10-20%",
+   "flights": 30873,
+   "predicted": 14.9,
+   "actual": 12.9
+  },
+  {
+   "band": "20-30%",
+   "flights": 14271,
+   "predicted": 23.7,
+   "actual": 20.6
+  },
+  {
+   "band": "30-50%",
+   "flights": 4156,
+   "predicted": 37.0,
+   "actual": 28.5
+  },
+  {
+   "band": "50-100%",
+   "flights": 559,
+   "predicted": 55.9,
+   "actual": 39.7
+  }
+ ],
+ "limits": [
+  "Only one year of data, so it has no season feature.",
+  "Trained on one US airport region in 2013, not on Thai flights.",
+  "It does not know the airline, the route or the aircraft. Those come from our own saved flight history.",
+  "Live delay, live weather and insurer airspace alerts are added after the model, as separate readable drivers.",
+  "The model informs. It never decides a payout."
+ ]
+}

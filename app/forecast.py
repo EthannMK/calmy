@@ -1,14 +1,21 @@
 """Delay forecast, early alert, exposure and price suggestion.
 
-This is a transparent additive score, not a trained model. Each driver adds points and is shown
-to the user in plain words. In the cloud version the same inputs feed a BigQuery ML model and
-Gemini writes the explanation. The score only informs: it warns travelers, helps the insurer
-reserve and price, and flags cover bought when trouble was already likely. It never decides a payout.
+The base chance comes from a trained model (gradient boosted trees, tools/train_model.py) fitted on
+336,776 real flights with hourly airport weather. On top of that, live facts are added as separate
+readable drivers: a delay already running, live weather, a storm cell, and airspace alerts set by
+the insurer. If the model cannot load, a plain rule gives the base chance and the source says so.
+The forecast only informs: it warns travelers, helps the insurer reserve and price, and flags cover
+bought when trouble was already likely. It never decides a payout.
 """
-import hashlib
+import datetime as dt
+import functools
+import json
+import math
+import pathlib
 
 from . import context
 
+MODEL_CAP = 0.45       # highest chance the trained model alone can contribute
 ALERT_AT = 55          # probability that triggers the early alert
 HEAVY_SHARE = 0.35     # share of delays that last 3 hours or more, used to size the expected payout
 TARGET_LOSS_RATIO = 0.6
@@ -32,8 +39,48 @@ def invalidate_airspace() -> None:
     _air["at"] = 0.0
 
 
-def _h(s: str) -> int:
-    return int(hashlib.sha256(s.encode()).hexdigest(), 16)
+_DIR = pathlib.Path(__file__).parent / "model"
+_m: dict = {}
+
+
+def card() -> dict:
+    """Model card: data, accuracy on flights the model never saw, and its limits. Shown in the console."""
+    try:
+        return json.loads((_DIR / "model_card.json").read_text())
+    except Exception:
+        return {}
+
+
+def _model():
+    if "m" not in _m:
+        try:
+            import joblib
+            _m["m"] = joblib.load(_DIR / "delay_model.joblib")
+        except Exception:
+            _m["m"] = None
+    return _m["m"]
+
+
+def km_between(a: str, b: str) -> float:
+    pa, pb = context.AIRPORTS.get(a), context.AIRPORTS.get(b)
+    if not pa or not pb:
+        return 1000.0
+    la1, lo1, la2, lo2 = map(math.radians, (*pa, *pb))
+    x = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
+    return 6371 * 2 * math.asin(math.sqrt(x))
+
+
+@functools.lru_cache(maxsize=4096)
+def _base(hour: int, weekday: int, km: int, wind: int, vis: float, rain: float, temp: int) -> float | None:
+    """Model chance (0 to 1) of a 30 minute delay, or None if the model is not available."""
+    m = _model()
+    if not m:
+        return None
+    import warnings
+    import numpy as np
+    with warnings.catch_warnings():  # the model was fitted with column names, we pass the same order as an array
+        warnings.simplefilter("ignore")
+        return float(m["model"].predict_proba(np.array([[hour, weekday, km, wind, vis, rain, temp]], dtype=float))[0][1])
 
 
 def compute(flight: dict) -> dict:
@@ -41,40 +88,50 @@ def compute(flight: dict) -> dict:
     code, origin = flight["code"], flight.get("origin", "")
     sched = (flight.get("scheduled") or "12:00")[:5]
     hour = int(sched.split(":")[0])
-    drivers = [("Typical chance on any flight", 12)]
     cur = flight.get("delay_minutes") or 0
     if flight.get("cancelled"):
         return {"probability": 100, "level": "high", "drivers": [("The flight is cancelled", 100)], "expected_delay": 0,
                 "source": "Flight status"}
+    live = context.cached(origin)
+    try:
+        day = dt.date.fromisoformat(flight["flight_date"]).weekday() if flight.get("flight_date") else dt.date.today().weekday()
+    except ValueError:
+        day = dt.date.today().weekday()
+    # Weather the model sees: live when we have it, otherwise calm typical conditions.
+    wind = int(live["wind_kmh"]) if live else 15
+    vis = float(live["visibility_km"]) if live and live.get("visibility_km") is not None else 16.0
+    rain = float(live.get("rain_mm") or 0) if live else 0.0
+    temp = int(live["temp_c"]) if live else 25
+    km = int(km_between(origin, flight.get("dest", "")) // 50 * 50)
+    base = _base(hour, day, km, wind // 5 * 5, round(min(vis, 16.0)), round(rain, 1), temp // 3 * 3)
+    if base is None:
+        base_pts = 12 + (6 if hour >= 17 else -3 if hour < 8 else 0)
+        drivers = [("Typical chance on a flight at this hour (rule, model not loaded)", base_pts)]
+        source = "Rule fallback"
+    else:
+        # Capped at 45: in the test on unseen flights the model ran too confident above 50 percent (it said 63, reality was 39).
+        # Live facts below add the rest, so the total can still reach the closing level when several things are wrong at once.
+        pts = round(min(base, MODEL_CAP) * 100)
+        drivers = [(f"Trained model: about {round(base * 100)}% of similar flights at this hour, day and distance left 30 minutes late"
+                    + (" in similar weather" if live else ""), pts)]
+        source = "Trained model" + (" + live weather" if live else "")
     if cur >= 30:
         drivers.append((f"Already delayed {cur} minutes", 45 if cur < 120 else 60))
     stress = int(flight.get("stress") or 0)
-    live = context.cached(origin)
     if live and live.get("severe"):
-        drivers.append((f"{live['weather']} at {origin} now (live weather)", 24))
+        # The model already saw the wind, rain and visibility. This adds only what it cannot see, such as lightning.
+        drivers.append((f"{live['weather']} at {origin} now (live weather)", 24 if base is None else 10))
     elif stress:
         drivers.append((f"Thunderstorm building near {origin}", 22 if stress == 1 else 38))
     if stress >= 2:
         drivers.append((f"Queue of departures at {origin} growing", 12))
     for a in airspace(origin) + ([] if flight.get("dest") == origin else airspace(flight.get("dest", ""))):
         drivers.append((f"Airspace alert near {a['airport']}: {a['label']}", a["points"]))
-    cong = 4 + _h(origin) % 7
-    drivers.append((f"Usual traffic at {origin}", cong))
-    # History drivers. Prototype values are derived from the code so they are stable but not real. In the cloud
-    # version they come from the saved flight history in BigQuery: how often this airline, route and aircraft type ran late.
-    airline = code.split(" ")[0]
-    drivers.append((f"{airline} flights on {origin} to {flight.get('dest', '')} ran late {10 + _h(code[:2] + origin + str(flight.get('dest', ''))) % 14}% of the time (simulated history)", _h("a" + airline) % 6))
-    if flight.get("aircraft"):
-        drivers.append((f"Aircraft type {flight['aircraft']} runs late more often than average (simulated history)", _h(str(flight["aircraft"])) % 5))
-    if hour >= 17:
-        drivers.append(("Evening departure, delays pile up through the day", 6))
-    elif hour < 8:
-        drivers.append(("Early departure, fewer knock-on delays", -3))
     prob = max(3, min(97, sum(p for _, p in drivers)))
     level = "high" if prob >= ALERT_AT else ("medium" if prob >= 30 else "low")
     exp = round(prob / 100 * (40 + 4 * (prob - 12)) / 5) * 5 if prob > 20 else 0
     return {"probability": prob, "level": level, "drivers": drivers, "expected_delay": max(0, exp),
-            "source": "Live weather + simulated airport traffic" if (live and live.get("severe")) else "Simulated weather and airport traffic"}
+            "source": source}
 
 
 def band(prob: float, close_at: float) -> str:

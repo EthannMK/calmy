@@ -962,7 +962,7 @@ def exposure():
         premium = sum(markets.to_usd(r["premium"], r["currency"]) for r in db.rows(c, "SELECT premium, currency FROM policies WHERE status='active'"))
     reserve = total + 1.28 * (var ** 0.5)
     return {"expected_usd": round(total, 2), "reserve_usd": round(reserve), "premium_usd": round(premium),
-            "flights": sorted(out, key=lambda x: -x["probability"]), "method": "Transparent score: weather, traffic, time of day and current delay. Not a trained model."}
+            "flights": sorted(out, key=lambda x: -x["probability"]), "method": "Trained model for the base chance, plus live delay, weather and airspace alerts"}
 
 
 def _copilot_ctx(c, decision_id):
