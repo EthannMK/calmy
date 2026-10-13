@@ -4,7 +4,7 @@ import tempfile
 import time
 
 os.environ["KODA_SAMPLE_DATA"] = "1"
-os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "x.db")
+os.environ["KODA_DB"] = os.path.join(tempfile.mkdtemp(), "x.db")
 os.environ.pop("AVIATIONSTACK_KEY", None)
 os.environ["KODA_NO_WEATHER"] = "1"
 

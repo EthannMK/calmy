@@ -3,7 +3,7 @@ import os
 import tempfile
 
 os.environ["KODA_SAMPLE_DATA"] = "1"
-os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "g.db")
+os.environ["KODA_DB"] = os.path.join(tempfile.mkdtemp(), "g.db")
 os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
 os.environ["KODA_NO_WEATHER"] = "1"
 

@@ -55,7 +55,7 @@ def entitlement(rules: dict, minutes: int | None, cancelled: bool = False) -> di
     """The one payout calculation for delay cover. Automatic decisions, late reports, re-checks and reviewer approvals
     all use it, so a person can never pay a different amount from the published rules.
 
-    Delay cover is one benefit with one ceiling (Calmy's wording: S$45 from 3 hours, S$90 from 6 hours, S$90 if
+    Delay cover is one benefit with one ceiling (KODA's wording: S$45 from 3 hours, S$90 from 6 hours, S$90 if
     cancelled, and no second claim of the same type on the same flight). So this returns the *total* the disruption
     is worth; whatever was already paid is subtracted by the caller, never added on top."""
     t1, t2 = int(rules["delay_tier1_minutes"]), int(rules["delay_tier2_minutes"])

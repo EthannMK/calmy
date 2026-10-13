@@ -357,9 +357,9 @@ const dayLabel = ts => new Date(ts * 1000).toLocaleDateString('en-GB', {day: 'nu
 /* ---------------------------------------------------------------- data */
 async function boot() {
   try { MODE = await api('/api/app/mode'); } catch (e) {}
-  if (MODE.demo && !store.get('calmy.token')) {
+  if (MODE.demo && !store.get('koda.traveler')) {
     // Demo mode signs the traveler in, so a judge never sees a sign-in screen. Code sign-in is still in the app.
-    try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'traveler', id: MODE.traveler}); store.set('calmy.token', r.token); } catch (e) {}
+    try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'traveler', id: MODE.traveler}); store.set('koda.traveler', r.token); } catch (e) {}
   }
   await loadHome();
 }
@@ -1327,7 +1327,7 @@ document.addEventListener('click', async e => {
     return;
   }
   // help
-  if (t.id === 'mOut') { store.set('calmy.token', null); location.reload(); return; }
+  if (t.id === 'mOut') { store.set('koda.traveler', null); location.reload(); return; }
   // demo
   if (d.ev) { const [code, minutes, cancelled] = d.ev.split('|'); closeSheet(); return runEvent(code, minutes, cancelled); }
 });
@@ -1346,7 +1346,7 @@ function readBag() {
   document.querySelectorAll('[data-amt]').forEach(i => form.items[+i.dataset.amt].amount = i.value);
 }
 document.addEventListener('change', e => { if (e.target.id === 'dLeg') { form.leg = e.target.value; render(); } });
-window.addEventListener('koda:unauth', () => { store.set('calmy.token', null); boot(); });
+window.addEventListener('koda:unauth', () => { store.set('koda.traveler', null); boot(); });
 if (new URLSearchParams(location.search).get('embed')) document.documentElement.classList.add('embed');
 boot();
 </script>

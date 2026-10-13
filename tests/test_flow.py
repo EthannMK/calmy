@@ -3,7 +3,7 @@ import os
 import tempfile
 
 os.environ["KODA_SAMPLE_DATA"] = "1"
-os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "t.db")
+os.environ["KODA_DB"] = os.path.join(tempfile.mkdtemp(), "t.db")
 
 from fastapi.testclient import TestClient  # noqa: E402
 

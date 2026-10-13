@@ -1,6 +1,6 @@
-# KODA, smart flight cover
+# KODA Travel Insurance
 
-Flight delay and lost bag cover that pays automatically. A traveler adds cover to a booking,
+Smart flight cover. Flight delay and lost bag cover that pays automatically. A traveler adds cover to a booking,
 and when the flight is late the rules and a risk score decide, the payout is made in KODA points,
 and the insurer console shows the decision and the reason behind it.
 
@@ -66,6 +66,18 @@ State lives in one SQLite file, so run a single instance.
 
 The service account needs the Vertex AI User role for Gemini. Without it the app still works
 and uses the template explanation.
+
+The product is KODA everywhere. Two cloud identifiers still read `calmy`, the name the project started under,
+and both are deliberate:
+
+- The Cloud Run **service** is still `calmy`, which is what puts `calmy-` in the public demo URL. Renaming the
+  service creates a new service on a new URL and breaks any link already shared, so it keeps its name until that
+  trade is worth making.
+- The Google Cloud **project id** is `calmy-demo-123456`. Project ids cannot be renamed in Google Cloud, so this
+  one is permanent. Only its display name can change.
+
+Everything inside the codebase uses KODA: the database path variable is `KODA_DB`, the browser session keys are
+`koda.token` and `koda.traveler`, and no product copy mentions the old name.
 
 ## How this prototype maps to the submission deck
 

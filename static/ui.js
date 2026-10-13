@@ -3,7 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const msg = d => typeof d === 'string' ? d : Array.isArray(d) ? d.map(x => (x.loc ? x.loc[x.loc.length - 1] + ': ' : '') + (x.msg || '')).join('. ') || 'Check the values and try again.' : 'Something went wrong. Please try again.';
 // The signed-in session travels in a header. The traveler app and the insurer desk keep separate sessions.
-const sessionKey = () => location.pathname.startsWith('/console') ? 'koda.token' : 'calmy.token';
+const sessionKey = () => location.pathname.startsWith('/console') ? 'koda.token' : 'koda.traveler';
 const api = (url, method = 'GET', body) => {
   const tok = store.get(sessionKey()), staff = store.get('koda.staff');
   return fetch(url, {method, headers: {'Content-Type': 'application/json', ...(tok ? {'X-Session': tok} : {}), ...(staff ? {'X-Staff': staff} : {})}, body: body ? JSON.stringify(body) : undefined})
@@ -133,6 +133,6 @@ function gauge(score, th) {
 
 /* KODA's decision time next to a manual claim. The manual bar is illustrative, drawn hatched on purpose. */
 function speedCompare(sec) {
-  return `<div class="spd"><div class="r"><b>KODA AI</b><div class="b calmy"><i style="width:7%">${sec}s</i></div></div>
+  return `<div class="spd"><div class="r"><b>KODA AI</b><div class="b koda"><i style="width:7%">${sec}s</i></div></div>
     <div class="r"><span class="mute">Manual claim (industry)</span><div class="b manual"><i>About 14 days</i></div></div></div>`;
 }

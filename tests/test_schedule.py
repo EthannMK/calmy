@@ -5,7 +5,7 @@ import tempfile
 from datetime import date, timedelta
 
 os.environ["KODA_SAMPLE_DATA"] = "1"
-os.environ["CALMY_DB"] = os.path.join(tempfile.mkdtemp(), "s.db")
+os.environ["KODA_DB"] = os.path.join(tempfile.mkdtemp(), "s.db")
 os.environ.pop("AVIATIONSTACK_KEY", None)
 os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
 os.environ["KODA_NO_WEATHER"] = "1"

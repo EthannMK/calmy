@@ -14,7 +14,9 @@ from contextlib import contextmanager
 
 from . import markets, partners
 
-DB_PATH = os.environ.get("CALMY_DB", os.path.join(os.path.dirname(__file__), "..", "calmy.db"))
+# KODA_DB is the current name. CALMY_DB is still read so an instance deployed under the old name keeps working.
+DB_PATH = (os.environ.get("KODA_DB") or os.environ.get("CALMY_DB")
+           or os.path.join(os.path.dirname(__file__), "..", "koda.db"))
 _lock = threading.RLock()
 
 SCHEMA = """

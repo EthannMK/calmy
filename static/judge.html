@@ -135,7 +135,7 @@ const phone = $('#phone'), desk = $('#desk');
 // Both apps open already signed in with the demo accounts. Sign-in codes are used outside the demo.
 async function boot() {
   try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'staff', id: 'ST-1'}); store.set('koda.token', r.token); store.set('koda.staff', r.me.id); } catch (e) {}
-  try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'traveler', id: 'CU-GEORGE'}); store.set('calmy.token', r.token); } catch (e) {}
+  try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'traveler', id: 'CU-GEORGE'}); store.set('koda.traveler', r.token); } catch (e) {}
   phone.src = phone.dataset.src; desk.src = desk.dataset.src;
 }
 /* The opening card. Shown first, dismissed into the demo, and reachable again from the bar.
