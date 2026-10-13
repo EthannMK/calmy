@@ -567,7 +567,7 @@ def voucher_refund(cid: str, rid: str):
 
 @app.get("/api/customer/{cid}/services")
 def customer_services(cid: str, airport: str = Query("BKK", min_length=3, max_length=3)):
-    """Everything the wallet can be spent on at one airport: food, lounges, taxis, hotels, SIM and message packs."""
+    """Everything the wallet can be spent on at one airport: food and drink, lounges, and SIM or data packs."""
     iata = airport.upper()
     with db.conn() as c:
         _customer(c, cid)
@@ -1090,9 +1090,22 @@ def traveler_ask(pid: str, body: TravelerAsk):
 
 @app.get("/api/console/review")
 def review_queue():
+    """Delay claims waiting for a person: risk holds from the engine and re-checks asked for by travelers.
+
+    Each one carries the traveler, the booking and the flight, so the officer does not have to look them up.
+    """
     with db.conn() as c:
         out = db.rows(c, "SELECT * FROM decisions WHERE status='held' AND kind='delay' ORDER BY created_at DESC")
-        return [_decision(d) for d in out]
+        rows = []
+        for d in out:
+            p = db.one(c, "SELECT * FROM policies WHERE id=?", (d["policy_id"],)) or {}
+            f = db.one(c, "SELECT * FROM flights WHERE code=?", (p.get("flight"),)) or {}
+            cu = db.one(c, "SELECT id,name,email,phone,market FROM customers WHERE id=?", (p.get("customer_id"),)) if p.get("customer_id") else None
+            rows.append({**_decision(d), "policy": {k: p.get(k) for k in ("id", "traveler", "flight", "pnr", "channel", "market", "currency",
+                                                                           "delay_cover", "baggage_cover", "premium", "payout_account", "ref_verified")},
+                         "flight": {k: f.get(k) for k in ("code", "airline", "origin", "dest", "depart_label", "delay_minutes", "cancelled")},
+                         "customer": cu, "source": "recheck" if d.get("trigger") == "recheck" else "risk"})
+        return rows
 
 
 class Review(BaseModel):
@@ -1103,7 +1116,7 @@ class Review(BaseModel):
 def _reviewer(c, staff_id):
     """Name of the signed-in insurer staff member, so every decision is signed by a real person."""
     st = db.one(c, "SELECT name FROM staff WHERE id=?", (staff_id,)) if staff_id else None
-    return st["name"] if st else "Nattaya Phromsri"
+    return st["name"] if st else "Ethan Htoo"
 
 
 @app.post("/api/console/review/{decision_id}")

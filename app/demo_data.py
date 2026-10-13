@@ -48,9 +48,9 @@ ROUTES = [
     {"al": "EK", "name": "Emirates", "a": "BKK", "ac": "Bangkok", "b": "DXB", "bc": "Dubai", "t1": "01:45", "t2": "22:10", "n": 380},
     {"al": "BA", "name": "British Airways", "a": "LHR", "ac": "London", "b": "BKK", "bc": "Bangkok", "t1": "21:10", "t2": "23:55", "n": 920},
     {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "HKG", "bc": "Hong Kong", "t1": "10:20", "t2": "20:15", "n": 990},
-    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "BKK", "bc": "Bangkok", "t1": "09:15", "t2": "17:40", "n": 970},
-    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "KUL", "bc": "Kuala Lumpur", "t1": "08:05", "t2": "19:30", "n": 100},
-    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "CGK", "bc": "Jakarta", "t1": "13:20", "t2": "18:45", "n": 950},
+    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "BKK", "bc": "Bangkok", "t1": "09:15", "t2": "17:40", "n": 706},
+    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "KUL", "bc": "Kuala Lumpur", "t1": "08:05", "t2": "19:30", "n": 118},
+    {"al": "SQ", "name": "Singapore Airlines", "a": "SIN", "ac": "Singapore", "b": "CGK", "bc": "Jakarta", "t1": "13:20", "t2": "18:45", "n": 946},
 ]
 GEORGE, GEORGE_ID = "George Lim", "CU-GEORGE"
 CHANNELS = ["Trip.com", "Agoda", "Airline website or app", "Another travel site"]
@@ -87,6 +87,7 @@ class _World:
         self.rng = random.Random(2026)
         self.now = time.time()
         self.nums = {}
+        self.used = set()
         self.pending_bag = []
 
     # ---- flights
@@ -97,9 +98,15 @@ class _World:
         base = datetime.datetime.now(tz).date() + datetime.timedelta(days=day_off)
         hh, mm = map(int, (hhmm or (route["t1"] if leg == 1 else route["t2"])).split(":"))
         dt = datetime.datetime(base.year, base.month, base.day, hh, mm, tzinfo=tz)
-        key = route["al"] + str(route["n"])
-        self.nums[key] = self.nums.get(key, route["n"]) + 2
-        code = f"{route['al']} {self.nums[key]}"
+        key = f'{route["al"]}{route["a"]}{route["b"]}{route["n"]}'  # per route, so two routes on one airline never share a flight number
+        n = self.nums.get(key, route["n"])
+        while True:                      # a flight number is used once in the whole demo world
+            n += 2
+            code = f"{route['al']} {n}"
+            if code not in self.used:
+                break
+        self.nums[key] = n
+        self.used.add(code)
         f = {"code": code, "airline": route["name"], "origin": o, "origin_city": oc, "dest": d, "dest_city": dc,
              "depart_label": dt.strftime("%a %d %b, %H:%M"), "scheduled": dt.strftime("%H:%M"), "sched_ts": dt.timestamp(),
              "flight_date": dt.strftime("%Y-%m-%d"), "market": markets.market_for_timezone(TZ[o])}
@@ -114,7 +121,10 @@ class _World:
         first = name.split(" ")[0].lower().replace("'", "")
         last = name.split(" ")[-1].lower().replace("'", "")
         email = f"{first}.{last}@example.com"
-        phone = phone or "+66 8%d %03d %04d" % (self.rng.randint(0, 9), self.rng.randint(100, 999), self.rng.randint(1000, 9999))
+        if not phone:   # a number that matches where the traveler lives
+            phone = ("+65 8%03d %04d" % (self.rng.randint(100, 999), self.rng.randint(1000, 9999)) if home == "SG"
+                     else "+44 7%03d %06d" % (self.rng.randint(100, 999), self.rng.randint(100000, 999999)) if home == "UK"
+                     else "+66 8%d %03d %04d" % (self.rng.randint(0, 9), self.rng.randint(100, 999), self.rng.randint(1000, 9999)))
         self.c.execute("INSERT INTO customers (id,name,email,phone,market,auto_topup,notify,created_at) VALUES (?,?,?,?,?,0,1,?)",
                        (cid, name, email, phone, home, self.now - joined_days_ago * DAY))
         return cid
@@ -247,13 +257,13 @@ def seed_history(w: _World):
     burst, adverse = 25, 31
     no_cover = set(range(38, 46))                                # booked elsewhere, never bought cover
     for i, (cid, name) in enumerate(people):
-        home = "SG" if i % 17 == 5 else "UK" if i % 13 == 7 else "TH"
+        home = "TH" if i % 5 == 0 else "UK" if i % 13 == 7 else "SG"   # Singapore is the home market, with a few travelers elsewhere
         w.customer(cid, name, home, rng.randint(30, 220))
         if i in cash:
             if i in ring:
                 w.method(cid, "card", "Visa ending 9917", "9917", name, True, 50)
             elif i % 3 == 0:
-                bank = ["Siam Commercial Bank", "Bangkok Bank", "Kasikorn Bank"][i % 3]
+                bank = ["DBS Bank", "OCBC Bank", "United Overseas Bank"][i % 3]
                 last4 = "%04d" % rng.randint(1000, 9999)
                 w.method(cid, "bank", f"{bank} ending {last4}", last4, name, True, 70)
             else:

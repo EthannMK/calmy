@@ -17,7 +17,7 @@ from . import db, markets
 
 CASHOUT_RATE = 1 / (1 + markets.POINTS_BONUS)  # cash value of one point relative to its spending value
 MIN_CASHOUT = 500  # points
-BANKS = ["Siam Commercial Bank", "Bangkok Bank", "Kasikorn Bank", "Krungthai Bank", "DBS Bank", "HSBC", "Barclays", "Chase"]
+BANKS = ["DBS Bank", "OCBC Bank", "United Overseas Bank", "Standard Chartered", "Maybank", "HSBC", "Siam Commercial Bank", "Barclays"]
 
 
 def _id(prefix: str) -> str:

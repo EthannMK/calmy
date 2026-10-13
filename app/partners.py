@@ -1,5 +1,4 @@
-"""Partners at the airport where KODA points can be spent: food, lounges, taxi and car rental, hotels, and
-SIM, call and message packs.
+"""Partners at the airport where KODA points can be spent: food and drink, lounges, and SIM or data packs.
 
 Prototype directory: outlets are fictional and generated per airport. Only some have joined, so the
 app filters to the ones that accept points and are open while the traveler waits. A real launch

@@ -337,12 +337,19 @@ async function vReview(id) {
   if (!q.length) return head('Review queue', 'Claims that need a person.') + empty('task_alt', 'Nothing is waiting', 'Claims the AI is unsure about appear here for a person to decide.');
   const d = q.find(x => x.id === id) || q[0];
   const info = await api('/api/console/decision/' + d.policy_id);
+  const srcChip = x => x.source === 'recheck' ? '<span class="chip blue"><i></i>Traveler asked</span>' : '<span class="chip held"><i></i>Risk check</span>';
   if (!COP[d.id]) { COP[d.id] = await api('/api/console/copilot/' + d.id); upgradeCopilot(d.id); } const cp = COP[d.id]; if (DRAFT[d.id] == null) DRAFT[d.id] = cp.draft; CHAT[d.id] = CHAT[d.id] || [];
   const p = info.policy, f = info.flight, th = info.rules.risk_threshold, cur = p.currency, parts = d.breakdown && d.breakdown.length ? d.breakdown : [['Base score for any traveler', d.risk_score]];
   return head('Review queue', `${q.length} ${q.length === 1 ? 'claim needs' : 'claims need'} a person. The system never declines a claim on its own.`) + `
-  <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}"><div style="display:flex;justify-content:space-between"><b class="mono">${esc(x.id)}</b><span class="mono">${x.risk_score}</span></div><div class="mute" style="font-size:12px">Policy ${esc(x.policy_id)}</div></a>`).join('')}</div></section>
-  <div class="stack"><section class="panel"><div class="ph"><h2>${esc(p.traveler)}</h2><span class="chip held push"><i></i>Needs a person</span></div><div class="pb">
-      <dl class="kv"><dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd><dt>Why it was held</dt><dd>${aiChip('AI')} ${esc(d.explanation)}</dd></dl></div></section>
+  <div class="split"><section class="panel"><div class="qlist">${q.map(x => `<a class="qitem ${x.id === d.id ? 'on' : ''}" href="#review/${esc(x.id)}">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc((x.customer && x.customer.name) || x.policy.traveler)}</b>${srcChip(x)}</div>
+    <div class="mute" style="font-size:12px"><span class="mono">${esc(x.flight.code)}</span> ${esc(x.flight.origin)} to ${esc(x.flight.dest)} · ${hm(x.delay_minutes || 0)} late · ${money(x.amount, x.policy.currency)}</div>
+    <div class="mute" style="font-size:12px">Booking <span class="mono">${esc(x.policy.pnr || '-')}</span> · ${esc(x.policy.channel || 'direct')}</div></a>`).join('')}</div></section>
+  <div class="stack"><section class="panel"><div class="ph"><h2>${esc(p.traveler)}</h2><span class="push">${srcChip(d)}</span></div><div class="pb">
+      <dl class="kv">${d.customer ? `<dt>Customer</dt><dd>${esc(d.customer.name)}, ${esc(d.customer.email || '')}${d.customer.phone ? ', ' + esc(d.customer.phone) : ''}</dd>` : ''}
+        <dt>Booking</dt><dd><span class="mono">${esc(p.pnr || '-')}</span> ${p.ref_verified ? '<span class="chip paid"><i></i>Matches the airline record</span>' : '<span class="chip">Reference not matched</span>'}, bought ${esc(p.channel || 'direct')}</dd>
+        ${d.trigger === 'recheck' ? `<dt>Traveler asked</dt><dd>${esc(d.note || 'No note left.')}</dd>` : ''}
+        <dt>Policy</dt><dd class="mono">${esc(p.id)}</dd><dt>Flight</dt><dd>${esc(f.airline)} <span class="mono">${esc(f.code)}</span>, ${flightOf(f)}</dd><dt>Delay</dt><dd>${hm(d.delay_minutes)} (${d.delay_minutes} min)</dd><dt>Payout if approved</dt><dd class="mono"><b>${money(d.amount, cur)}</b> to ${esc(p.payout_account)}</dd><dt>Why it was held</dt><dd>${aiChip('AI')} ${esc(d.explanation)}</dd></dl></div></section>
     <section class="panel"><div class="ph"><h2>Reviewer copilot</h2>${aiChip(cp.ai ? 'Gemini' : 'KODA AI')}<span class="push mute" style="font-size:12px">Advises only. Never declines.</span></div><div class="pb" style="display:grid;gap:14px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="chip ${cp.action === 'approve' ? 'paid' : cp.action === 'escalate' ? 'red' : 'held'}"><i></i>Suggests: ${esc(cp.label)}</span><b class="mono">${cp.confidence}% confident</b></div>
       <p style="line-height:1.5">${esc(cp.why[0])}</p>
@@ -618,7 +625,12 @@ function drawGate() {
     catch (e) { GATE.err = String(e); drawGate(); }
   };
 }
-window.addEventListener('koda:unauth', e => { if ($('#gate').hidden) showGate(String(e.detail || 'Your session ended. Sign in again.')); });
+window.addEventListener('koda:unauth', async e => {
+  if (!$('#gate').hidden) return;
+  store.set('koda.token', null);
+  if (DEMO.demo && await autoSignIn()) return start();
+  showGate(String(e.detail || 'Your session ended. Sign in again.'));
+});
 async function signOutStaff() { try { await api('/api/auth/logout', 'POST'); } catch (e) {} store.set('koda.staff', null); showGate(); }
 function start() {
   $('#gate').hidden = true; last = '';
@@ -626,7 +638,18 @@ function start() {
   clearInterval(timer);
   timer = setInterval(() => { if ($('#gate').hidden && !document.hidden && !['rules', 'profile'].includes(route.split('/')[0]) && !document.activeElement?.matches('textarea,input,select')) refresh().catch(() => {}); }, location.search.includes('embed') ? 2500 : 3000);
 }
-(async () => { if (!store.get('koda.token')) return showGate(); try { await api('/api/auth/me'); start(); } catch (e) { showGate(); } })();
+let DEMO = {demo: false};
+async function autoSignIn() {
+  // Demo mode signs the officer in, so a judge is never stopped by a code. Code sign-in stays in the app.
+  try { DEMO = await api('/api/app/mode'); } catch (e) {}
+  if (!DEMO.demo) return false;
+  try { const r = await api('/api/auth/demo-session', 'POST', {kind: 'staff', id: DEMO.staff}); store.set('koda.token', r.token); store.set('koda.staff', r.me.id); return true; } catch (e) { return false; }
+}
+(async () => {
+  if (store.get('koda.token')) { try { await api('/api/auth/me'); return start(); } catch (e) {} }
+  if (await autoSignIn()) return start();
+  showGate();
+})();
 </script>
 </body>
 </html>

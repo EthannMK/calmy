@@ -225,12 +225,12 @@ def caring_message(flight: str, cancelled: bool, minutes: int, amount: int, stat
     what = "was cancelled" if cancelled else f"is delayed by {_hm(minutes)}"
     if status == "paid" and account.startswith(markets.POINTS_RAIL):
         pts = round(amount * markets.POINTS_PER_USD * (1 + markets.POINTS_BONUS))
-        return (f"Your flight {flight} {what}. We have added {pts:,} points to your KODA wallet. They are worth {pts / markets.POINTS_PER_USD:,.2f} USD "
-                f"at airport partners, {int(markets.POINTS_BONUS * 100)}% more than the {money(amount, cur)} payout. Spend them on food, lounges, taxis and more, "
-                "or cash them out to a saved card or bank account. No forms, no waiting.")
+        return (f"Your flight {flight} {what}. We have added {pts:,} points to your KODA wallet, worth {money(pts / markets.POINTS_PER_USD, cur)} "
+                f"at airport partners, {int(markets.POINTS_BONUS * 100)}% more than the {money(amount, cur)} payout. Spend them on food, a lounge or "
+                "a data pack at the airport, or cash them out to a saved card. No forms, no waiting.")
     if status == "paid":
         return (f"Your flight {flight} {what}. We have sent {money(amount, cur)} to {account}. "
-                "Have a drink or a meal at the airport on us. No forms, no waiting.")
+                "Have a meal or a coffee at the airport on us. No forms, no waiting.")
     return (f"Your flight {flight} {what}. We are sorry. A claims specialist is checking your cover now, "
             "so you do not need to do anything. We will message you as soon as a decision is made.")
 
@@ -363,9 +363,16 @@ def decide_held(c, decision_id: str, approve: bool, reviewer: str, note: str) ->
         tl = tl[:3] + [{"label": "Paid", "sec": 8}, {"label": "Traveler notified", "sec": 9}]
         wallet.refresh(c, db.one(c, "SELECT * FROM policies WHERE id=?", (d["policy_id"],)))
         pol = db.one(c, "SELECT payout_account, currency FROM policies WHERE id=?", (d["policy_id"],)) or {}
-        msg = caring_message(db.one(c, "SELECT flight FROM policies WHERE id=?", (d["policy_id"],))["flight"],
-                             d.get("trigger") == "cancel", d["delay_minutes"], d["amount"], "paid",
-                             pol.get("payout_account", "your account"), pol.get("currency", "SGD"))
+        flight_code = db.one(c, "SELECT flight FROM policies WHERE id=?", (d["policy_id"],))["flight"]
+        if d.get("trigger") == "recheck":
+            cur2 = pol.get("currency", "SGD")
+            acct = pol.get("payout_account", "your account")
+            where = ("your KODA wallet" if acct.startswith(markets.POINTS_RAIL) else acct)
+            msg = (f"We looked at {flight_code} again with the airline record and your claim is approved. "
+                   f"{money(d['amount'], cur2)} has gone to {where}. Thank you for telling us.")
+        else:
+            msg = caring_message(flight_code, d.get("trigger") == "cancel", d["delay_minutes"], d["amount"], "paid",
+                                 pol.get("payout_account", "your account"), pol.get("currency", "SGD"))
     else:
         msg = ("Thank you for your patience. After review, this claim does not meet the cover terms. "
                "You can ask for a second review from the app.")
