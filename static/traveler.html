@@ -592,7 +592,9 @@ function bagBlock(g) {
     const st = g.bag.status;
     return `<section class="card"><div class="cap">Lost bag claim</div>
       <div class="kv"><span>Declared</span><b>${sgd(g.bag.total)}</b></div>
-      <div class="kv"><span>Status</span><b>${esc({paid: 'Paid', pending: 'With a person', declined: 'Not paid'}[st] || st)}</b></div></section>`;
+      <div class="kv"><span>Report</span><b>${esc(st)}</b></div>
+      <div class="kv"><span>Where it is</span><b>${esc({paid: 'Paid', declined: 'Not paid'}[g.bag.decision] || 'With a claims officer')}</b></div>
+      <p class="dim" style="margin-top:6px">A lost bag is always looked at by a person, because the value of what was inside is declared by you.</p></section>`;
   }
   if (g.can && g.can.includes('bag')) {
     return `<section class="card"><div class="cap">Did your bag arrive?</div>

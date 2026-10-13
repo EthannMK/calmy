@@ -446,11 +446,25 @@ function vPerformance() {
 }
 
 /* ---------- Audit ---------- */
+// Plain names for the stored event types, so the log reads as a story rather than as field names.
+const EVENT_LABEL = {
+  quote_created: 'Quote started', policy_active: 'Cover started', notices_accepted: 'Notices accepted', cover_added: 'Cover added',
+  delay_detected: 'Delay seen in the flight feed', cancel_detected: 'Cancellation seen in the flight feed',
+  decision_paid: 'Paid automatically', decision_held: 'Held for a person', tier_upgrade: 'Raised to the higher payout tier',
+  review_paid: 'Approved by a person', review_declined: 'Declined by a person', review_requested: 'Traveler asked for a second review',
+  recheck_requested: 'Traveler asked us to check again', baggage_claim: 'Lost bag claim filed', extra_claim: 'Extra costs claimed',
+  points_redeemed: 'Points spent at a partner', voucher_used: 'Voucher scanned at the outlet', points_refunded: 'Unused voucher refunded',
+  points_cashed_out: 'Points cashed out', payment_method_added: 'Card or bank saved', profile_updated: 'Profile changed',
+  trip_archived: 'Trip closed with no payout', rules_updated: 'Rules changed', partner_updated: 'Partner updated',
+  airspace_alert_added: 'Airspace alert added', airspace_alert_removed: 'Airspace alert removed', staff_updated: 'Staff account changed',
+  signed_in: 'Signed in', flight_checked: 'Flight status checked', webhook_received: 'Flight feed posted an event', live_replay: 'Live flight replayed',
+};
+const eventName = t => EVENT_LABEL[t] || t.replace(/_/g, ' ');
 async function vAudit() {
   const rows = await api('/api/console/audit?limit=200&q=' + encodeURIComponent(FQ));
   if (!rows.length) return head('Audit log', 'Every action by the system and by reviewers.', searchBox('Search the log')) + empty('history', FQ ? 'No entries match' : 'Nothing logged yet', FQ ? 'Try a policy id, a booking ref or an event name.' : 'Actions appear here as they happen.');
   return head('Audit log', 'The latest ' + rows.length + ' actions by the system and by reviewers.', searchBox('Search the log')) + `<div class="panel tbl"><table><thead><tr><th>Time</th><th>Policy</th><th>Event</th><th>Detail</th></tr></thead><tbody>
-    ${rows.map(e => `<tr style="vertical-align:top"><td class="nowrap">${esc(new Date(e.ts * 1000).toLocaleString())}</td><td class="mono">${esc(e.policy_id || '')}</td><td><b>${esc(e.type)}</b></td><td class="mono" style="font-size:12px;word-break:break-all">${esc(e.detail)}</td></tr>`).join('')}</tbody></table></div>`;
+    ${rows.map(e => `<tr style="vertical-align:top"><td class="nowrap">${esc(new Date(e.ts * 1000).toLocaleString())}</td><td class="mono">${esc(e.policy_id || '')}</td><td><b>${esc(eventName(e.type))}</b><br><small class="mute mono" style="font-size:11px">${esc(e.type)}</small></td><td class="mono" style="font-size:12px;word-break:break-all">${esc(e.detail)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 

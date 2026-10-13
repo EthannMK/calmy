@@ -169,7 +169,7 @@
       </div>
       <div class="slot"></div>
       <div class="tickets"><div class="ticket" id="ticket">
-        <div class="main"><div class="k">PAYOUT RECEIPT</div><div class="amt" id="tamt">40 USD</div><div class="t" id="tline">Flight to Phuket, delayed 3h 05m</div><div class="t" style="margin-top:2px">Paid in 8 seconds. No forms.</div></div>
+        <div class="main"><div class="k">PAYOUT RECEIPT</div><div class="amt" id="tamt">S$45</div><div class="t" id="tline">Flight to Kuala Lumpur, delayed 3h 05m</div><div class="t" style="margin-top:2px">Paid in 8 seconds. No forms.</div></div>
         <div class="stub"><span class="stamp">PAID</span><div class="bars"></div></div>
       </div></div>
     </div>
@@ -179,10 +179,10 @@
     <h2>How it works for the traveler</h2>
     <div class="journey" id="leg"><span class="fill"></span>
       <svg class="jet" viewBox="-16 -16 32 32" aria-hidden="true"><path d="M-14,0 L-4,-3 L-1,-14 L3,-14 L2,-3 L14,-1 L14,2 L2,3 L3,14 L-1,14 L-4,3 L-14,2Z" fill="currentColor"/></svg>
-      <div class="stop"><div class="tm">Before you fly</div><h3>Add cover to your flight</h3><p>Pick your flight, any day this month, and add cover in under a minute.</p></div>
+      <div class="stop"><div class="tm">Before you fly</div><h3>Add cover to your flight</h3><p>Check the ticket you already have, or book through our partner checkout. Cover takes under a minute.</p></div>
       <div class="stop"><div class="tm">While you wait</div><h3>We watch the flight</h3><p>You get an early alert if a delay is likely, plus your rights and places to wait.</p></div>
       <div class="stop"><div class="tm">When it is late</div><h3>The rule decides</h3><p>Past the delay limit, your claim is checked automatically. No forms, no proof.</p></div>
-      <div class="stop"><div class="tm">Minutes later</div><h3>You are paid</h3><p>Money lands in your wallet, bank or points with a clear message. Odd cases go to a person.</p></div>
+      <div class="stop"><div class="tm">Minutes later</div><h3>You are paid</h3><p>Points land in your wallet with a clear message, to spend at the airport or cash out to a card. Odd cases go to a person.</p></div>
     </div>
   </section>
 
@@ -213,7 +213,7 @@ function flipTo(el, text, cls) {
   });
 }
 
-const FLIGHTS = [['09:40', 'CHIANG MAI'], ['10:15', 'PHUKET'], ['10:50', 'SINGAPORE']];
+const FLIGHTS = [['09:40', 'BANGKOK'], ['10:15', 'KUALA LUMP'], ['10:50', 'HONG KONG']];
 const rows = [...document.querySelectorAll('.row')].map(r => {
   const t = document.createElement('div'), d = document.createElement('div'), s = document.createElement('div');
   [t, d, s].forEach(x => x.className = 'grp'); mount(t, 5); mount(d, 10); mount(s, 12); r.append(t, d, s); return {t, d, s};
@@ -236,7 +236,7 @@ async function story() {
     if (m === 65) flipTo(hero.t, '11:20', 'sig');
     await sleep(2300);
   }
-  $('#pay').classList.add('on'); flipTo(pay, '40 USD', 'ok'); await sleep(900);
+  $('#pay').classList.add('on'); flipTo(pay, 'S$45', 'ok'); await sleep(900);
   ticket.classList.add('out'); await sleep(5200);
   ticket.classList.remove('out'); await sleep(1000);
   fill.style.width = '0';
@@ -248,7 +248,7 @@ setClock(); setInterval(setClock, 30000);
 
 if (REDUCED) {  // no motion: show the finished moment once
   board0(); flipTo(rows[1].s, 'DELAYED 3:05', 'sig'); flipTo(rows[1].t, '11:20', 'sig'); fill.style.width = '51%';
-  $('#pay').classList.add('on'); flipTo(pay, '40 USD', 'ok'); ticket.classList.add('out'); $('#mo').remove();
+  $('#pay').classList.add('on'); flipTo(pay, 'S$45', 'ok'); ticket.classList.add('out'); $('#mo').remove();
 } else loop();
 
 /* The journey draws itself when it scrolls into view. */

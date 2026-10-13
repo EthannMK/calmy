@@ -57,6 +57,9 @@ def _leg(c, row, rules_cache) -> dict:
     d = _decision(c, pol["id"])
     leg["decision"] = d
     b = db.one(c, "SELECT id,status,total FROM baggage WHERE policy_id=?", (pol["id"],))
+    if b:
+        d2 = db.one(c, "SELECT status FROM decisions WHERE id=?", (b["id"] + "-D",))
+        b["decision"] = (d2 or {}).get("status")
     leg["bag"] = b
     if not d and not departed:
         leg["state"] = "covered"

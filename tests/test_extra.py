@@ -208,7 +208,7 @@ def test_payout_uses_market_currency_and_amounts():
         r = client.post("/api/demo/delay", json={"flight": "OA 970", "minutes": 200}).json()["results"][0]
         assert r["status"] == "paid"
         d = client.get(f"/api/traveler/{pid}").json()["delay_decision"]
-        assert d["amount"] == 45 and "SGD" in d["explanation"]
+        assert d["amount"] == 45 and "S$45" in d["explanation"]
 
 
 def test_rules_are_per_market():

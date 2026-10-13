@@ -42,8 +42,13 @@ def currency_of(market: str) -> str:
     return markets.MARKETS.get(market, markets.MARKETS["GLOBAL"])["currency"]
 
 
+SYMBOL = {"SGD": "S$", "USD": "US$", "GBP": "£", "EUR": "€", "THB": "THB ", "JPY": "¥", "AUD": "A$", "INR": "₹", "CAD": "C$", "BRL": "R$"}
+
+
 def money(amount, currency: str) -> str:
-    return f"{int(amount):,} {currency}"
+    """One way of writing an amount, used in messages, explanations and the apps."""
+    sym = SYMBOL.get(currency)
+    return f"{sym}{int(amount):,}" if sym else f"{int(amount):,} {currency}"
 
 
 def payout_for_delay(rules: dict, minutes: int) -> int:
