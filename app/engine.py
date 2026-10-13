@@ -235,7 +235,7 @@ def caring_message(flight: str, cancelled: bool, minutes: int, amount: int, stat
 
 
 def _new_id(prefix: str) -> str:
-    return f"{prefix}-{uuid.uuid4().hex[:5].upper()}"
+    return f"{prefix}-{uuid.uuid4().hex[:7].upper()}"
 
 
 # ---------------------------------------------------------------- trigger
