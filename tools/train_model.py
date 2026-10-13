@@ -73,7 +73,7 @@ def main() -> None:
         "brier_always_base_rate": round(float(brier_score_loss(test["y"], np.full(len(p), base))), 4),
         "late_flights_caught_in_top_20pct": round(float(test["y"].to_numpy()[top].sum() / test["y"].sum()) * 100, 1),
         "reliability": rel,
-        "limits": ["Only one year of data, so it has no season feature.","Trained on one US airport region in 2013, not on Thai flights.",
+        "limits": ["Only one year of data, so it has no season feature.","Trained on one US airport region in 2013, not on Singapore or Southeast Asian flights.",
                    "It does not know the airline, the route or the aircraft. Those come from our own saved flight history.",
                    "Live delay, live weather and insurer airspace alerts are added after the model, as separate readable drivers.",
                    "The model informs. It never decides a payout."],
