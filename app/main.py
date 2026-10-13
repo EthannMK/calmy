@@ -22,7 +22,7 @@ from typing import Literal
 import re
 import time
 
-from . import auth, bookings, context, copilot, db, engine, forecast, live, markets, partners, rights, schedule, track, wallet
+from . import agent, auth, bookings, context, copilot, db, engine, forecast, live, markets, partners, rights, schedule, track, wallet
 
 STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 @asynccontextmanager
@@ -1061,6 +1061,31 @@ def copilot_ask(body: Ask):
     better = copilot.ask_gemini("You help an insurance claims reviewer. Answer in at most 2 sentences using only these facts; never suggest declining.\n"
                                 f"{facts}\nQuestion: {body.question}") if os.environ.get("GOOGLE_CLOUD_PROJECT") else None
     return {"answer": better or base, "ai": bool(better)}
+
+
+@app.get("/api/console/investigate/{decision_id}")
+def investigate(decision_id: str):
+    """Agent investigation of a held claim: the tools it used, what they found and a case summary. Advises only."""
+    r = agent.investigate(decision_id)
+    if r.get("error"):
+        raise HTTPException(404, r["error"])
+    return r
+
+
+class TravelerAsk(BaseModel):
+    question: str = Field(..., min_length=2, max_length=200)
+
+
+@app.post("/api/traveler/{pid}/ask")
+def traveler_ask(pid: str, body: TravelerAsk):
+    """Answers a traveler's question about their own trip from their policy facts."""
+    with db.conn() as c:
+        p = _policy(c, pid)
+        f = _flight(c, p["flight"])
+        rules = engine.get_rules(c, p["market"])
+    status = {"t1": int(rules["delay_tier1_minutes"]), "t2": int(rules["delay_tier2_minutes"]), "p1": rules["delay_tier1_payout"],
+              "p2": rules["delay_tier2_payout"], "chance": forecast.compute(f)["probability"] if f else 0}
+    return agent.answer_traveler(p, body.question, status)
 
 
 @app.get("/api/console/review")

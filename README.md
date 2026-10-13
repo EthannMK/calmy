@@ -108,3 +108,13 @@ The base delay chance comes from a trained model (`tools/train_model.py`, gradie
 - Four demo booking references show the cover states: BOTH42, DLY731, BAG518 and NONE26. Use Check my cover with the last name (Wongsakul, Tan, Nakamura, Okafor).
 - The console has Customers and Points and partners tabs and a working staff profile. The seed adds 50 demo customers with mixed cover and claims.
 - Full cover rules and workflows: docs/COVERAGE_AND_WORKFLOW.md
+
+## Sign-in, search and the investigation agent
+
+Sign-in. Travelers sign in with a booking reference, last name and a one-time code. Staff sign in with a work email and a code. A code lasts 5 minutes and allows 5 tries. Sessions end after 30 minutes (travelers) or 60 minutes (staff) without use. In demo mode no message is sent, so the code is shown on screen and the sign-in pages come prefilled with demo accounts. Set `KODA_DEMO_CODES=off` to stop that. Roles: admin (rules, airspace alerts, partners), reviewer (decide held claims), agent (look only). Code is in `app/auth.py`.
+
+Flight search. `GET /api/flights/search` returns flights with delay risk, whether delay cover is open, the cover price and an approximate flight time. Sources in order: live status, the saved real schedule, then a built-in sample schedule, so search never comes back empty.
+
+Investigation agent. `app/agent.py` investigates a held claim with six read-only tools (claim, flight status, delay forecast, weather and airspace, policy terms, traveler history), records each step and writes a case summary. It advises only. Gemini rewrites the summary when a Google Cloud project is set. A traveler can also ask questions about their own trip from the Help tab.
+
+Environment: `KODA_AUTH=off` turns sign-in checks off (used by most tests).

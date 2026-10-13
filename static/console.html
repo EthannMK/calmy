@@ -121,7 +121,7 @@
 <script>
 const usd2 = n => '$' + Number(n).toFixed(2);
 let route = location.hash.slice(1) || 'overview', last = '', ov = null, RM = 'TH', FQ = '';
-let ME = null, STAFFL = [], CU = {cover: '', payout: ''}, PTAB = 'partners', PAIR = '';
+let INV = {}, ME = null, STAFFL = [], CU = {cover: '', payout: ''}, PTAB = 'partners', PAIR = '';
 let refreshing = false, liveAt = 0, LIVE = {}, EXP = null, COP = {}, CHAT = {}, DRAFT = {};
 const GROUPS = [
   ['Operations', [['overview', 'dashboard', 'Overview'], ['review', 'rule', 'Review queue'], ['decisions', 'gavel', 'Decisions'], ['baggage', 'luggage', 'Baggage claims'], ['extra', 'receipt_long', 'Extra costs']]],
@@ -320,7 +320,7 @@ async function vDecisions(pid) {
         ${mkt.statutory ? `<div class="note"><b>Airline obligations in ${esc(mkt.name)}.</b> ${esc(mkt.statutory)} KODA pays on top of this.</div>` : ''}
         ${d.context ? `<div class="note"><b>Ground conditions at ${esc(d.context.airport)}.</b> ${esc(d.context.text || d.context.weather)}. ${esc(d.context.operations)}. ${d.context.fits ? 'Conditions are consistent with the event.' : 'Conditions look normal, so the cause is not weather.'} <span class="mute">${esc(d.context.source)}${d.context.ops_source ? '; ' + esc(d.context.ops_source).toLowerCase() : ''}. Context for the reviewer only, it never changes the payout.</span></div>` : ''}
         ${d.message ? `<div class="note info"><b>Message sent to the traveler.</b> ${esc(d.message)}</div>` : ''}
-        <div class="note good">${auto ? 'Paid with no human review and no forms.' : `Decided by ${esc(d.decided_by)}.${d.note ? ' Note: ' + esc(d.note) : ''}`}</div></div></section></div></div>`;
+        <div class="note good">${auto ? 'Paid automatically. No staff review was needed.' : `Decided by ${esc(d.decided_by)}.${d.note ? ' Note: ' + esc(d.note) : ''}`}</div></div></section></div></div>`;
 }
 
 /* Gemini rewrites the draft in the background so the page never waits on it. A draft the reviewer has already edited is kept. */
@@ -352,6 +352,10 @@ async function vReview(id) {
       <div><label class="lbl" for="ask">Ask about this claim</label>
         ${CHAT[d.id].map(m => `<div class="note ${m.who === 'you' ? '' : 'info'}" style="margin-bottom:6px"><b>${m.who === 'you' ? 'You' : 'Copilot'}:</b> ${esc(m.text)}</div>`).join('')}
         <div style="display:flex;gap:8px"><input id="ask" class="field" data-d="${esc(d.id)}" placeholder="Why was it held? What should I do?" maxlength="300"><button class="btn primary" id="askBtn">Ask</button></div></div></div></section>
+    <section class="panel"><div class="ph"><h2>Case investigation</h2>${aiChip('Agent')}<span class="push mute" style="font-size:12px">Reads the claim, flight, forecast, weather, policy terms and history.</span></div><div class="pb" style="display:grid;gap:10px">
+      ${INV[d.id] ? `<ol style="margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px">${INV[d.id].steps.map(x => `<li><b>${esc(x.label)}.</b> <span class="mute">${esc(Object.entries(x.result).map(([k, v]) => k.replace(/_/g, ' ') + ': ' + (Array.isArray(v) ? v.join(', ') : v)).join('; '))}</span></li>`).join('')}</ol>
+        <p style="line-height:1.5;margin:4px 0 0">${esc(INV[d.id].summary)}</p><div class="mute" style="font-size:12px">${esc(INV[d.id].note)}</div>`
+        : `<button class="btn" id="invGo" data-d="${esc(d.id)}">${ico('search')}Investigate this claim</button>`}</div></section>
     <section class="panel"><div class="ph"><h2>Your decision</h2></div><div class="pb"><label class="lbl" for="note">Reason, saved in the audit log</label><textarea id="note" rows="3" class="field" placeholder="Why you approve or decline"></textarea>
       <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary act" data-id="${esc(d.id)}" data-a="approve">${ico('check')}Approve and pay</button><button class="btn danger act" data-id="${esc(d.id)}" data-a="decline">${ico('close')}Decline</button></div><p class="mute" style="font-size:12px;margin-top:10px">The KODA AI can pay or ask for help. Only a person can decline.</p></div></section>
     <section class="panel"><div class="ph"><h2>Why it was held</h2><span class="push">${aiChip('AI flagged')}</span></div><div class="pb" style="display:grid;gap:14px">${gauge(d.risk_score, th)}${scoreBreakdown(parts, th)}<div class="aicard">${aiChip('KODA AI')}${aiText(d.explanation)}</div></div></section></div></div>`;
@@ -429,7 +433,7 @@ function vPerformance() {
   <div class="cols" style="grid-template-columns:repeat(3,minmax(0,1fr))">
     <section class="panel"><div class="ph"><h2>Paid with no human step</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.auto_paid}</div><p class="mute">${p.reviewed} needed a person</p></div></section>
     <section class="panel"><div class="ph"><h2>Cancellations paid</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.cancellations}</div><p class="mute">Cancelled flights decided by the same engine</p></div></section>
-    <section class="panel"><div class="ph"><h2>Trips archived quietly</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.archived}</div><p class="mute">No payout, no promo, no spam</p></div></section>
+    <section class="panel"><div class="ph"><h2>Trips archived quietly</h2></div><div class="pb"><div class="disp" style="font-size:34px">${p.archived}</div><p class="mute">No payout was due</p></div></section>
   </div>
   <p class="mute" style="margin-top:16px;max-width:70ch">Admin cost counts only claims a person had to review, at the $41 manual rate. Time to payout is measured from the flight event to the payout record. Industry reference: AI first notice of loss cuts claim turnaround by about 30% (McKinsey, 2025). KODA removes the claim step for flight delays and cancellations.</p>`;
 }
@@ -555,6 +559,7 @@ function bindAll() {
   };
   const asb = $('#asAdd'); if (asb) asb.onclick = async () => { try { await api('/api/console/airspace', 'POST', {airport: $('#asAp').value, label: $('#asLabel').value, level: $('#asLvl').value}); toast('Alert added. The forecast now counts it.', 'ok'); EXP = await api('/api/console/exposure'); } catch (e) { return fail(e); } last = ''; refresh(); };
   document.querySelectorAll('[data-asdel]').forEach(b => b.onclick = async () => { try { await api('/api/console/airspace/' + b.dataset.asdel, 'DELETE'); toast('Alert removed.', 'ok'); EXP = await api('/api/console/exposure'); } catch (e) { fail(e); } last = ''; refresh(); });
+  const ig = $('#invGo'); if (ig) ig.onclick = async () => { ig.disabled = true; ig.textContent = 'Investigating...'; try { INV[ig.dataset.d] = await api('/api/console/investigate/' + ig.dataset.d); } catch (e) { fail(e); } last = ''; refresh(); };
   const sv = $('#saveRules');
   if (sv) sv.onclick = async () => {
     const values = {}; document.querySelectorAll('[data-rule]').forEach(i => values[i.dataset.rule] = +i.value);

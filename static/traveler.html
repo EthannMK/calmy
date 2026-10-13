@@ -211,7 +211,7 @@ const EMBED = new URLSearchParams(location.search).has('embed'); if (EMBED) docu
 let PID = new URLSearchParams(location.search).get('p') || store.get('calmy.pid');
 let S = null, MK = {}, tab = ['cover', 'claims', 'wallet', 'help'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'cover', sel = {delay: true, baggage: true}, ack = false, showWhy = false, bagOpen = false, factsOpen = false, bagForm = false;
 let W = null, voucher = null, otherOpen = false;
-let CID = null, ME = null, CS = null, SV = null, svAir = '', svCat = 'all', mode = 'buy', screen = null, DEMO = [], demoOpen = false;
+let qa2 = '', CID = null, ME = null, CS = null, SV = null, svAir = '', svCat = 'all', mode = 'buy', screen = null, DEMO = [], demoOpen = false;
 let chk = {ref: '', name: '', res: null, err: ''}, pf = {name: '', email: '', phone: '', init: false}, nm = {open: false, kind: 'card', number: '', holder: '', expiry: '', bank: ''}, co = {points: '', method: ''};
 let selDate = '', calOpen = false, calMonth = null, selFlight = null;
 let si = {stage: 'ref', ref: '', name: '', ch: null, code: '', err: '', demos: null}, bstep = 'search', toAp = '', sortBy = 'time', SR = null, srBusy = false;
@@ -610,8 +610,8 @@ function coverView() {
   const r = S.rules, p = S.policy;
   if (bagForm) return bagFormView();
   if (p.status === 'archived') {
-    return `<div><span class="chip"><i></i>Trip complete</span><h1 style="margin-top:10px">Smooth trip</h1>
-      <p class="sub">Your flight had no problem, so there was nothing to pay. We closed the trip quietly. No promo, no spam.</p></div>${flightCard(false)}`;
+    return `<div><span class="chip"><i></i>Trip complete</span><h1 style="margin-top:10px">Your flight was on time</h1>
+      <p class="sub">Your flight was not delayed, so no payout was due.</p></div>${flightCard(false)}`;
   }
   if (p.status === 'active') {
     return `<div><span class="chip paid"><i></i>Covered</span><h1 style="margin-top:10px">Your trip is covered</h1>
@@ -644,7 +644,7 @@ function coverView() {
     ${S.forecast && S.forecast.probability >= 55 ? '<div class="note"><b>A delay is already likely.</b> You can still add cover. A claim on cover bought now gets an extra check by a person.</div>' : ''}
     ${closed ? `<div class="tier" style="opacity:.85;cursor:default"><div class="t"><span>Delay cover</span><span class="chip red">Closed</span></div><p class="d">A delay is already ${S.underwriting.probability}% likely on this flight, so we no longer sell delay cover for it. This keeps cover fair for everyone who bought earlier. Baggage cover is still open.</p></div>` : coverCard('delay', 'Delay cover', r.delay_premium, `${Math.round(r.delay_tier1_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier1_payout)}</b>. ${Math.round(r.delay_tier2_minutes / 60)}h late pays <b class="mono">${M(r.delay_tier2_payout)}</b>.`)}
     ${coverCard('baggage', 'Baggage cover', r.baggage_premium, `Pays up to <b class="mono">${M(r.lost_bag_payout)}</b> if your bag is lost.`)}
-    <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>No forms. ${S.customer && S.customer.payout_to.startsWith('KODA') ? 'Payouts arrive as KODA points, worth 25% more.' : 'Paid straight to ' + acct(S.policy.payout_account) + '.'}</span></div>
+    <div class="note info" style="display:flex;gap:10px;align-items:center">${ico('verified_user')}<span>${S.customer && S.customer.payout_to.startsWith('KODA') ? 'Payouts arrive as KODA points.' : 'Paid straight to ' + acct(S.policy.payout_account) + '.'}</span></div>
     ${factsBlock()}
     <label style="display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;cursor:pointer"><input id="ack" type="checkbox" style="margin-top:3px;width:18px;height:18px;accent-color:var(--cobalt)" ${ack ? 'checked' : ''}><span>I have read the key facts and agree that KODA uses my details to run this cover.</span></label>
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px">
@@ -701,7 +701,7 @@ function claimsView() {
   return out;
 }
 function steps(tl) {
-  const subs = {'Event detected': 'Flight status updated', 'Traveler notified': 'A message explains what was paid and why', 'Traveler told a person will look': 'You are kept in the loop', 'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, rule met', 'Risk checked': 'Checked automatically, no forms', 'Paid': 'Sent to your payout account', 'Held for review': 'A person is taking a look'};
+  const subs = {'Event detected': 'Flight status updated', 'Traveler notified': 'A message explains what was paid and why', 'Traveler told a person will look': 'You are kept in the loop', 'Delay detected': 'Flight status updated', 'Policy matched': 'Cover active, rule met', 'Risk checked': 'Checked automatically', 'Paid': 'Sent to your payout account', 'Held for review': 'A person is taking a look'};
   return `<section class="card">` + tl.map(s => `<div class="step"><span class="dot ${s.pending ? 'wait' : s.label === 'Paid' || s.label === 'Traveler notified' ? 'fill' : ''}">${ico(s.pending ? 'hourglass_top' : 'check')}</span>
       <div style="flex:1"><b>${esc(s.label)}</b>${s.label === 'Risk checked' ? ' ' + aiChip('AI') : ''}<small>${esc(subs[s.label] || '')}</small></div><time>${s.sec}s</time></div>`).join('') + `</section>`;
 }
@@ -719,7 +719,7 @@ function paidView(d) {
       ${topped && d.trigger !== 'cancel' ? `<span class="chip paid" style="margin-top:8px">Topped up past ${Math.round(r.delay_tier2_minutes / 60)} hours</span>` : ''}
       <div class="ln"></div>
       <div class="chk">${aiChip('What KODA AI checked')}
-        ${[[d.trigger === 'cancel' ? 'Flight cancelled' : 'Flight delayed ' + hm(d.delay_minutes) + ', rule ' + Math.round(r.delay_tier1_minutes / 60) + 'h', 'flight_takeoff'], ['Your cover was active before the event', 'verified_user'], ['No fraud signals found', 'shield'], ['Paid in ' + ((d.timeline.find(x => x.label === 'Paid') || {}).sec || 8) + ' seconds, no forms', 'bolt']].map(([x, i]) => `<div>${ico(i)}<span>${x}</span></div>`).join('')}</div>
+        ${[[d.trigger === 'cancel' ? 'Flight cancelled' : 'Flight delayed ' + hm(d.delay_minutes) + ', rule ' + Math.round(r.delay_tier1_minutes / 60) + 'h', 'flight_takeoff'], ['Your cover was active before the event', 'verified_user'], ['No fraud signals found', 'shield'], ['Paid in ' + ((d.timeline.find(x => x.label === 'Paid') || {}).sec || 8) + ' seconds', 'bolt']].map(([x, i]) => `<div>${ico(i)}<span>${x}</span></div>`).join('')}</div>
       <div class="ln"></div>
       <div class="kv"><span>Flight</span><b>${esc(S.flight.airline)} <span class="mono">${esc(S.flight.code)}</span></b></div>
       <div class="kv"><span>Date</span><b>${esc((S.flight.depart_label || '').split(',')[0])}</b></div>
@@ -823,7 +823,7 @@ function pushBanner(d) {
 /* ---------------- Help tab ---------------- */
 function helpView() {
   const qa = [
-    ['How do I get paid?', 'If your flight is late by the delay in your cover, we pay you automatically. You fill in nothing. By default the payout arrives as KODA points, worth 25% more. You can switch to cash on a saved card or bank in your profile.'],
+    ['How do I get paid?', 'If your flight is late by the delay in your cover, we pay you automatically. You do not need to submit a claim. By default the payout arrives as KODA points with a 25% bonus. You can switch to cash on a saved card or bank in your profile.'],
     ['What can I do with points?', 'Spend them at the airport on food, lounges, taxis and car rental, hotels, SIM cards, call and message packs and more. 100 points are worth $1 there. Or cash them out to a saved card or bank any time. Cash-out pays $0.80 per 100 points.'],
     ['Why do you not ask for my card number?', 'We do not need it to sell you cover, because payouts go to your points wallet first. Save a card or bank account only if you want cash.'],
     ['How do I check what I am covered for?', 'Tap Check my cover on the first screen. Enter your booking reference and last name. You see every flight on the booking, which cover each one has, and what you have been paid.'],
@@ -833,6 +833,7 @@ function helpView() {
     ['What is not covered?', 'A delay under 3 hours, a bag that is only late, a flight you did not take, and anything that happened before you added cover. A trip with only baggage cover gets no delay payout, and the other way round.'],
     ['Why was my claim held?', 'Some claims are checked by a person to prevent fraud. Most reviews are quick.']];
   return `<h1>Help</h1>${qa.map(([q, a]) => `<div class="card"><b>${q}</b><p class="mute" style="margin-top:6px;font-size:13px">${a}</p></div>`).join('')}
+    ${PID ? `<div class="card"><b>Ask about your trip</b><div style="display:flex;gap:8px;margin-top:8px"><input id="qAsk" class="field" placeholder="When will I be paid?" maxlength="200"><button class="btn primary" id="qGo">Ask</button></div>${qa2 ? `<p style="margin-top:10px;font-size:14px;line-height:1.5">${esc(qa2)}</p>` : ''}</div>` : ''}
     <div class="mute" style="font-size:12px">The full cover rules are in the coverage guide in the project documents.</div>`;
 }
 
@@ -968,6 +969,8 @@ function bind() {
     await load(); render(true);
   });
   on('#signOut', () => signOut());
+  const qa = $('#qAsk'); if (qa) qa.onkeydown = e => { if (e.key === 'Enter') $('#qGo').click(); };
+  on('#qGo', async () => { const v = $('#qAsk').value.trim(); if (v.length < 2) return; try { qa2 = (await api(`/api/traveler/${PID}/ask`, 'POST', {question: v})).answer; } catch (e) { return fail(e); } render(true); });
   on('#goSignin', () => openSignin());
   on('#sSearch', runSearch);
   const sf = $('#sFrom'); if (sf) sf.onchange = () => { ap = sf.value; if (toAp === ap) toAp = ''; render(true); };
