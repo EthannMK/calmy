@@ -77,6 +77,11 @@ def points():
         bal = [wallet.balance(c, i) for i in ids]
         liability = sum(b["points"] for b in bal)
         tx = db.rows(c, "SELECT t.*, cu.name FROM wallet_tx t JOIN customers cu ON cu.id=t.customer_id WHERE t.kind IN ('spend','cashout') ORDER BY t.created_at DESC LIMIT 60")
+        for t in tx:   # a spend makes a voucher: say whether the outlet has scanned it yet
+            if t["kind"] == "spend":
+                r = db.one(c, "SELECT status, code FROM redemptions WHERE id=?", (t["id"].split(":", 1)[-1],))
+                t["voucher"] = (r or {}).get("status") or "ready"
+                t["code"] = (r or {}).get("code")
         partners = db.rows(c, "SELECT p.*, (SELECT COUNT(*) FROM redemptions r WHERE r.partner_id=p.id) used, "
                               "(SELECT COALESCE(SUM(points),0) FROM redemptions r WHERE r.partner_id=p.id) pts FROM partners p ORDER BY p.airport, p.kind, p.name")
         return {

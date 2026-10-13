@@ -447,7 +447,10 @@ def seed_history(w: _World):
                 continue
             r = partners.redeem_customer(c, cid, s["id"], price)
             ts = now - rng.randint(1, 30) * DAY
-            c.execute("UPDATE redemptions SET created_at=? WHERE id=?", (ts, r["id"]))
+            # most vouchers were scanned at the outlet soon after; a few are still unused
+            used = rng.random() > 0.2
+            c.execute("UPDATE redemptions SET created_at=?, status=?, used_at=? WHERE id=?",
+                      (ts, "used" if used else "ready", ts + rng.randint(10, 180) * 60 if used else None, r["id"]))
             c.execute("UPDATE wallet_tx SET created_at=? WHERE id=?", (ts, "spend:" + r["id"]))
             break
     for i in (1, 8):
